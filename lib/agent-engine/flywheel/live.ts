@@ -10,6 +10,10 @@ import { runModelCall, type LlmEdgeConfig } from '../edge/llm/run-model-call';
 import type { Logger } from '../obs/logger';
 
 const JUDGE_MODEL = 'claude-haiku-4-5';
+// O distiller PRECISA de modelo próprio: o flywheel roda org-wide sem turno/agent
+// para herdar, então sem isto ele cai no settings.llm.default_model — não setado
+// em self-host configurado pela tela — e a rodada falha "modelo LLM não definido".
+const DISTILLER_MODEL = 'claude-haiku-4-5';
 const DIMENSION = 'memory_hygiene';
 const DATASET = 'live';
 
@@ -177,6 +181,7 @@ export async function runFlywheelOnce(
           leadId: turn.contact_id,
           jobId: turn.job_id,
           purpose: 'flywheel_distiller',
+          model: DISTILLER_MODEL,
           messages: [{ role: 'user', content: distillerPrompt(verdict.missing_facts ?? []) }],
         },
         { log },
