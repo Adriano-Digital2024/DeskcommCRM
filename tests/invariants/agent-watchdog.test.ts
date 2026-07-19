@@ -108,6 +108,15 @@ beforeAll(async () => {
      on conflict (id) do nothing`,
     [QUEUED_MSG, ORG, CONV, SESSION, CONTACT],
   );
+  // redriveQueued varre TODAS as orgs (comportamento de produção). No container
+  // efêmero COMPARTILHADO com as outras suítes (ex.: automation-send-whatsapp
+  // deixa uma outbound 'ai' queued), o cenário "exatamente 1 preso" precisa
+  // garantir que a fila contém só a mensagem DESTE teste — sem isso o redrive
+  // conta as mensagens vazadas das vizinhas.
+  await pool.query(
+    `delete from messages where status = 'queued' and sent_via = 'ai' and organization_id <> $1`,
+    [ORG],
+  );
 });
 
 afterAll(async () => {
