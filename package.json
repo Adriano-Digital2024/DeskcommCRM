@@ -27,9 +27,9 @@
     "flywheel:judge": "tsx --env-file=.env --env-file=.env.local scripts/flywheel-judge-live.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.94",
-    "@ai-sdk/google": "^3.0.89",
-    "@ai-sdk/openai": "^3.0.53",
+    "@ai-sdk/anthropic": "^4.0.16",
+    "@ai-sdk/google": "^4.0.18",
+    "@ai-sdk/openai": "^4.0.16",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^3.9.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -55,7 +55,7 @@
     "@tanstack/react-query-devtools": "^5.100.6",
     "@tanstack/react-virtual": "^3.13.24",
     "@upstash/redis": "^1.37.0",
-    "ai": "^6",
+    "ai": "^7.0.31",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
