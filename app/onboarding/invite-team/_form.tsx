@@ -19,6 +19,7 @@ import { ROLES, type Role } from "@/lib/schemas/team";
 export function InviteTeamForm() {
   const [emailsRaw, setEmailsRaw] = useState("");
   const [role, setRole] = useState<Role>("agent");
+  const [undelivered, setUndelivered] = useState<{ email: string; accept_url: string }[]>([]);
   const [pending, startTransition] = useTransition();
 
   const submit = (skip: boolean) => {
@@ -51,9 +52,15 @@ export function InviteTeamForm() {
         toast.error(`Falha: ${res.error}`);
         return;
       }
-      if (res && res.ok) {
-        toast.success(`${res.sent} convite(s) enviado(s)${res.failed ? `, ${res.failed} falha(s).` : "."}`);
+      if (res && res.ok && res.undelivered?.length) {
+        // Sem serviço de email configurado: mostra os links de aceite pro
+        // admin mandar por conta própria — nunca fingir que o email saiu.
+        setUndelivered(res.undelivered);
+        toast.warning(
+          `${res.failed} convite(s) não puderam ser enviados por email. Copie os links abaixo e envie você mesmo.`,
+        );
       }
+      // sucesso total redireciona no server action
     });
   };
 
@@ -85,6 +92,41 @@ export function InviteTeamForm() {
           </SelectContent>
         </Select>
       </div>
+
+      {undelivered.length > 0 && (
+        <div className="space-y-3 rounded-md border border-amber-300/60 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-950/20">
+          <p className="text-sm font-medium">
+            O email não está configurado neste servidor — os convites foram criados, mas não
+            foram enviados. Copie os links e mande direto pra cada pessoa:
+          </p>
+          <ul className="space-y-2">
+            {undelivered.map((u) => (
+              <li key={u.email} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-xs">
+                  <span className="font-medium">{u.email}</span>{" "}
+                  <code className="break-all text-muted-foreground">{u.accept_url}</code>
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(u.accept_url);
+                    toast.success("Link copiado.");
+                  }}
+                >
+                  Copiar link
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex justify-end">
+            <Button type="button" onClick={() => (window.location.href = "/onboarding")}>
+              Continuar
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-between gap-2 pt-2">
         <Button type="button" variant="ghost" disabled={pending} onClick={() => submit(true)}>
