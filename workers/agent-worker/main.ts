@@ -25,6 +25,7 @@ import {
   type InboundTurnDeps,
 } from '@/lib/agent-engine/agent/inbound-turn';
 import { createFollowupTurnHandler } from '@/lib/agent-engine/agent/followup-turn';
+import { createCaseReplyTurnHandler } from '@/lib/agent-engine/agent/case-reply-turn';
 import { seedPlatformPlaybook } from '@/lib/agent-engine/agent/playbook-seed';
 import { runCronLoop } from '@/lib/agent-engine/cron/scheduler';
 import { createPool } from '@/lib/agent-engine/db/pool';
@@ -415,6 +416,7 @@ export async function main(): Promise<void> {
   };
   handlers.set('inbound_turn', createInboundTurnHandler(turnDeps));
   handlers.set('followup_turn', createFollowupTurnHandler(turnDeps));
+  handlers.set('case_reply_turn', createCaseReplyTurnHandler(turnDeps));
   await startWorker(env, handlers, log);
 }
 
