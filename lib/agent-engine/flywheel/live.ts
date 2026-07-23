@@ -4,7 +4,7 @@
  * loop agendado do worker chamam o MESMO runFlywheelOnce. Gate humano
  * inegociável: propostas só viram comportamento quando o dono publica na tela.
  */
-import pg from 'pg';
+import type pg from 'pg';
 
 import { runModelCall, type LlmEdgeConfig } from '../edge/llm/run-model-call';
 import type { Logger } from '../obs/logger';
@@ -190,7 +190,7 @@ export async function runFlywheelOnce(
         { log },
       );
       const proposal = parseJson<{ content: string; scope?: string }>(distilled.result.text);
-      const isOrg = proposal.scope === 'org';
+      const isOrg = proposal.scope?.toLowerCase().trim() === 'org';
       await pool.query(
         `insert into flywheel_distiller_proposals
            (organization_id, run_id, dataset, type, target, content, evidence)

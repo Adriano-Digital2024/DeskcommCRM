@@ -52,7 +52,7 @@ export async function applyProposal(
     return {
       ok: false,
       code: "proposal_already_applied",
-      message: "Proposta já foi aplicada como versão nova.",
+      message: "Proposta já foi aplicada.",
     };
   }
   if (proposal.type === "org_memory_entry") {

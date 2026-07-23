@@ -38,6 +38,7 @@ export function useApplyProposal(agentId: string) {
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ["agent-proposals", agentId] });
       void qc.invalidateQueries({ queryKey: ["agent-versions", agentId] });
+      void qc.invalidateQueries({ queryKey: ["org-memory"] });
     },
   });
 }
