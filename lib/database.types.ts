@@ -39,146 +39,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      agent_case_events: {
-        Row: {
-          actor_kind: string
-          actor_user_id: string | null
-          body: string | null
-          case_id: string
-          created_at: string
-          human_action: string | null
-          id: string
-          kind: string
-          metadata: Json
-          organization_id: string
-        }
-        Insert: {
-          actor_kind: string
-          actor_user_id?: string | null
-          body?: string | null
-          case_id: string
-          created_at?: string
-          human_action?: string | null
-          id?: string
-          kind: string
-          metadata?: Json
-          organization_id: string
-        }
-        Update: {
-          actor_kind?: string
-          actor_user_id?: string | null
-          body?: string | null
-          case_id?: string
-          created_at?: string
-          human_action?: string | null
-          id?: string
-          kind?: string
-          metadata?: Json
-          organization_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agent_case_events_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "agent_cases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_case_events_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      agent_cases: {
-        Row: {
-          agent_id: string | null
-          blocker: string
-          closed_at: string | null
-          context_snapshot: Json
-          conversation_id: string
-          created_at: string
-          followup_attempts: number
-          id: string
-          lead_id: string | null
-          opened_at: string
-          organization_id: string
-          source: string
-          status: string
-          summary: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          agent_id?: string | null
-          blocker: string
-          closed_at?: string | null
-          context_snapshot?: Json
-          conversation_id: string
-          created_at?: string
-          followup_attempts?: number
-          id?: string
-          lead_id?: string | null
-          opened_at?: string
-          organization_id: string
-          source?: string
-          status?: string
-          summary: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          agent_id?: string | null
-          blocker?: string
-          closed_at?: string | null
-          context_snapshot?: Json
-          conversation_id?: string
-          created_at?: string
-          followup_attempts?: number
-          id?: string
-          lead_id?: string | null
-          opened_at?: string
-          organization_id?: string
-          source?: string
-          status?: string
-          summary?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agent_cases_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "ai_agents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_cases_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_cases_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "crm_leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_cases_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       agent_inbox_items: {
         Row: {
           body: string | null
@@ -364,13 +224,11 @@ export type Database = {
       ai_agent_versions: {
         Row: {
           agent_id: string
-          cases_enabled: boolean
           channel_session_id: string
           cost_budget_cents: number
           created_at: string
           created_by: string | null
           credential_id: string | null
-          followup: Json
           handoff_keywords: string[]
           handoff_tool_enabled: boolean
           history_message_window: number
@@ -378,12 +236,9 @@ export type Database = {
           id: string
           max_steps: number
           model: string
-          multimodal_input: boolean
           organization_id: string
           provider: string
           published_at: string | null
-          split_max_chars: number
-          split_messages: boolean
           status: string
           superseded_at: string | null
           system_prompt: string
@@ -391,17 +246,14 @@ export type Database = {
           tool_ids: string[]
           trigger_config: Json
           version_number: number
-          video_frames_enabled: boolean
         }
         Insert: {
           agent_id: string
-          cases_enabled?: boolean
           channel_session_id: string
           cost_budget_cents?: number
           created_at?: string
           created_by?: string | null
           credential_id?: string | null
-          followup?: Json
           handoff_keywords?: string[]
           handoff_tool_enabled?: boolean
           history_message_window?: number
@@ -409,12 +261,9 @@ export type Database = {
           id?: string
           max_steps?: number
           model: string
-          multimodal_input?: boolean
           organization_id: string
           provider: string
           published_at?: string | null
-          split_max_chars?: number
-          split_messages?: boolean
           status?: string
           superseded_at?: string | null
           system_prompt: string
@@ -422,17 +271,14 @@ export type Database = {
           tool_ids?: string[]
           trigger_config?: Json
           version_number: number
-          video_frames_enabled?: boolean
         }
         Update: {
           agent_id?: string
-          cases_enabled?: boolean
           channel_session_id?: string
           cost_budget_cents?: number
           created_at?: string
           created_by?: string | null
           credential_id?: string | null
-          followup?: Json
           handoff_keywords?: string[]
           handoff_tool_enabled?: boolean
           history_message_window?: number
@@ -440,12 +286,9 @@ export type Database = {
           id?: string
           max_steps?: number
           model?: string
-          multimodal_input?: boolean
           organization_id?: string
           provider?: string
           published_at?: string | null
-          split_max_chars?: number
-          split_messages?: boolean
           status?: string
           superseded_at?: string | null
           system_prompt?: string
@@ -453,7 +296,6 @@ export type Database = {
           tool_ids?: string[]
           trigger_config?: Json
           version_number?: number
-          video_frames_enabled?: boolean
         }
         Relationships: [
           {
@@ -1836,51 +1678,6 @@ export type Database = {
           },
         ]
       }
-      conversation_notes: {
-        Row: {
-          body: string
-          conversation_id: string
-          created_at: string
-          created_by_name: string | null
-          created_by_user_id: string | null
-          id: string
-          organization_id: string
-        }
-        Insert: {
-          body: string
-          conversation_id: string
-          created_at?: string
-          created_by_name?: string | null
-          created_by_user_id?: string | null
-          id?: string
-          organization_id: string
-        }
-        Update: {
-          body?: string
-          conversation_id?: string
-          created_at?: string
-          created_by_name?: string | null
-          created_by_user_id?: string | null
-          id?: string
-          organization_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversation_notes_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "conversation_notes_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       conversations: {
         Row: {
           assigned_at: string | null
@@ -1903,9 +1700,6 @@ export type Database = {
           metadata: Json
           organization_id: string
           rag_review_status: string | null
-          snooze_until: string | null
-          snoozed_at: string | null
-          snoozed_by_user_id: string | null
           status: string
           status_changed_at: string
           tags: string[]
@@ -1936,9 +1730,6 @@ export type Database = {
           metadata?: Json
           organization_id: string
           rag_review_status?: string | null
-          snooze_until?: string | null
-          snoozed_at?: string | null
-          snoozed_by_user_id?: string | null
           status?: string
           status_changed_at?: string
           tags?: string[]
@@ -1969,9 +1760,6 @@ export type Database = {
           metadata?: Json
           organization_id?: string
           rag_review_status?: string | null
-          snooze_until?: string | null
-          snoozed_at?: string | null
-          snoozed_by_user_id?: string | null
           status?: string
           status_changed_at?: string
           tags?: string[]
@@ -2664,262 +2452,6 @@ export type Database = {
           },
         ]
       }
-      followup_enrollment_events: {
-        Row: {
-          created_at: string
-          enrollment_id: string
-          event_type: string
-          id: string
-          idempotency_key: string | null
-          node_id: string | null
-          organization_id: string
-          payload: Json
-        }
-        Insert: {
-          created_at?: string
-          enrollment_id: string
-          event_type: string
-          id?: string
-          idempotency_key?: string | null
-          node_id?: string | null
-          organization_id: string
-          payload?: Json
-        }
-        Update: {
-          created_at?: string
-          enrollment_id?: string
-          event_type?: string
-          id?: string
-          idempotency_key?: string | null
-          node_id?: string | null
-          organization_id?: string
-          payload?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "followup_enrollment_events_enrollment_id_fkey"
-            columns: ["enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "followup_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "followup_enrollment_events_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      followup_enrollments: {
-        Row: {
-          agent_id: string | null
-          attempts: number
-          cancel_reason: string | null
-          claimed_until: string | null
-          completed_at: string | null
-          contact_id: string
-          conversation_id: string | null
-          current_node_id: string
-          id: string
-          last_error: string | null
-          max_attempts: number
-          next_eval_at: string | null
-          organization_id: string
-          outcome: string | null
-          pointer_id: string
-          started_at: string
-          status: string
-          steps_taken: number
-          updated_at: string
-          version_id: string
-        }
-        Insert: {
-          agent_id?: string | null
-          attempts?: number
-          cancel_reason?: string | null
-          claimed_until?: string | null
-          completed_at?: string | null
-          contact_id: string
-          conversation_id?: string | null
-          current_node_id: string
-          id?: string
-          last_error?: string | null
-          max_attempts?: number
-          next_eval_at?: string | null
-          organization_id: string
-          outcome?: string | null
-          pointer_id: string
-          started_at?: string
-          status?: string
-          steps_taken?: number
-          updated_at?: string
-          version_id: string
-        }
-        Update: {
-          agent_id?: string | null
-          attempts?: number
-          cancel_reason?: string | null
-          claimed_until?: string | null
-          completed_at?: string | null
-          contact_id?: string
-          conversation_id?: string | null
-          current_node_id?: string
-          id?: string
-          last_error?: string | null
-          max_attempts?: number
-          next_eval_at?: string | null
-          organization_id?: string
-          outcome?: string | null
-          pointer_id?: string
-          started_at?: string
-          status?: string
-          steps_taken?: number
-          updated_at?: string
-          version_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "followup_enrollments_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "ai_agents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "followup_enrollments_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "followup_enrollments_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "followup_enrollments_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "followup_enrollments_pointer_id_fkey"
-            columns: ["pointer_id"]
-            isOneToOne: false
-            referencedRelation: "followup_flow_pointers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "followup_enrollments_version_id_fkey"
-            columns: ["version_id"]
-            isOneToOne: false
-            referencedRelation: "followup_flow_versions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      followup_flow_pointers: {
-        Row: {
-          active_version_id: string | null
-          created_at: string
-          draft_graph: Json | null
-          handoff_policy: string
-          id: string
-          name: string
-          organization_id: string
-          status: string
-          trigger_config: Json
-          updated_at: string
-        }
-        Insert: {
-          active_version_id?: string | null
-          created_at?: string
-          draft_graph?: Json | null
-          handoff_policy?: string
-          id?: string
-          name: string
-          organization_id: string
-          status?: string
-          trigger_config?: Json
-          updated_at?: string
-        }
-        Update: {
-          active_version_id?: string | null
-          created_at?: string
-          draft_graph?: Json | null
-          handoff_policy?: string
-          id?: string
-          name?: string
-          organization_id?: string
-          status?: string
-          trigger_config?: Json
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "followup_flow_pointers_active_version_id_fkey"
-            columns: ["active_version_id"]
-            isOneToOne: false
-            referencedRelation: "followup_flow_versions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "followup_flow_pointers_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      followup_flow_versions: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          graph: Json
-          id: string
-          organization_id: string
-          pointer_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          graph: Json
-          id?: string
-          organization_id: string
-          pointer_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          graph?: Json
-          id?: string
-          organization_id?: string
-          pointer_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "followup_flow_versions_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "followup_flow_versions_pointer_id_fkey"
-            columns: ["pointer_id"]
-            isOneToOne: false
-            referencedRelation: "followup_flow_pointers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       idempotency_keys: {
         Row: {
           created_at: string
@@ -3540,50 +3072,6 @@ export type Database = {
           },
         ]
       }
-      message_templates: {
-        Row: {
-          body: string
-          created_at: string
-          created_by_user_id: string | null
-          id: string
-          organization_id: string
-          owner_user_id: string | null
-          shortcut: string | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          body: string
-          created_at?: string
-          created_by_user_id?: string | null
-          id?: string
-          organization_id: string
-          owner_user_id?: string | null
-          shortcut?: string | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          created_by_user_id?: string | null
-          id?: string
-          organization_id?: string
-          owner_user_id?: string | null
-          shortcut?: string | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "message_templates_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       messages: {
         Row: {
           ack: number | null
@@ -3599,8 +3087,6 @@ export type Database = {
           error_message: string | null
           external_id: string | null
           id: string
-          media_derived_status: string | null
-          media_derived_text: string | null
           media_mime: string | null
           media_size_bytes: number | null
           media_storage_path: string | null
@@ -3629,8 +3115,6 @@ export type Database = {
           error_message?: string | null
           external_id?: string | null
           id?: string
-          media_derived_status?: string | null
-          media_derived_text?: string | null
           media_mime?: string | null
           media_size_bytes?: number | null
           media_storage_path?: string | null
@@ -3659,8 +3143,6 @@ export type Database = {
           error_message?: string | null
           external_id?: string | null
           id?: string
-          media_derived_status?: string | null
-          media_derived_text?: string | null
           media_mime?: string | null
           media_size_bytes?: number | null
           media_storage_path?: string | null
@@ -5045,37 +4527,6 @@ export type Database = {
         Args: { p_org: string; p_owner_user_id: string }
         Returns: boolean
       }
-      fn_claim_due_followup_enrollments: {
-        Args: { p_lease_seconds: number; p_limit: number }
-        Returns: {
-          agent_id: string | null
-          attempts: number
-          cancel_reason: string | null
-          claimed_until: string | null
-          completed_at: string | null
-          contact_id: string
-          conversation_id: string | null
-          current_node_id: string
-          id: string
-          last_error: string | null
-          max_attempts: number
-          next_eval_at: string | null
-          organization_id: string
-          outcome: string | null
-          pointer_id: string
-          started_at: string
-          status: string
-          steps_taken: number
-          updated_at: string
-          version_id: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "followup_enrollments"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       fn_conversation_assign: {
         Args: {
           p_conversation_id: string
@@ -5106,9 +4557,6 @@ export type Database = {
           metadata: Json
           organization_id: string
           rag_review_status: string | null
-          snooze_until: string | null
-          snoozed_at: string | null
-          snoozed_by_user_id: string | null
           status: string
           status_changed_at: string
           tags: string[]
@@ -5165,15 +4613,6 @@ export type Database = {
           published_at: string
           version_id: string
         }[]
-      }
-      fn_publish_followup_flow_version: {
-        Args: {
-          p_created_by: string
-          p_graph: Json
-          p_org: string
-          p_pointer: string
-        }
-        Returns: string
       }
       fn_role_at_least: {
         Args: { p_min: string; p_org: string }
