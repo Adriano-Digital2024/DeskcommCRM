@@ -69,8 +69,8 @@ async function seedTenant(org: string, contact: string, session: string, conv: s
   );
 }
 
-function ids(org: string, contact: string, conv: string): CaseIds {
-  return { tenantId: org, leadId: contact, conversationId: conv };
+function ids(org: string, conv: string): CaseIds {
+  return { tenantId: org, conversationId: conv };
 }
 
 /**
@@ -107,7 +107,7 @@ afterAll(async () => {
 
 describe("wave 2 — human-cases repositório", () => {
   it("openCase cria agent_cases(status='awaiting_human') + 1 evento 'opened'", async () => {
-    const result = await openCase(pool, ids(ORG_A, CONTACT_A, CONV_A), {
+    const result = await openCase(pool, ids(ORG_A, CONV_A), {
       title: "Lead pediu desconto fora da política",
       summary: "Lead quer 40% de desconto; política permite até 15%.",
       blocker: "Preciso de aprovação humana para o desconto.",
@@ -146,7 +146,7 @@ describe("wave 2 — human-cases repositório", () => {
   });
 
   it("provideCaseUpdate só transiciona awaiting_lead->awaiting_human", async () => {
-    const opened = await openCase(pool, ids(ORG_A, CONTACT_A, CONV_A), {
+    const opened = await openCase(pool, ids(ORG_A, CONV_A), {
       title: "Precisa do CPF do lead",
       summary: "Lead ainda não informou o CPF para emitir a nota.",
       blocker: "Sem CPF não emite nota.",
@@ -155,7 +155,7 @@ describe("wave 2 — human-cases repositório", () => {
     const caseId = opened.caseId;
 
     // de awaiting_human -> rejeita (estado errado)
-    const rejected = await provideCaseUpdate(pool, ids(ORG_A, CONTACT_A, CONV_A), {
+    const rejected = await provideCaseUpdate(pool, ids(ORG_A, CONV_A), {
       caseId,
       info: "CPF: 000.000.000-00",
     });
@@ -165,7 +165,7 @@ describe("wave 2 — human-cases repositório", () => {
     const afterAsk = await pool.query(`select status from agent_cases where id = $1`, [caseId]);
     expect(afterAsk.rows[0]).toMatchObject({ status: "awaiting_lead" });
 
-    const provided = await provideCaseUpdate(pool, ids(ORG_A, CONTACT_A, CONV_A), {
+    const provided = await provideCaseUpdate(pool, ids(ORG_A, CONV_A), {
       caseId,
       info: "CPF: 000.000.000-00",
     });
@@ -186,7 +186,7 @@ describe("wave 2 — human-cases repositório", () => {
   });
 
   it("resolveCaseFromHuman: awaiting_human->resolved, closed_at setado, não pisa em já-resolvido", async () => {
-    const opened = await openCase(pool, ids(ORG_A, CONTACT_A, CONV_A), {
+    const opened = await openCase(pool, ids(ORG_A, CONV_A), {
       title: "Dúvida sobre garantia",
       summary: "Lead quer saber se o produto tem garantia estendida.",
       blocker: "Preciso confirmar política de garantia com o time.",
@@ -215,7 +215,7 @@ describe("wave 2 — human-cases repositório", () => {
   });
 
   it("escalateCase transiciona awaiting_human->escalated com closed_at", async () => {
-    const opened = await openCase(pool, ids(ORG_A, CONTACT_A, CONV_A), {
+    const opened = await openCase(pool, ids(ORG_A, CONV_A), {
       title: "Reclamação grave",
       summary: "Lead ameaça processar a empresa.",
       blocker: "Precisa de decisão jurídica.",
@@ -240,14 +240,14 @@ describe("wave 2 — human-cases repositório", () => {
     const conv = "cccccccc-0000-4000-8000-000000000098";
     const contact = "cccccccc-0000-4000-8000-000000000198";
     await seedExtraConversation(conv, contact, ORG_A, SESSION_A);
-    const first = await openCase(pool, ids(ORG_A, contact, conv), {
+    const first = await openCase(pool, ids(ORG_A, conv), {
       title: "Primeiro caso",
       summary: "Primeiro bloqueio.",
       blocker: "Primeiro motivo.",
     });
     expect(first.ok).toBe(true);
 
-    const second = await openCase(pool, ids(ORG_A, contact, conv), {
+    const second = await openCase(pool, ids(ORG_A, conv), {
       title: "Segundo caso",
       summary: "Segundo bloqueio.",
       blocker: "Segundo motivo.",
@@ -273,7 +273,7 @@ describe("wave 2 — human-cases repositório", () => {
   });
 
   it("isolamento: tenantId de outra org não enxerga nem afeta o caso", async () => {
-    const opened = await openCase(pool, ids(ORG_A, CONTACT_A, CONV_A), {
+    const opened = await openCase(pool, ids(ORG_A, CONV_A), {
       title: "Caso isolado",
       summary: "Resumo isolado.",
       blocker: "Bloqueio isolado.",
@@ -291,7 +291,7 @@ describe("wave 2 — human-cases repositório", () => {
     expect(row.rows[0].status).toBe("awaiting_human");
 
     // idem para provideCaseUpdate com ids de B
-    const crossTenant = await provideCaseUpdate(pool, ids(ORG_B, CONTACT_B, CONV_B), {
+    const crossTenant = await provideCaseUpdate(pool, ids(ORG_B, CONV_B), {
       caseId,
       info: "não deveria valer",
     });

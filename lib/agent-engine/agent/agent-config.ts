@@ -32,6 +32,8 @@ export interface PublishedAgentConfig {
   splitMaxChars: number;
   /** input multimodal (imagem/áudio/pdf) habilitado no turno (Onda 3). */
   multimodalInput: boolean;
+  /** tools open_human_case/provide_case_update habilitadas no turno (spec 15). */
+  casesEnabled: boolean;
   /** tool_ids do catálogo MCP habilitadas na tela (2B-tools). */
   toolIds: string[];
   /** criadores (p/ mint do token efêmero de audit — padrão do runtime nativo). */
@@ -55,6 +57,7 @@ interface Row {
   split_messages: boolean;
   split_max_chars: number;
   multimodal_input: boolean;
+  cases_enabled: boolean;
   tool_ids: string[] | null;
   version_created_by: string | null;
   agent_created_by: string | null;
@@ -81,6 +84,7 @@ export async function loadPublishedAgentConfig(
             v.split_messages,
             v.split_max_chars,
             v.multimodal_input,
+            v.cases_enabled,
             v.tool_ids,
             v.created_by as version_created_by,
             a.created_by as agent_created_by
@@ -115,6 +119,7 @@ export async function loadPublishedAgentConfig(
     splitMessages: r.split_messages,
     splitMaxChars: r.split_max_chars,
     multimodalInput: r.multimodal_input,
+    casesEnabled: r.cases_enabled,
     toolIds: r.tool_ids ?? [],
     versionCreatedBy: r.version_created_by,
     agentCreatedBy: r.agent_created_by,

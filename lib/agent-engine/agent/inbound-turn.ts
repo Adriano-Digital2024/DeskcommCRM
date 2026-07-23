@@ -71,6 +71,12 @@ import {
 } from './stage-classifier';
 import { loadPlaybook } from './playbook';
 import { loadPublishedAgentConfig, matchesHandoffKeyword } from './agent-config';
+import {
+  openCase,
+  provideCaseUpdate,
+  openHumanCaseInputSchema,
+  provideCaseUpdateInputSchema,
+} from './human-cases';
 import { buildMcpTurnTools } from '../edge/crm/mcp-tools';
 import { cancelPendingCronsForLead } from '../cron/scheduler';
 import {
@@ -194,6 +200,32 @@ export const AGENT_TOOL_DEFS = {
       reason: z.string().optional().describe('por que passar ao humano (curto)'),
     }).passthrough(),
   },
+  open_human_case: {
+    description:
+      'Abra um caso para um humano de retaguarda quando você NÃO conseguir resolver o pedido do lead ' +
+      'sozinho (liberar acesso, corrigir algo num sistema, uma decisão que exige uma pessoa). Você CONTINUA ' +
+      'conversando com o lead normalmente — não silencia. Use SEMPRE que for prometer ao lead que alguém vai ' +
+      'verificar/resolver: prometer sem abrir o caso é proibido.',
+    // Schema LARGO para o SDK (o modelo vê os campos); a validação REAL é a whitelist
+    // .strict() openHumanCaseInputSchema (human-cases.ts) — campo extra/forjado vira
+    // erro de ENSINO ao modelo, nunca exceção do SDK nem strip silencioso.
+    inputSchema: z.object({
+      title: z.string().describe('título curto, ex.: "Liberar acesso ao painel"'),
+      summary: z.string().describe('o que o lead precisa, em pt-br'),
+      blocker: z.string().describe('por que você não consegue resolver sozinho'),
+    }).passthrough(),
+  },
+  provide_case_update: {
+    description:
+      'Quando um caso está esperando informação do cliente e você já colheu essa informação na conversa, ' +
+      'use esta tool para devolver a informação ao humano responsável. Não invente — só o que o lead disse.',
+    // Schema LARGO para o SDK; a validação REAL é a whitelist .strict()
+    // provideCaseUpdateInputSchema (human-cases.ts).
+    inputSchema: z.object({
+      case_id: z.string().describe('id do caso aberto'),
+      info: z.string().describe('a informação colhida do lead'),
+    }).passthrough(),
+  },
 } as const;
 
 /**
@@ -241,6 +273,19 @@ export const CHECKPOINT_INSTRUCTION =
   '{"commitments": string[], "objections": string[], "next_action": string|null, "rolling_summary": string} ' +
   '— compromissos assumidos, objeções do lead, próxima ação e o resumo acumulado ' +
   'da conversa até aqui (inclua o que o resumo anterior já dizia). Sem texto fora do JSON.';
+
+/**
+ * Bloco de sistema RESIDENTE das tools de caso (spec 15 §5.2) — entra no prefixo
+ * cacheável junto do índice de skills quando `casesEnabled`, pra não sumir em
+ * conversa longa (ao contrário do índice de skills, este bloco não some).
+ */
+const CASES_SYSTEM_BLOCK =
+  '## Casos para um humano de retaguarda\n' +
+  'Quando você NÃO conseguir resolver o pedido do lead sozinho (liberar acesso, corrigir algo num ' +
+  'sistema, uma decisão que exige uma pessoa), use a tool open_human_case — você CONTINUA conversando ' +
+  'com o lead, não silencia. NUNCA prometa ao lead que um humano vai verificar/resolver sem antes chamar ' +
+  'open_human_case. Quando um caso estiver esperando informação do cliente e você já a obteve na ' +
+  'conversa, use provide_case_update para devolver ao responsável.';
 
 export interface InboundTurnKnobs {
   /** últimas N mensagens no contexto de abertura (LEAD_CONTEXT_HISTORY_LIMIT) */
@@ -554,10 +599,16 @@ export async function runAgentTurn(
   // ponteiros a cada run: trocar/rollback de skill = mover o ponteiro, sem restart.
   const skills = await loadSkills(pool, tenantId);
   const skillIndex = renderSkillIndex(skills);
-  const system =
+  const systemWithSkills =
     skillIndex === ''
       ? playbook.prompt
       : `${playbook.prompt}\n\n=== skills (índice — o corpo carrega no turno quando a situação dispara) ===\n${skillIndex}`;
+  // Spec 15 §5.2: bloco das tools de caso SEMPRE residente (não invalida o prefixo
+  // cacheável — mesmo espírito do índice de skills acima) quando a tela habilita.
+  const system =
+    agentConfig !== null && agentConfig.casesEnabled
+      ? `${systemWithSkills}\n\n${CASES_SYSTEM_BLOCK}`
+      : systemWithSkills;
   const previous = await latestCheckpoint(pool, tenantId, leadId);
   const leadState = await getLeadState(pool, tenantId, leadId);
   const openingContext = await getLeadContext(
@@ -743,6 +794,9 @@ export async function runAgentTurn(
           )
       : undefined;
   let outOfTablePromiseAttempted = false;
+  // Spec 15 (Wave 4 lê este flag): true quando open_human_case abriu um caso NESTE
+  // turno — aqui só declara e seta; o consumo (ex.: guardrail de promessa) é da Wave 4.
+  let openedCaseThisTurn = false;
   const outcomes: ChannelSendResult[] = [];
   let runError: Error | null = null;
   const noteRunError = (err: Error): void => {
@@ -1044,6 +1098,83 @@ export async function runAgentTurn(
   // determinística de pedido de humano continua ativa — guardrail nunca sai).
   if (agentConfig !== null && !agentConfig.handoffToolEnabled) {
     delete rawTools.request_human_handoff;
+  }
+
+  // Spec 15: snapshot mínimo do contexto disponível pro humano que for atender o
+  // caso — campo de CONVENIÊNCIA pra UI, não load-bearing (nada aqui é relido pelo
+  // agente). ponytail: snapshot mínimo; enriquecer se a UI precisar de mais.
+  const buildCaseContextSnapshot = (): Record<string, unknown> => ({
+    contact_name: effectiveContext.contact.name,
+    last_messages: effectiveContext.messages.slice(-5).map((m) => ({ direction: m.direction, body: m.body })),
+  });
+
+  // Spec 15 (Wave 3a): tools de caso humano (open_human_case/provide_case_update) só
+  // entram quando a tela habilita (cases_enabled) — mesmo padrão do handoff acima.
+  // Ids do closure (row do job), nunca do payload; payload inválido é erro de ENSINO
+  // ({ok:false}), exceção real vira internal_error (mesma disciplina dos irmãos).
+  if (agentConfig !== null && agentConfig.casesEnabled) {
+    rawTools.open_human_case = tool({
+      ...AGENT_TOOL_DEFS.open_human_case,
+      execute: async (raw) => {
+        const parsed = openHumanCaseInputSchema.safeParse(raw);
+        if (!parsed.success) {
+          return {
+            ok: false,
+            error: {
+              code: 'invalid_payload',
+              message: 'campos do caso inválidos — informe title, summary e blocker (texto).',
+            },
+          };
+        }
+        try {
+          const res = await openCase(
+            pool,
+            { tenantId, conversationId: input.conversationId, agentId: agentConfig.agentId },
+            { ...parsed.data, contextSnapshot: buildCaseContextSnapshot() },
+          );
+          if (!res.ok) return res;
+          openedCaseThisTurn = true;
+          return {
+            ok: true,
+            case_id: res.caseId,
+            message: 'caso aberto; continue a conversa com o lead normalmente.',
+          };
+        } catch (err) {
+          noteRunError(err instanceof Error ? err : new Error(String(err)));
+          return {
+            ok: false,
+            error: { code: 'internal_error', message: 'erro interno ao abrir o caso — encerre o turno.' },
+          };
+        }
+      },
+    });
+    rawTools.provide_case_update = tool({
+      ...AGENT_TOOL_DEFS.provide_case_update,
+      execute: async (raw) => {
+        const parsed = provideCaseUpdateInputSchema.safeParse(raw);
+        if (!parsed.success) {
+          return {
+            ok: false,
+            error: { code: 'invalid_payload', message: 'informe case_id e info (texto).' },
+          };
+        }
+        try {
+          const res = await provideCaseUpdate(
+            pool,
+            { tenantId, conversationId: input.conversationId },
+            { caseId: parsed.data.case_id, info: parsed.data.info },
+          );
+          if (!res.ok) return res;
+          return { ok: true, message: 'informação enviada ao responsável; aguarde o retorno pelo caso.' };
+        } catch (err) {
+          noteRunError(err instanceof Error ? err : new Error(String(err)));
+          return {
+            ok: false,
+            error: { code: 'internal_error', message: 'erro interno ao atualizar o caso — encerre o turno.' },
+          };
+        }
+      },
+    });
   }
 
   // 2B-tools: tools do catálogo MCP habilitadas NA TELA entram no run (audit +

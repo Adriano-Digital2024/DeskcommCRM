@@ -20,11 +20,11 @@
  * com pg.PoolClient (Queryable).
  *
  * `agent_cases.lead_id` é FK para `crm_leads` (o lead do pipeline do CRM) — uma
- * entidade DIFERENTE do `leadId` usado no resto do agent-engine (que é sempre
- * `contact_id`, ver draft-reply.ts). O espelho contact→crm_leads ainda não está
- * ligado (mirrorLeadStageToCrm retorna 'not_configured' — Fase 2 da fusão), então
- * `agent_cases.lead_id` fica NULL aqui; `CaseIds.leadId` (contact) não é gravado
- * nessa coluna, só circula pela mesma forma de ids que os outros tools do engine.
+ * entidade DIFERENTE do `contact_id`/`leadId` usado no resto do agent-engine (ver
+ * draft-reply.ts). O espelho contact→crm_leads ainda não está ligado
+ * (mirrorLeadStageToCrm retorna 'not_configured' — Fase 2 da fusão), então
+ * `agent_cases.lead_id` fica NULL sempre — o caso ancora em `conversation_id`
+ * (CaseIds não carrega o contact_id: nada aqui o lê).
  */
 import { z } from 'zod';
 import type pg from 'pg';
@@ -33,8 +33,6 @@ import type { Queryable } from '../queue/queue';
 
 export interface CaseIds {
   tenantId: string;
-  /** = contact_id (convenção do agent-engine, ver draft-reply.ts). */
-  leadId: string;
   conversationId: string;
   agentId?: string | null;
 }
@@ -56,7 +54,11 @@ export type ProvideCaseUpdateInput = z.infer<typeof provideCaseUpdateInputSchema
 
 const OPEN_STATUSES = ['awaiting_human', 'awaiting_lead'] as const;
 
-/** True se há um caso 'awaiting_human'|'awaiting_lead' aberto para a conversa. */
+/**
+ * True se há um caso 'awaiting_human'|'awaiting_lead' aberto para a conversa.
+ * Checa UMA conversa (conversation_id), não o contato inteiro — um contato pode
+ * ter >1 conversa por channel_session; o caso pertence a uma conversa.
+ */
 export async function hasOpenCaseForContact(
   db: Queryable,
   tenantId: string,
@@ -82,7 +84,10 @@ export type OpenCaseResult =
  * agent_case_events(kind='opened') em UM statement atômico. A guarda de dedup
  * (não abrir 2º caso pra mesma conversa) mora no `where not exists` do próprio
  * INSERT — sem essa condição haveria corrida entre a checagem e a escrita;
- * aqui checagem e escrita são a MESMA operação.
+ * aqui checagem e escrita são a MESMA operação. Essa atomicidade check-and-write
+ * vale DENTRO do statement; a garantia de não-duplicação entre transações
+ * CONCORRENTES vem da serialização per-contact do job_queue
+ * (uniq_job_queue_one_running_per_contact), não deste statement sozinho.
  */
 export async function openCase(
   db: pg.Pool,
