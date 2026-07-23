@@ -33,6 +33,21 @@ describe('searchKnowledge', () => {
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.error.code).toBe('knowledge_unavailable');
   });
+
+  it('erro de RPC (pool.query) vira erro de ENSINO, nunca exceção', async () => {
+    const query = vi.fn().mockRejectedValue(new Error('rpc_error: pgvector dimension mismatch'));
+    const embed = vi.fn().mockResolvedValue({ embedding: [0.1, 0.2], promptTokens: 3, model: 'm' });
+    const out = await searchKnowledge(
+      { query } as unknown as pg.Pool,
+      { organizationId: 'org1', kbVersionId: 'kb1', query: 'frete', topK: 5, threshold: 0.72 },
+      { embed },
+    );
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error.code).toBe('knowledge_unavailable');
+      expect(out.error.message).toContain('indisponível');
+    }
+  });
 });
 
 describe('citationsFromHits', () => {

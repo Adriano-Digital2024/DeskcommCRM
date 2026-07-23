@@ -29,9 +29,15 @@ export async function searchKnowledge(
   deps?: { embed?: typeof embedText },
 ): Promise<SearchKnowledgeResult> {
   const embed = deps?.embed ?? embedText;
-  let embedding: number[];
   try {
-    ({ embedding } = await embed(args.query, { organizationId: args.organizationId }));
+    const { embedding } = await embed(args.query, { organizationId: args.organizationId });
+    const vec = `[${embedding.join(',')}]`;
+    const { rows } = await pool.query<KnowledgeHit>(
+      `select chunk_id, knowledge_source_id, content, similarity, metadata
+       from retrieve_top_k_chunks($1, $2, $3::vector, $4, $5)`,
+      [args.organizationId, args.kbVersionId, vec, args.topK, args.threshold],
+    );
+    return { ok: true, results: rows };
   } catch {
     return {
       ok: false,
@@ -41,13 +47,6 @@ export async function searchKnowledge(
       },
     };
   }
-  const vec = `[${embedding.join(',')}]`;
-  const { rows } = await pool.query<KnowledgeHit>(
-    `select chunk_id, knowledge_source_id, content, similarity, metadata
-     from retrieve_top_k_chunks($1, $2, $3::vector, $4, $5)`,
-    [args.organizationId, args.kbVersionId, vec, args.topK, args.threshold],
-  );
-  return { ok: true, results: rows };
 }
 
 /** Shape que a UI do inbox já renderiza (CitationsPanel — lib/ai/citations/types). */
