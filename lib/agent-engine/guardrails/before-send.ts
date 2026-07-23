@@ -5,10 +5,11 @@
  * como erro instrutivo (o modelo a vê no turno seguinte); só se TODOS passarem a
  * mensagem alcança o `ChannelAdapter` (e, por baixo, o sink idempotente F2-06).
  *
- * Ordem FINAL v3 (DECLARATIVA + VERSIONADA — `BEFORE_SEND_GATES`/`BEFORE_SEND_CHAIN_VERSION`,
+ * Ordem FINAL v4 (DECLARATIVA + VERSIONADA — `BEFORE_SEND_GATES`/`BEFORE_SEND_CHAIN_VERSION`,
  * F4-08/F4-09): (1) stop/opt-out — irrevogável; (2) lgpd — anonimização/base legal de
  * prospecção (F4-09); (3) anti-ban (janela/throttle/warm-up/caps — F2-11); (4) spinning
- * (F2-12); (5) promise determinística (F4-01); (6) promise semântica (F4-02); (7) disclosure
+ * (F2-12); (5) promise determinística (F4-01); (6) promise semântica (F4-02); (6.5) case
+ * promise — anti-alucinação de casos humanos (spec 15 §10.2, Wave 4); (7) disclosure
  * (F4-05). A ordem é código-constante DE PROPÓSITO, não config de
  * runtime: "stop primeiro" é invariante de segurança (regra dura nº 2) e mudar a ordem sem
  * bumpar a versão quebra o CI — deixá-la mutável em disco seria um footgun. Cada gate
@@ -54,6 +55,7 @@ import {
 import type { DisclosureMode } from './disclosure/template';
 import { escalateLgpdVeto, isLegalBasisValid } from './lgpd/legal-basis';
 import type { LgpdInput } from './lgpd/legal-basis';
+import { detectHumanPromise } from './human-promise';
 
 /** O que os gates enxergam — carregado UMA vez sob o lock, por tentativa de envio. */
 export interface GateContext {
@@ -112,6 +114,18 @@ export interface GateContext {
    * sinal do disclosure (send_ledger accepted == 0), computado uma vez sob o lock.
    */
   lgpd: (LgpdInput & { isFirstOutbound: boolean }) | null;
+  /**
+   * Guardrail anti-alucinação de casos humanos (spec 15 §10.2, Wave 4) — a invariante
+   * sagrada é: o lead NUNCA recebe promessa-de-humano sem um caso aberto. `casesEnabled`
+   * false = feature off para a org → `casePromiseGate` no-op (default retrocompatível para
+   * TODOS os outros callers de `runBeforeSend`, que nem sabem desta camada). `hasOpenCase`
+   * (lido no turno via `hasOpenCaseForContact`) OU `openedCaseThisTurn` (a IA já chamou
+   * `open_human_case` neste turno) tornam o gate no-op também — só veta quando a candidata
+   * promete humano E não há caso nenhum.
+   */
+  casesEnabled: boolean;
+  hasOpenCase: boolean;
+  openedCaseThisTurn: boolean;
 }
 
 /**
@@ -229,13 +243,41 @@ export const semanticPromiseGate: Gate = {
 };
 
 /**
+ * Gate anti-alucinação de casos humanos (spec 15 §10.2, Wave 4) — a garantia DURA da
+ * invariante "o lead nunca recebe promessa-de-humano sem caso aberto". Off (`casesEnabled`
+ * false) ou já há caso (`hasOpenCase`/`openedCaseThisTurn` — a IA abriu um NESTE turno) =
+ * no-op. Só veta quando o detector determinístico (`detectHumanPromise`) acha uma promessa
+ * clara na candidata E nenhum caso existe. O fail-safe de 2ª camada (auto-abre caso e
+ * re-roda a cadeia) vive na orquestração do `send_message` (inbound-turn.ts), não aqui — o
+ * gate em si é síncrono/puro como os demais. Posição 6.5 de `BEFORE_SEND_GATES` (logo após
+ * `semanticPromiseGate`, antes do `disclosureGate`): roda depois das duas camadas de
+ * promessa comercial (preço/desconto) porque é uma categoria distinta de promessa
+ * (envolvimento humano, não oferta).
+ */
+export const casePromiseGate: Gate = {
+  name: 'case_promise',
+  evaluate: (ctx) => {
+    if (!ctx.casesEnabled) return { pass: true };
+    if (ctx.hasOpenCase || ctx.openedCaseThisTurn) return { pass: true };
+    if (!detectHumanPromise(ctx.body)) return { pass: true };
+    return {
+      pass: false,
+      code: 'case_promise_without_case',
+      reason:
+        'Você prometeu envolver um humano mas não abriu um caso. Chame a tool ' +
+        'open_human_case (descrevendo o que precisa) OU reformule a mensagem sem prometer humano.',
+    };
+  },
+};
+
+/**
  * Gate de disclosure (F4-05; blueprint 5.7) — garante que a PRIMEIRA mensagem outbound a um
  * lead novo se apresenta como assistente virtual (template versionado por org). Decisão de
  * produto que blinda hoje (CDC) e amanhã (PL 2338), não exigência da Meta. Sem template
  * configurado OU não sendo o 1º outbound → PASS (segundo em diante não repete). 1º outbound
  * que JÁ contém o disclosure → PASS. 1º sem disclosure → conforme o knob `mode`: 'veto'
  * bloqueia com erro de ensino; 'inject' devolve `amendBody` com o disclosure prependado.
- * Posição 6 (última) de `BEFORE_SEND_GATES` (F4-08): roda sobre o corpo já validado pelos
+ * Posição 7 (última) de `BEFORE_SEND_GATES` (F4-08): roda sobre o corpo já validado pelos
  * gates anteriores e pode emendá-lo (inject) antes do envio.
  */
 export const disclosureGate: Gate = {
@@ -293,9 +335,11 @@ const spinningGate: Gate = {
  * before-send.test.ts quebra o CI se a ordem mudar sem o bump (a ordem é contrato, não
  * detalhe de implementação). v1 = [stop, pacing, spinning] (F2-13); v2 = ordem final da
  * cadeia definitiva com os gates F4 (F4-08); v3 = insere o gate LGPD (F4-09) na posição 2,
- * junto do stop entre os vetos de conformidade irrevogáveis, antes do anti-ban.
+ * junto do stop entre os vetos de conformidade irrevogáveis, antes do anti-ban; v4 = insere
+ * `casePromiseGate` (spec 15 §10.2, Wave 4) logo após `semanticPromiseGate` — a garantia dura
+ * do guardrail anti-alucinação de casos humanos.
  */
-export const BEFORE_SEND_CHAIN_VERSION = 3;
+export const BEFORE_SEND_CHAIN_VERSION = 4;
 
 /**
  * Ordem FINAL da cadeia (F4-08/F4-09; edge-contract §before_send / blueprint órgão 5) — DADO
@@ -307,6 +351,7 @@ export const BEFORE_SEND_CHAIN_VERSION = 3;
  *   (4) spinning — template idêntico em massa (F2-12);
  *   (5) promise — validação determinística de preço/desconto/parcelamento (F4-01);
  *   (6) semantic_promise — promessa em texto livre que a regex não pega (F4-02);
+ *   (6.5) case_promise — anti-alucinação de casos humanos (spec 15 §10.2, Wave 4);
  *   (7) disclosure — 1ª mensagem se apresenta como assistente virtual (F4-05).
  * (O anti-jailbreak F4-04 é INBOUND advisório, não gate de before_send — não entra aqui.)
  */
@@ -317,6 +362,7 @@ export const BEFORE_SEND_GATES: readonly Gate[] = [
   spinningGate,
   promiseGate,
   semanticPromiseGate,
+  casePromiseGate,
   disclosureGate,
 ];
 
@@ -389,6 +435,14 @@ export interface RunBeforeSendArgs {
    */
   lgpd?: LgpdInput;
   /**
+   * Guardrail anti-alucinação de casos humanos (spec 15 §10.2, Wave 4) — ver `GateContext`.
+   * TODOS ausentes (default) = `casesEnabled` false → `casePromiseGate` no-op, retrocompatível
+   * com todo caller de `runBeforeSend` que não conhece casos (o guardrail existente F4-01/02).
+   */
+  casesEnabled?: boolean;
+  hasOpenCase?: boolean;
+  openedCaseThisTurn?: boolean;
+  /**
    * Enviado SÓ se TODOS os gates passarem — ChannelAdapter (própria tx/idempotência). Recebe o
    * corpo FINAL (o disclosureGate F4-05 pode emendá-lo via `amendBody`): quem monta o send DEVE
    * enviar este `body`, não o corpo original capturado antes da cadeia.
@@ -452,6 +506,9 @@ export async function runBeforeSend(args: RunBeforeSendArgs): Promise<BeforeSend
         mode: args.disclosureMode ?? 'inject',
       },
       lgpd: args.lgpd !== undefined ? { ...args.lgpd, isFirstOutbound } : null,
+      casesEnabled: args.casesEnabled ?? false,
+      hasOpenCase: args.hasOpenCase ?? false,
+      openedCaseThisTurn: args.openedCaseThisTurn ?? false,
     };
 
     const trace: GateTraceEntry[] = [];

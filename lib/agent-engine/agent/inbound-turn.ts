@@ -72,6 +72,7 @@ import {
 import { loadPlaybook } from './playbook';
 import { loadPublishedAgentConfig, matchesHandoffKeyword } from './agent-config';
 import {
+  hasOpenCaseForContact,
   openCase,
   provideCaseUpdate,
   openHumanCaseInputSchema,
@@ -797,6 +798,10 @@ export async function runAgentTurn(
   // Spec 15 (Wave 4 lê este flag): true quando open_human_case abriu um caso NESTE
   // turno — aqui só declara e seta; o consumo (ex.: guardrail de promessa) é da Wave 4.
   let openedCaseThisTurn = false;
+  // Wave 4 — contador do fail-safe do guardrail anti-alucinação (case_promise_without_case):
+  // 1º veto no turno é erro-de-ensino (o modelo re-tenta); persistir uma 2ª vez aciona o
+  // auto-abre-caso (ver send_message.execute). Por turno (closure), nunca cross-turno.
+  let casePromiseVetoCount = 0;
   const outcomes: ChannelSendResult[] = [];
   let runError: Error | null = null;
   const noteRunError = (err: Error): void => {
@@ -839,7 +844,17 @@ export async function runAgentTurn(
         // seq só avança quando o envio é de fato tentado (gate veto não gasta seq
         // — preserva o alinhamento (job_id, seq) do ledger F2-06 entre re-runs).
         try {
-          const chain = await runBeforeSend({
+          // Wave 4 (spec 15 §10.2): estado de caso lido FRESCO a cada tentativa de envio
+          // (pode ter mudado dentro deste MESMO turno via open_human_case, chamado antes
+          // deste send_message). casesEnabled false (tela não habilita) → sempre false,
+          // sem query — o casePromiseGate já é no-op nesse caso de qualquer forma.
+          const hasOpenCase =
+            agentConfig?.casesEnabled === true
+              ? await hasOpenCaseForContact(pool, tenantId, input.conversationId)
+              : false;
+          // Args reusados EXATAMENTE (mesmo objeto) no re-run do fail-safe abaixo — só
+          // hasOpenCase/openedCaseThisTurn mudam depois do auto-abre-caso.
+          const beforeSendArgs = {
             pool,
             log: runLog,
             tenantId,
@@ -855,13 +870,16 @@ export async function runAgentTurn(
             now: clock(),
             sleep: deps.sleep,
             lgpd,
+            casesEnabled: agentConfig?.casesEnabled ?? false,
+            hasOpenCase,
+            openedCaseThisTurn,
             ...(deps.knobs.disclosureMode !== undefined ? { disclosureMode: deps.knobs.disclosureMode } : {}),
             // Gate 5 (F4-02): classificador semântico roteado pelo MESMO seam agnóstico (budget
             // da org checado nele). Closure com tenant/lead/job da ROW fechados — nunca do payload.
             ...(semanticClassifier !== undefined ? { classifyPromiseSemantic: semanticClassifier } : {}),
             // `finalBody` = corpo após a cadeia (o disclosureGate F4-05 pode prependar o
             // disclosure via inject); é ELE que vai ao canal, não o `body` capturado da tool.
-            send: (finalBody) =>
+            send: (finalBody: string) =>
               sendInBubbles(finalBody, {
                 enabled: agentConfig?.splitMessages ?? false,
                 maxChars: agentConfig?.splitMaxChars ?? 600,
@@ -879,7 +897,42 @@ export async function runAgentTurn(
                   });
                 },
               }),
-          });
+          };
+          let chain = await runBeforeSend(beforeSendArgs);
+          if (chain.status === 'vetoed' && chain.code === 'case_promise_without_case') {
+            // Wave 4 — fail-safe da invariante sagrada: o lead NUNCA recebe promessa-de-
+            // humano sem caso aberto. 1ª vez no turno: erro-de-ensino (o modelo re-tenta —
+            // abre o caso OU reformula sem prometer humano). Persistiu (2ª vez): o SISTEMA
+            // abre um caso mínimo e libera o envio — nunca deixa a promessa passar sem caso.
+            casePromiseVetoCount += 1;
+            if (casePromiseVetoCount < 2) {
+              return { ok: false, error: { code: chain.code, message: chain.message } };
+            }
+            const auto = await openCase(
+              pool,
+              { tenantId, conversationId: input.conversationId, agentId: agentConfig?.agentId ?? null },
+              {
+                title: 'Atendimento que precisa de um humano',
+                summary: body, // a mensagem-promessa que a IA tentou enviar
+                blocker:
+                  'Aberto automaticamente: a IA prometeu envolver um humano e não abriu o caso (fail-safe do guardrail).',
+                source: 'guardrail_autofallback',
+                contextSnapshot: buildCaseContextSnapshot(),
+              },
+            );
+            if (!auto.ok) {
+              // openCase falhou (ex.: já existe outro caso aberto por corrida) — NÃO envie
+              // prometendo humano sem caso; mantém a invariante com o erro de ensino original.
+              return { ok: false, error: { code: chain.code, message: chain.message } };
+            }
+            openedCaseThisTurn = true;
+            // Re-roda a cadeia INTEIRA agora que há caso aberto — o send real acontece
+            // DENTRO do runBeforeSend (via args.send); nunca chamamos o canal por fora
+            // (perderia pacing/lgpd/stop). ponytail: re-roda a cadeia inteira no fail-safe
+            // (raro) — pode reaplicar 1 espera de pacing; aceitável pelo caminho ser
+            // excepcional.
+            chain = await runBeforeSend({ ...beforeSendArgs, hasOpenCase: true, openedCaseThisTurn: true });
+          }
           if (chain.status === 'vetoed') {
             // Erro de ENSINO pt-br (mesmo shape de get_lead_context/breaker): o
             // modelo o vê no turno seguinte. NÃO é exceção — não derruba o run.
