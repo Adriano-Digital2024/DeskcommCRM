@@ -103,6 +103,8 @@ const ACTION_MIN_ROLE: Record<string, Role> = {
   "audit.view": "manager",
   "ai.agents.view": "manager",
   "ai.agents.write": "admin",
+  "ai.memory.view": "manager",
+  "ai.memory.publish": "admin",
   "ai.credentials.view": "manager",
   "ai.credentials.write": "admin",
   "webhooks.manage": "manager",
