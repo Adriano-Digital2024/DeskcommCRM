@@ -30,6 +30,11 @@ export interface PublishedAgentConfig {
   handoffToolEnabled: boolean;
   /** tool_ids do catálogo MCP habilitadas na tela (2B-tools). */
   toolIds: string[];
+  /** KB ativa do agente (ai_agents.active_kb_version_id) — null = sem RAG. */
+  activeKbVersionId: string | null;
+  /** knobs de RAG do ai_agents.config (defaults do guardrails-schema: 5 / 0.72). */
+  ragTopK: number;
+  ragSimilarityThreshold: number;
   /** criadores (p/ mint do token efêmero de audit — padrão do runtime nativo). */
   versionCreatedBy: string | null;
   agentCreatedBy: string | null;
@@ -49,6 +54,8 @@ interface Row {
   handoff_keywords: string[] | null;
   handoff_tool_enabled: boolean;
   tool_ids: string[] | null;
+  active_kb_version_id: string | null;
+  config: Record<string, unknown> | null;
   version_created_by: string | null;
   agent_created_by: string | null;
 }
@@ -72,6 +79,8 @@ export async function loadPublishedAgentConfig(
             v.handoff_keywords,
             v.handoff_tool_enabled,
             v.tool_ids,
+            a.active_kb_version_id,
+            a.config,
             v.created_by as version_created_by,
             a.created_by as agent_created_by
      from ai_agents a
@@ -89,6 +98,17 @@ export async function loadPublishedAgentConfig(
   );
   const r = rows[0];
   if (r === undefined) return null;
+
+  const cfg = (r.config ?? {}) as { rag_top_k?: unknown; rag_similarity_threshold?: unknown };
+  const ragTopK =
+    typeof cfg.rag_top_k === 'number' && Number.isInteger(cfg.rag_top_k) && cfg.rag_top_k >= 1 && cfg.rag_top_k <= 20
+      ? cfg.rag_top_k
+      : 5;
+  const ragSimilarityThreshold =
+    typeof cfg.rag_similarity_threshold === 'number' && cfg.rag_similarity_threshold >= 0 && cfg.rag_similarity_threshold <= 1
+      ? cfg.rag_similarity_threshold
+      : 0.72;
+
   return {
     agentId: r.agent_id,
     versionId: r.version_id,
@@ -103,6 +123,9 @@ export async function loadPublishedAgentConfig(
     handoffKeywords: (r.handoff_keywords ?? []).map((k) => k.toLowerCase().trim()).filter((k) => k !== ''),
     handoffToolEnabled: r.handoff_tool_enabled,
     toolIds: r.tool_ids ?? [],
+    activeKbVersionId: r.active_kb_version_id,
+    ragTopK,
+    ragSimilarityThreshold,
     versionCreatedBy: r.version_created_by,
     agentCreatedBy: r.agent_created_by,
   };
