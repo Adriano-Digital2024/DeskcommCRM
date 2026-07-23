@@ -35,7 +35,7 @@ describe("CaseReplyPanel", () => {
     renderWith("awaiting_lead");
 
     expect(screen.getByText(/aguardando o cliente responder/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /concluí/i })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /concluí/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Enviar" })).toBeDisabled();
     expect(screen.getByPlaceholderText(/escreva sua resposta/i)).toBeDisabled();
   });
@@ -45,11 +45,31 @@ describe("CaseReplyPanel", () => {
     expect(screen.getByRole("button", { name: "Enviar" })).toBeDisabled();
   });
 
+  it("nenhuma ação vem pré-selecionada e o envio exige escolher uma", () => {
+    // As 3 ações têm efeitos muito diferentes e uma delas FECHA o caso, sem
+    // desfazer. Um default marcado faria quem digitou pensando em "pedir info ao
+    // cliente" encerrar o caso sem perceber ao clicar Enviar.
+    renderWith("awaiting_human");
+
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio).toHaveAttribute("aria-checked", "false");
+    }
+
+    fireEvent.change(screen.getByPlaceholderText(/escreva sua resposta/i), {
+      target: { value: "Preciso do e-mail do pedido" },
+    });
+    expect(screen.getByRole("button", { name: "Enviar" })).toBeDisabled();
+    expect(screen.getByText(/escolha uma das opções acima/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: /preciso de info do cliente/i }));
+    expect(screen.getByRole("button", { name: "Enviar" })).not.toBeDisabled();
+  });
+
   it("enviar com ação need_lead_info chama o POST com {action, body} e invalida as queries", async () => {
     postMock.mockResolvedValue({ data: { status: "awaiting_lead" } });
     const { invalidateSpy } = renderWith("awaiting_human");
 
-    fireEvent.click(screen.getByRole("button", { name: /preciso de info do cliente/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /preciso de info do cliente/i }));
     fireEvent.change(screen.getByPlaceholderText(/escreva sua resposta/i), {
       target: { value: "Qual seu CPF?" },
     });
@@ -71,6 +91,7 @@ describe("CaseReplyPanel", () => {
     postMock.mockRejectedValue(new Error("conflito"));
     renderWith("awaiting_human");
 
+    fireEvent.click(screen.getByRole("radio", { name: /concluí/i }));
     fireEvent.change(screen.getByPlaceholderText(/escreva sua resposta/i), {
       target: { value: "Concluído, avisei o cliente." },
     });

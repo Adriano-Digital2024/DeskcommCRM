@@ -15,21 +15,26 @@ import { cn } from "@/lib/utils";
  * o motivo aparece em texto (nunca um botão desabilitado sem explicação).
  */
 export function CaseReplyPanel({ caseId, status }: { caseId: string; status: CaseStatus }) {
-  const [action, setAction] = useState<CaseHumanAction>("resolved");
+  // Sem pré-seleção de propósito: as 3 ações têm efeitos muito diferentes (uma
+  // delas FECHA o caso) e não há desfazer. Um default marcado faria quem digitou
+  // pensando em "pedir info ao cliente" encerrar o caso sem perceber.
+  const [action, setAction] = useState<CaseHumanAction | null>(null);
   const [body, setBody] = useState("");
   const reply = useReplyCase();
 
   const disabled = status !== "awaiting_human";
   const disabledReason = CASE_REPLY_DISABLED_REASON[status];
-  const canSubmit = !disabled && body.trim().length > 0 && !reply.isPending;
+  const canSubmit = !disabled && action !== null && body.trim().length > 0 && !reply.isPending;
 
   function handleSubmit() {
+    if (action === null) return;
     reply.mutate(
       { id: caseId, action, body: body.trim() },
       {
         onSuccess: () => {
           toast.success("Resposta enviada.");
           setBody("");
+          setAction(null);
         },
         onError: (err) => showApiError(err),
       },
@@ -41,13 +46,14 @@ export function CaseReplyPanel({ caseId, status }: { caseId: string; status: Cas
       <h3 className="text-sm font-semibold">O que você quer fazer?</h3>
       {disabled ? <p className="text-xs text-muted-foreground">{disabledReason}</p> : null}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2" role="radiogroup" aria-label="O que você quer fazer?">
         {CASE_ACTIONS.map((opt) => (
           <button
             key={opt.action}
             type="button"
+            role="radio"
             disabled={disabled}
-            aria-pressed={action === opt.action}
+            aria-checked={action === opt.action}
             onClick={() => setAction(opt.action)}
             className={cn(
               "rounded-sm border p-3 text-left transition-colors",
@@ -68,6 +74,9 @@ export function CaseReplyPanel({ caseId, status }: { caseId: string; status: Cas
         placeholder="Escreva sua resposta para a IA..."
         rows={3}
       />
+      {!disabled && action === null ? (
+        <p className="text-xs text-muted-foreground">Escolha uma das opções acima para enviar.</p>
+      ) : null}
       <Button onClick={handleSubmit} disabled={!canSubmit}>
         {reply.isPending ? "Enviando..." : "Enviar"}
       </Button>
