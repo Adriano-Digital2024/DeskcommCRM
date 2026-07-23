@@ -1,0 +1,267 @@
+/**
+ * Casos humanos (spec 15) — o loop assíncrono IA↔humano quando o agente esbarra
+ * num bloqueio que só um humano resolve (aprovar desconto, confirmar política,
+ * decidir algo fora do playbook). Duas tools nativas do engine:
+ *   - open_human_case: o agente abre um caso (status='awaiting_human') com o
+ *     bloqueio explicado — vira item na inbox humana (wiring da Wave 3+).
+ *   - provide_case_update: quando o caso está 'awaiting_lead' (humano pediu algo
+ *     ao lead) e o lead responde, o agente repassa a info e o caso volta a
+ *     'awaiting_human'.
+ * As transições disparadas pela RESPOSTA do humano (resolver/pedir info ao
+ * lead/escalar) são chamadas pela rota API da Wave 5 — aqui só a mecânica de
+ * estado, sempre idempotente.
+ *
+ * Disciplina (mesma dos irmãos schedule-followup/human-handoff): ids SEMPRE do
+ * closure/args confiáveis, nunca do payload do modelo; toda transição é UPDATE
+ * condicional (WHERE status = <precondição>) que nunca pisa em estado terminal;
+ * UPDATE + INSERT do(s) evento(s) na MESMA transação — aqui via um único
+ * statement (WITH ... INSERT ... SELECT FROM <cte>), que é atômico por natureza
+ * e dispensa BEGIN/COMMIT explícito, então funciona tanto com pg.Pool quanto
+ * com pg.PoolClient (Queryable).
+ *
+ * `agent_cases.lead_id` é FK para `crm_leads` (o lead do pipeline do CRM) — uma
+ * entidade DIFERENTE do `leadId` usado no resto do agent-engine (que é sempre
+ * `contact_id`, ver draft-reply.ts). O espelho contact→crm_leads ainda não está
+ * ligado (mirrorLeadStageToCrm retorna 'not_configured' — Fase 2 da fusão), então
+ * `agent_cases.lead_id` fica NULL aqui; `CaseIds.leadId` (contact) não é gravado
+ * nessa coluna, só circula pela mesma forma de ids que os outros tools do engine.
+ */
+import { z } from 'zod';
+import type pg from 'pg';
+
+import type { Queryable } from '../queue/queue';
+
+export interface CaseIds {
+  tenantId: string;
+  /** = contact_id (convenção do agent-engine, ver draft-reply.ts). */
+  leadId: string;
+  conversationId: string;
+  agentId?: string | null;
+}
+
+/** Whitelist EXATA do payload de open_human_case — mesmo padrão .strict() da F2-10/F3-02. */
+export const openHumanCaseInputSchema = z.strictObject({
+  title: z.string().min(1).max(200),
+  summary: z.string().min(1).max(4_000),
+  blocker: z.string().min(1).max(1_000),
+});
+export type OpenHumanCaseInput = z.infer<typeof openHumanCaseInputSchema>;
+
+/** Whitelist EXATA do payload de provide_case_update. */
+export const provideCaseUpdateInputSchema = z.strictObject({
+  case_id: z.string().uuid(),
+  info: z.string().min(1).max(4_000),
+});
+export type ProvideCaseUpdateInput = z.infer<typeof provideCaseUpdateInputSchema>;
+
+const OPEN_STATUSES = ['awaiting_human', 'awaiting_lead'] as const;
+
+/** True se há um caso 'awaiting_human'|'awaiting_lead' aberto para a conversa. */
+export async function hasOpenCaseForContact(
+  db: Queryable,
+  tenantId: string,
+  conversationId: string,
+): Promise<boolean> {
+  const { rows } = await db.query<{ open: boolean }>(
+    `select exists (
+       select 1 from agent_cases
+        where organization_id = $1 and conversation_id = $2
+          and status = any($3::text[])
+     ) as open`,
+    [tenantId, conversationId, OPEN_STATUSES],
+  );
+  return rows[0]?.open === true;
+}
+
+export type OpenCaseResult =
+  | { ok: true; caseId: string }
+  | { ok: false; error: { code: string; message: string } };
+
+/**
+ * Abre o caso: INSERT agent_cases(status='awaiting_human') + INSERT
+ * agent_case_events(kind='opened') em UM statement atômico. A guarda de dedup
+ * (não abrir 2º caso pra mesma conversa) mora no `where not exists` do próprio
+ * INSERT — sem essa condição haveria corrida entre a checagem e a escrita;
+ * aqui checagem e escrita são a MESMA operação.
+ */
+export async function openCase(
+  db: pg.Pool,
+  ids: CaseIds,
+  input: {
+    title: string;
+    summary: string;
+    blocker: string;
+    contextSnapshot?: Record<string, unknown>;
+    source?: 'agent' | 'guardrail_autofallback';
+  },
+): Promise<OpenCaseResult> {
+  const source = input.source ?? 'agent';
+  const actorKind = source === 'agent' ? 'agent' : 'system';
+
+  const { rows } = await db.query<{ case_id: string }>(
+    `with new_case as (
+       insert into agent_cases
+         (organization_id, conversation_id, agent_id, title, summary, blocker, context_snapshot, source)
+       select $1, $2, $3, $4, $5, $6, $7::jsonb, $8
+        where not exists (
+          select 1 from agent_cases
+           where organization_id = $1 and conversation_id = $2
+             and status = any($9::text[])
+        )
+       returning id
+     )
+     insert into agent_case_events (organization_id, case_id, kind, actor_kind)
+     select $1, id, 'opened', $10
+       from new_case
+     returning case_id`,
+    [
+      ids.tenantId,
+      ids.conversationId,
+      ids.agentId ?? null,
+      input.title,
+      input.summary,
+      input.blocker,
+      JSON.stringify(input.contextSnapshot ?? {}),
+      source,
+      OPEN_STATUSES,
+      actorKind,
+    ],
+  );
+
+  const caseId = rows[0]?.case_id;
+  if (caseId === undefined) {
+    return {
+      ok: false,
+      error: {
+        code: 'case_already_open',
+        message: 'já existe um caso humano aberto para esta conversa; aguarde a resposta do atendente antes de abrir outro.',
+      },
+    };
+  }
+  return { ok: true, caseId };
+}
+
+export type ProvideCaseUpdateResult = { ok: true } | { ok: false; error: { code: string; message: string } };
+
+/**
+ * awaiting_lead -> awaiting_human (o lead respondeu o que o humano pediu) +
+ * evento 'lead_provided' (actor_kind='lead' — a info veio do lead, não do
+ * agente nem do humano). De qualquer outro estado é no-op: {ok:false,
+ * error.code:'invalid_case_state'}.
+ */
+export async function provideCaseUpdate(
+  db: pg.Pool,
+  ids: CaseIds,
+  input: { caseId: string; info: string },
+): Promise<ProvideCaseUpdateResult> {
+  const { rows } = await db.query<{ case_id: string }>(
+    `with updated as (
+       update agent_cases
+          set status = 'awaiting_human', updated_at = now()
+        where organization_id = $1 and id = $2 and status = 'awaiting_lead'
+        returning id
+     )
+     insert into agent_case_events (organization_id, case_id, kind, actor_kind, body)
+     select $1, id, 'lead_provided', 'lead', $3
+       from updated
+     returning case_id`,
+    [ids.tenantId, input.caseId, input.info],
+  );
+
+  if (rows.length === 0) {
+    return {
+      ok: false,
+      error: {
+        code: 'invalid_case_state',
+        message: 'o caso não está aguardando informação do lead (awaiting_lead); nada foi alterado.',
+      },
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * awaiting_human -> resolved (closed_at=now). Dois eventos no mesmo statement:
+ * 'human_replied' (human_action='resolved', o registro da AÇÃO do humano) e
+ * 'resolved' (o registro da transição do CASO). De qualquer outro estado é
+ * no-op — nunca pisa em caso já resolvido/escalado/cancelado.
+ */
+export async function resolveCaseFromHuman(
+  db: Queryable,
+  tenantId: string,
+  caseId: string,
+  actorUserId: string,
+  note: string,
+): Promise<void> {
+  await db.query(
+    `with updated as (
+       update agent_cases
+          set status = 'resolved', closed_at = now(), updated_at = now()
+        where organization_id = $1 and id = $2 and status = 'awaiting_human'
+        returning id
+     )
+     insert into agent_case_events (organization_id, case_id, kind, actor_kind, actor_user_id, human_action, body)
+     select $1::uuid, id, 'human_replied', 'human', $3::uuid, 'resolved', $4::text from updated
+     union all
+     select $1::uuid, id, 'resolved', 'human', $3::uuid, null::text, null::text from updated`,
+    [tenantId, caseId, actorUserId, note],
+  );
+}
+
+/**
+ * awaiting_human -> awaiting_lead (o humano precisa de mais info do lead).
+ * Eventos: 'human_replied' (human_action='need_lead_info') + 'lead_asked'.
+ */
+export async function markAwaitingLead(
+  db: Queryable,
+  tenantId: string,
+  caseId: string,
+  actorUserId: string,
+  ask: string,
+): Promise<void> {
+  await db.query(
+    `with updated as (
+       update agent_cases
+          set status = 'awaiting_lead', updated_at = now()
+        where organization_id = $1 and id = $2 and status = 'awaiting_human'
+        returning id
+     )
+     insert into agent_case_events (organization_id, case_id, kind, actor_kind, actor_user_id, human_action, body)
+     select $1::uuid, id, 'human_replied', 'human', $3::uuid, 'need_lead_info', $4::text from updated
+     union all
+     select $1::uuid, id, 'lead_asked', 'human', $3::uuid, null::text, null::text from updated`,
+    [tenantId, caseId, actorUserId, ask],
+  );
+}
+
+/**
+ * awaiting_human -> escalated (closed_at=now). Eventos: 'human_replied'
+ * (human_action='escalate') + 'escalated'. O handoff humano em si (force_human
+ * etc.) é acionado pela ROTA (Wave 5), não aqui — este só fecha o caso.
+ */
+export async function escalateCase(
+  db: Queryable,
+  tenantId: string,
+  caseId: string,
+  actorUserId: string,
+  reason: string,
+): Promise<void> {
+  await db.query(
+    `with updated as (
+       update agent_cases
+          set status = 'escalated', closed_at = now(), updated_at = now()
+        where organization_id = $1 and id = $2 and status = 'awaiting_human'
+        returning id
+     )
+     insert into agent_case_events (organization_id, case_id, kind, actor_kind, actor_user_id, human_action, body)
+     select $1::uuid, id, 'human_replied', 'human', $3::uuid, 'escalate', $4::text from updated
+     union all
+     select $1::uuid, id, 'escalated', 'human', $3::uuid, null::text, null::text from updated`,
+    [tenantId, caseId, actorUserId, reason],
+  );
+}
+
+/** Resumo curto do caso para o inbox de escalação (mesmo espírito de buildHandoffSummary). */
+export function buildCaseSummary(caseRow: { title: string; summary: string; blocker: string }): string {
+  return `${caseRow.title}\n${caseRow.summary}\nBloqueio: ${caseRow.blocker}`;
+}
