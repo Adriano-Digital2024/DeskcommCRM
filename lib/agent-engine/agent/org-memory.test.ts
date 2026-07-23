@@ -31,7 +31,7 @@ describe('renderOrgMemory', () => {
   });
   it('doc + entries viram bloco determinístico', () => {
     const out = renderOrgMemory({ content: 'Doc.', entries: [{ id: 'e1', title: 'T', body: 'B' }] });
-    expect(out).toContain('=== memória da organização');
+    expect(out).toContain('=== memória da organização (regras e aprendizados — valem para TODO atendimento) ===');
     expect(out).toContain('Doc.');
     expect(out).toContain('- T: B');
   });
