@@ -1,4 +1,8 @@
 /**
+ * @deprecated Fase 0 da convergência (spec 2026-07-23): fora do caminho quente.
+ * O runtime canônico é lib/agent-engine (workers/agent-worker). Remoção física
+ * planejada após um ciclo de estabilidade. Não adicionar features aqui.
+ *
  * `agent-dispatcher` worker (S-13.07, Spec 10 §5).
  *
  * Pulls `ai_agent.dispatch_requested` rows from `event_log`, picks the

@@ -1,4 +1,8 @@
 /**
+ * @deprecated Fase 0 da convergência (spec 2026-07-23): fora do caminho quente.
+ * O runtime canônico é lib/agent-engine (workers/agent-worker). Remoção física
+ * planejada após um ciclo de estabilidade. Não adicionar features aqui.
+ *
  * `runAgent({ runId, override? })` — heart of EPIC-13 (S-13.08).
  *
  * Sequence (Spec 10 §6):
