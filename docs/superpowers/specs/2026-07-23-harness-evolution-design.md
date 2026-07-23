@@ -106,6 +106,8 @@ Leitura dos artefatos depositados pelas fases anteriores — nenhum sistema novo
 
 - **Migrations**: arquivo versionado em `supabase/migrations/` + apêndice idempotente no `baseline.sql` + linha no MANIFEST (doutrina do repo). Nunca schema sem migration.
 - **Multi-tenancy**: `organization_id` + RLS em toda tabela nova; teste de isolamento no CI.
+- **Teste imediato por peça (protocolo obrigatório do épico)**: nada de testar só no fim da fase. Cada peça de frontend é testada em Playwright no ato — clicando os botões reais — e avaliada também na EXPERIÊNCIA (está completa? está clara? o usuário leigo entende o que é?); qualquer "não" gera correção imediata antes de avançar. Cada peça de backend é testada funcionalmente no ato; quebrou, arruma na hora. Peças front+back são testadas integradas no mesmo esquema.
+- **Handoff doc vivo**: `HANDOFF-harness-evolution.md` na raiz, alimentado constantemente — progressos, testes rodados, bugs achados e corrigidos, o que ficou pra trás, o que foi acrescentado, estado atual do desenvolvimento. Lido no início de toda sessão.
 - **Prova visível**: cada fase fecha com demonstração real na tela (protocolo do repo), não só testes.
 - **Zod** em todo input externo (upload de skill, config de router, edição de memória). Audit log em toda mutação.
 - **Fora de escopo deste épico**: scripts executáveis em skills (precisa de sandbox), roteamento entre canais distintos no mesmo router (1 router = 1 channel_session na v1), feedback CSAT do cliente final (o painel v1 usa sinais já existentes).
