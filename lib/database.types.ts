@@ -39,6 +39,146 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_case_events: {
+        Row: {
+          actor_kind: string
+          actor_user_id: string | null
+          body: string | null
+          case_id: string
+          created_at: string
+          human_action: string | null
+          id: string
+          kind: string
+          metadata: Json
+          organization_id: string
+        }
+        Insert: {
+          actor_kind: string
+          actor_user_id?: string | null
+          body?: string | null
+          case_id: string
+          created_at?: string
+          human_action?: string | null
+          id?: string
+          kind: string
+          metadata?: Json
+          organization_id: string
+        }
+        Update: {
+          actor_kind?: string
+          actor_user_id?: string | null
+          body?: string | null
+          case_id?: string
+          created_at?: string
+          human_action?: string | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "agent_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_case_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_cases: {
+        Row: {
+          agent_id: string | null
+          blocker: string
+          closed_at: string | null
+          context_snapshot: Json
+          conversation_id: string
+          created_at: string
+          followup_attempts: number
+          id: string
+          lead_id: string | null
+          opened_at: string
+          organization_id: string
+          source: string
+          status: string
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          blocker: string
+          closed_at?: string | null
+          context_snapshot?: Json
+          conversation_id: string
+          created_at?: string
+          followup_attempts?: number
+          id?: string
+          lead_id?: string | null
+          opened_at?: string
+          organization_id: string
+          source?: string
+          status?: string
+          summary: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          blocker?: string
+          closed_at?: string | null
+          context_snapshot?: Json
+          conversation_id?: string
+          created_at?: string
+          followup_attempts?: number
+          id?: string
+          lead_id?: string | null
+          opened_at?: string
+          organization_id?: string
+          source?: string
+          status?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_cases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_cases_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_cases_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_cases_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_inbox_items: {
         Row: {
           body: string | null
@@ -224,6 +364,7 @@ export type Database = {
       ai_agent_versions: {
         Row: {
           agent_id: string
+          cases_enabled: boolean
           channel_session_id: string
           cost_budget_cents: number
           created_at: string
@@ -253,6 +394,7 @@ export type Database = {
         }
         Insert: {
           agent_id: string
+          cases_enabled?: boolean
           channel_session_id: string
           cost_budget_cents?: number
           created_at?: string
@@ -282,6 +424,7 @@ export type Database = {
         }
         Update: {
           agent_id?: string
+          cases_enabled?: boolean
           channel_session_id?: string
           cost_budget_cents?: number
           created_at?: string

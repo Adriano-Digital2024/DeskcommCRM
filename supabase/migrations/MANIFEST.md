@@ -58,6 +58,7 @@ Migrations applied to Supabase project `rrydmwnporysaiysiztn` (sa-east-1, Postgr
 | `20260722140000` | `0060_message_templates` | Tabela `message_templates` (templates de script do vendedor, pessoal/compartilhado, RLS) — Onda 5. |
 | `20260722160000` | `0062_conversation_snooze` | Colunas snooze_* em conversations + kind snooze_expired em agent_inbox_items (Onda 5.3). NNNN=0062 (0061 tomado por `feat/followup-flows` concorrentemente — verificado contra todas as branches/worktrees locais). |
 | `20260723120000` | `0063_conversation_notes` | Tabela `conversation_notes` (notas internas de conversa, visíveis só ao time, RLS select/write) — Onda 5.2. |
+| `20260724000000` | `0066_human_cases` | Tabelas `agent_cases` + `agent_case_events` (loop assíncrono IA↔humano, spec 15) + `ai_agent_versions.cases_enabled` + CHECKs de `job_queue.kind`/coerência e `cron_jobs.job_kind` estendidos p/ `case_reply_turn` — Wave 1 casos-humanos. NNNN=0066 (0064/0065 tomados na `main`/`feat/followup-flows` concorrentemente — verificado contra todas as branches remotas). |
 
 ## Reproducibility
 
