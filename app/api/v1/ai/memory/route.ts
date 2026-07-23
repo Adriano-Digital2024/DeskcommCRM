@@ -46,6 +46,7 @@ export async function GET(_req: NextRequest): Promise<Response> {
       .from("org_memory_versions")
       .select("id, version_number, content, created_at")
       .eq("id", pointer.version_id as string)
+      .eq("organization_id", org.orgId)
       .maybeSingle();
     if (ver) {
       document = {
@@ -103,6 +104,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     .order("version_number", { ascending: false })
     .limit(1)
     .maybeSingle();
+  // ponytail: select-max + insert não é atômico sob publicação concorrente; publicação
+  // é admin-only pela tela. Se virar concorrente, usar advisory lock por org.
   const nextVersion = ((maxRow?.version_number as number | null) ?? 0) + 1;
 
   const { data: ver, error: verErr } = await admin
