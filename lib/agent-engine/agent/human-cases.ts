@@ -186,6 +186,17 @@ export async function provideCaseUpdate(
 }
 
 /**
+ * As transições abaixo guardam o estado de entrada no próprio `where`, então o
+ * statement insere os 2 eventos APENAS quando o update casou. `rowCount` é o
+ * número de eventos inseridos: 0 = a corrida foi perdida (outro atendente já
+ * respondeu) e nada mudou. Quem chama precisa saber disso para não reportar
+ * sucesso de um no-op — daí o boolean em vez de void.
+ */
+function transitioned(rowCount: number | null): boolean {
+  return (rowCount ?? 0) > 0;
+}
+
+/**
  * awaiting_human -> resolved (closed_at=now). Dois eventos no mesmo statement:
  * 'human_replied' (human_action='resolved', o registro da AÇÃO do humano) e
  * 'resolved' (o registro da transição do CASO). De qualquer outro estado é
@@ -197,8 +208,8 @@ export async function resolveCaseFromHuman(
   caseId: string,
   actorUserId: string,
   note: string,
-): Promise<void> {
-  await db.query(
+): Promise<boolean> {
+  const { rowCount } = await db.query(
     `with updated as (
        update agent_cases
           set status = 'resolved', closed_at = now(), updated_at = now()
@@ -211,6 +222,7 @@ export async function resolveCaseFromHuman(
      select $1::uuid, id, 'resolved', 'human', $3::uuid, null::text, null::text from updated`,
     [tenantId, caseId, actorUserId, note],
   );
+  return transitioned(rowCount);
 }
 
 /**
@@ -223,8 +235,8 @@ export async function markAwaitingLead(
   caseId: string,
   actorUserId: string,
   ask: string,
-): Promise<void> {
-  await db.query(
+): Promise<boolean> {
+  const { rowCount } = await db.query(
     `with updated as (
        update agent_cases
           set status = 'awaiting_lead', updated_at = now()
@@ -237,6 +249,7 @@ export async function markAwaitingLead(
      select $1::uuid, id, 'lead_asked', 'human', $3::uuid, null::text, null::text from updated`,
     [tenantId, caseId, actorUserId, ask],
   );
+  return transitioned(rowCount);
 }
 
 /**
@@ -250,8 +263,8 @@ export async function escalateCase(
   caseId: string,
   actorUserId: string,
   reason: string,
-): Promise<void> {
-  await db.query(
+): Promise<boolean> {
+  const { rowCount } = await db.query(
     `with updated as (
        update agent_cases
           set status = 'escalated', closed_at = now(), updated_at = now()
@@ -264,6 +277,7 @@ export async function escalateCase(
      select $1::uuid, id, 'escalated', 'human', $3::uuid, null::text, null::text from updated`,
     [tenantId, caseId, actorUserId, reason],
   );
+  return transitioned(rowCount);
 }
 
 /** Resumo curto do caso para o inbox de escalação (mesmo espírito de buildHandoffSummary). */

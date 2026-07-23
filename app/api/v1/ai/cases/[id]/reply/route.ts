@@ -14,6 +14,12 @@
  * body. O único estado de entrada aceito é `awaiting_human`: qualquer outro
  * (terminal OU aguardando o lead) devolve 409 `invalid_state`, espelhando a
  * precondição das próprias funções de transição (não pisar em estado errado).
+ *
+ * Transição e efeito andam juntos: `resolved`/`need_lead_info` fecham transição +
+ * enqueue no mesmo commit, e `escalate` roda o handoff (idempotente) antes de
+ * fechar o caso. As duas escolhas existem pelo mesmo motivo — nenhuma falha no
+ * meio pode deixar um caso fora de `awaiting_human` sem o efeito prometido,
+ * porque esse estado não tem caminho de volta pela API (viraria 409 eterno).
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -118,7 +124,11 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<R
   const { conversation_id: conversationId, contact_id: contactId } = caseRow;
 
   if (action === "escalate") {
-    await escalateCase(pool, org.orgId, caseId, user.id, body);
+    // O handoff roda ANTES de fechar o caso, e nesta ordem de propósito: ele é
+    // idempotente (re-executar é no-op) e recebe um pg.Pool próprio, então não
+    // entra na transação abaixo. Se ele falhar, o caso continua `awaiting_human`
+    // e a retentativa se cura sozinha; na ordem inversa sobraria um caso
+    // `escalated` que nunca chegou a humano nenhum — e sem volta pela API.
     await performHumanHandoff(
       pool,
       { tenantId: org.orgId, leadId: contactId, conversationId },
@@ -128,17 +138,49 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<R
         log: createLogger(),
       },
     );
-  } else {
-    if (action === "resolved") {
-      await resolveCaseFromHuman(pool, org.orgId, caseId, user.id, body);
-    } else {
-      await markAwaitingLead(pool, org.orgId, caseId, user.id, body);
+    const escalated = await escalateCase(pool, org.orgId, caseId, user.id, body);
+    if (!escalated) {
+      // Corrida perdida entre a leitura e o update. O handoff já aconteceu (e é
+      // idempotente), então não mentimos dizendo que escalamos: devolvemos o
+      // conflito para a UI reler o caso.
+      return fail("invalid_state", "Este caso já foi respondido por outra pessoa.", 409, {
+        requestId,
+      });
     }
-    await enqueueJob(pool, org.orgId, {
-      kind: "case_reply_turn",
-      leadId: contactId,
-      payload: { case_id: caseId, action, body },
-    });
+  } else {
+    // Transição e enqueue no MESMO commit (mesmo princípio do completeJob do
+    // engine): sem isso, um enqueue que falhasse depois da transição deixaria o
+    // caso fora de `awaiting_human` e sem job — o lead nunca seria avisado e a
+    // API passaria a responder 409, sem caminho de recuperação.
+    const client = await pool.connect();
+    let transitioned: boolean;
+    try {
+      await client.query("begin");
+      transitioned =
+        action === "resolved"
+          ? await resolveCaseFromHuman(client, org.orgId, caseId, user.id, body)
+          : await markAwaitingLead(client, org.orgId, caseId, user.id, body);
+      if (transitioned) {
+        await enqueueJob(client, org.orgId, {
+          kind: "case_reply_turn",
+          leadId: contactId,
+          payload: { case_id: caseId, action, body },
+        });
+        await client.query("commit");
+      } else {
+        await client.query("rollback");
+      }
+    } catch (err) {
+      await client.query("rollback");
+      throw err;
+    } finally {
+      client.release();
+    }
+    if (!transitioned) {
+      return fail("invalid_state", "Este caso já foi respondido por outra pessoa.", 409, {
+        requestId,
+      });
+    }
   }
 
   await audit({

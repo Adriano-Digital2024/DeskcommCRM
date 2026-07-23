@@ -25,10 +25,13 @@ vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@/lib/agent-engine/db/request-pool", () => ({ getRequestPool: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
+// As transições devolvem `true` quando realmente mudaram o caso e `false` quando
+// a corrida foi perdida (outro atendente respondeu antes) — o default aqui é o
+// caminho feliz; os testes de corrida sobrescrevem para `false`.
 vi.mock("@/lib/agent-engine/agent/human-cases", () => ({
-  resolveCaseFromHuman: vi.fn(async () => undefined),
-  markAwaitingLead: vi.fn(async () => undefined),
-  escalateCase: vi.fn(async () => undefined),
+  resolveCaseFromHuman: vi.fn(async () => true),
+  markAwaitingLead: vi.fn(async () => true),
+  escalateCase: vi.fn(async () => true),
   buildCaseSummary: vi.fn((row: { title: string }) => `resumo: ${row.title}`),
 }));
 vi.mock("@/lib/agent-engine/agent/human-handoff", () => ({
@@ -138,12 +141,107 @@ describe("GET /api/v1/ai/cases", () => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/v1/ai/cases/:id
+// ---------------------------------------------------------------------------
+
+describe("GET /api/v1/ai/cases/:id", () => {
+  /** Duas tabelas na mesma chamada: o caso (maybeSingle) e a timeline (order). */
+  function makeDetailStub(caseRow: unknown, events: unknown[]) {
+    const eqCalls: Array<[string, unknown]> = [];
+    function chainFor(table: string) {
+      const chain = {
+        select: () => chain,
+        eq: (col: string, val: unknown) => {
+          eqCalls.push([`${table}.${col}`, val]);
+          return chain;
+        },
+        maybeSingle: () => Promise.resolve({ data: caseRow, error: null }),
+        order: () => Promise.resolve({ data: events, error: null }),
+      };
+      return chain;
+    }
+    return { from: (table: string) => chainFor(table), __eqCalls: eqCalls };
+  }
+
+  it("devolve o caso + timeline, org-scoped pelo authz", async () => {
+    session("agent");
+    const admin = makeDetailStub(
+      {
+        id: CASE_ID,
+        title: "Liberar acesso",
+        summary: "Cliente pagou e não recebeu acesso",
+        blocker: "Só o suporte libera",
+        status: "awaiting_human",
+        source: "agent",
+        opened_at: "2026-07-23T10:00:00Z",
+        closed_at: null,
+        conversation_id: CONV_ID,
+        conversations: { contacts: { name: "Maria", phone_number: "+5511" } },
+      },
+      [{ id: "e1", kind: "opened", actor_kind: "agent", actor_user_id: null, human_action: null, body: null, created_at: "2026-07-23T10:00:00Z" }],
+    );
+    vi.mocked(createAdminClient).mockReturnValue(admin as unknown as ReturnType<typeof createAdminClient>);
+
+    const { GET } = await import("@/app/api/v1/ai/cases/[id]/route");
+    const res = await GET(new NextRequest(`http://localhost/api/v1/ai/cases/${CASE_ID}`), {
+      params: Promise.resolve({ id: CASE_ID }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: { id: string; contact_name: string | null; events: Array<{ kind: string }> };
+    };
+    expect(body.data.id).toBe(CASE_ID);
+    expect(body.data.contact_name).toBe("Maria");
+    expect(body.data.events).toHaveLength(1);
+    expect(body.data.events[0]?.kind).toBe("opened");
+    // As DUAS tabelas são filtradas pela org do authz — timeline de outra org
+    // nunca vaza junto do caso.
+    expect(admin.__eqCalls).toContainEqual(["agent_cases.organization_id", ORG_ID]);
+    expect(admin.__eqCalls).toContainEqual(["agent_case_events.organization_id", ORG_ID]);
+  });
+
+  it("caso de outra org → 404 not_found", async () => {
+    session("agent");
+    const admin = makeDetailStub(null, []);
+    vi.mocked(createAdminClient).mockReturnValue(admin as unknown as ReturnType<typeof createAdminClient>);
+
+    const { GET } = await import("@/app/api/v1/ai/cases/[id]/route");
+    const res = await GET(new NextRequest(`http://localhost/api/v1/ai/cases/${CASE_ID}`), {
+      params: Promise.resolve({ id: CASE_ID }),
+    });
+
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("not_found");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // POST /api/v1/ai/cases/:id/reply
 // ---------------------------------------------------------------------------
 
 describe("POST /api/v1/ai/cases/:id/reply", () => {
+  /**
+   * O pool devolve a linha do caso na leitura e um client de transação em
+   * `connect()`. O client registra os `begin`/`commit`/`rollback` para os testes
+   * poderem afirmar que transição e enqueue caíram no MESMO commit.
+   */
   function makePoolStub(caseRow: Record<string, unknown> | undefined) {
-    return { query: vi.fn(async () => ({ rows: caseRow ? [caseRow] : [] })) };
+    const client = {
+      query: vi.fn(async () => ({ rows: [] })),
+      release: vi.fn(),
+    };
+    const pool = {
+      query: vi.fn(async () => ({ rows: caseRow ? [caseRow] : [] })),
+      connect: vi.fn(async () => client),
+      __client: client,
+    };
+    return pool;
+  }
+
+  function txCommands(client: { query: ReturnType<typeof vi.fn> }): string[] {
+    return client.query.mock.calls.map(([sql]) => String(sql));
   }
 
   function caseRowFixture(overrides: Partial<Record<string, unknown>> = {}) {
@@ -181,15 +279,17 @@ describe("POST /api/v1/ai/cases/:id/reply", () => {
     const resBody = (await res.json()) as { data: { status: string } };
     expect(resBody.data.status).toBe("awaiting_lead");
 
+    // Transição e enqueue recebem o MESMO client da transação — é o que garante
+    // que os dois efeitos entrem no mesmo commit.
     expect(vi.mocked(markAwaitingLead)).toHaveBeenCalledWith(
-      pool,
+      pool.__client,
       ORG_ID,
       CASE_ID,
       USER_ID,
       "Qual o CPF do cliente?",
     );
     expect(vi.mocked(enqueueJob)).toHaveBeenCalledWith(
-      pool,
+      pool.__client,
       ORG_ID,
       expect.objectContaining({
         kind: "case_reply_turn",
@@ -197,6 +297,7 @@ describe("POST /api/v1/ai/cases/:id/reply", () => {
         payload: expect.objectContaining({ case_id: CASE_ID, action: "need_lead_info" }),
       }),
     );
+    expect(txCommands(pool.__client)).toEqual(["begin", "commit"]);
     expect(
       vi.mocked(audit).mock.calls.some(
         ([e]) => e.action === "ai.case_replied" && e.metadata?.case_action === "need_lead_info",
@@ -233,6 +334,53 @@ describe("POST /api/v1/ai/cases/:id/reply", () => {
       { tenantId: ORG_ID, leadId: CONTACT_ID, conversationId: CONV_ID },
       expect.objectContaining({ reason: "Fora do playbook, precisa de humano" }),
     );
+    // O handoff (idempotente) vem ANTES de fechar o caso: se ele falhar, o caso
+    // segue awaiting_human e a retentativa se cura. Na ordem inversa sobraria um
+    // caso `escalated` que nunca chegou a um humano.
+    const handoffOrder = vi.mocked(performHumanHandoff).mock.invocationCallOrder[0] ?? 0;
+    const escalateOrder = vi.mocked(escalateCase).mock.invocationCallOrder[0] ?? 0;
+    expect(handoffOrder).toBeLessThan(escalateOrder);
+  });
+
+  it("need_lead_info: enqueue falhando dá rollback — o caso NÃO sai de awaiting_human", async () => {
+    session("agent");
+    const pool = makePoolStub(caseRowFixture());
+    vi.mocked(getRequestPool).mockReturnValue(pool as unknown as ReturnType<typeof getRequestPool>);
+    const { enqueueJob } = await import("@/lib/agent-engine/queue/queue");
+    vi.mocked(enqueueJob).mockRejectedValueOnce(new Error("job_queue indisponível"));
+
+    const { POST } = await import("@/app/api/v1/ai/cases/[id]/reply/route");
+    await expect(
+      POST(replyReq({ action: "need_lead_info", body: "Qual o CPF?" }), {
+        params: Promise.resolve({ id: CASE_ID }),
+      }),
+    ).rejects.toThrow("job_queue indisponível");
+
+    // Sem o rollback, a transição ficaria commitada sem job: o lead nunca seria
+    // avisado e a rota passaria a responder 409 para sempre.
+    expect(txCommands(pool.__client)).toEqual(["begin", "rollback"]);
+    expect(pool.__client.release).toHaveBeenCalled();
+  });
+
+  it("corrida perdida (transição não casou) → 409 e nada é enfileirado", async () => {
+    session("agent");
+    const pool = makePoolStub(caseRowFixture());
+    vi.mocked(getRequestPool).mockReturnValue(pool as unknown as ReturnType<typeof getRequestPool>);
+    const { resolveCaseFromHuman } = await import("@/lib/agent-engine/agent/human-cases");
+    const { enqueueJob } = await import("@/lib/agent-engine/queue/queue");
+    // Outro atendente respondeu entre a leitura e o update.
+    vi.mocked(resolveCaseFromHuman).mockResolvedValueOnce(false);
+
+    const { POST } = await import("@/app/api/v1/ai/cases/[id]/reply/route");
+    const res = await POST(replyReq({ action: "resolved", body: "Liberei o acesso" }), {
+      params: Promise.resolve({ id: CASE_ID }),
+    });
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("invalid_state");
+    expect(vi.mocked(enqueueJob)).not.toHaveBeenCalled();
+    expect(txCommands(pool.__client)).toEqual(["begin", "rollback"]);
   });
 
   it("caso terminal (resolved) → 409 invalid_state, sem transição/enqueue/handoff", async () => {

@@ -194,7 +194,8 @@ describe("wave 2 — human-cases repositório", () => {
     if (!opened.ok) throw new Error("setup falhou");
     const caseId = opened.caseId;
 
-    await resolveCaseFromHuman(pool, ORG_A, caseId, ACTOR_A, "Sim, tem garantia de 1 ano.");
+    const first = await resolveCaseFromHuman(pool, ORG_A, caseId, ACTOR_A, "Sim, tem garantia de 1 ano.");
+    expect(first).toBe(true);
     const row = await pool.query(`select status, closed_at from agent_cases where id = $1`, [caseId]);
     expect(row.rows[0].status).toBe("resolved");
     expect(row.rows[0].closed_at).not.toBeNull();
@@ -206,8 +207,11 @@ describe("wave 2 — human-cases repositório", () => {
     expect(events.rows.map((r) => r.kind)).toEqual(["opened", "human_replied", "resolved"]);
     expect(events.rows[1]).toMatchObject({ human_action: "resolved" });
 
-    // reaplicar não pisa em terminal: nenhum evento novo, status intacto
-    await resolveCaseFromHuman(pool, ORG_A, caseId, ACTOR_A, "tentativa duplicada");
+    // reaplicar não pisa em terminal: nenhum evento novo, status intacto — e o
+    // retorno false é o que permite a rota devolver 409 em vez de fingir sucesso
+    // quando outro atendente respondeu primeiro.
+    const second = await resolveCaseFromHuman(pool, ORG_A, caseId, ACTOR_A, "tentativa duplicada");
+    expect(second).toBe(false);
     const eventsAfter = await pool.query(`select count(*)::int as n from agent_case_events where case_id = $1`, [
       caseId,
     ]);
@@ -285,8 +289,10 @@ describe("wave 2 — human-cases repositório", () => {
     // mas a checagem cruzada de tenant é o que importa: conversation_id de A sob org B)
     expect(await hasOpenCaseForContact(pool, ORG_B, CONV_A)).toBe(false);
 
-    // tentar resolver o caso de A usando o tenantId de B não deve afetar nada
-    await resolveCaseFromHuman(pool, ORG_B, caseId, ACTOR_A, "tentativa cross-tenant");
+    // tentar resolver o caso de A usando o tenantId de B não deve afetar nada —
+    // e o false devolvido impede a rota de responder 200 a um no-op cross-tenant
+    const crossTenantResolve = await resolveCaseFromHuman(pool, ORG_B, caseId, ACTOR_A, "tentativa cross-tenant");
+    expect(crossTenantResolve).toBe(false);
     const row = await pool.query(`select status from agent_cases where id = $1`, [caseId]);
     expect(row.rows[0].status).toBe("awaiting_human");
 
