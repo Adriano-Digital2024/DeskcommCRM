@@ -86,6 +86,7 @@ function buildFieldChanges(a: AgentVersionRow, b: AgentVersionRow): FieldChange[
     ["history_message_window", "history_message_window"],
     ["history_token_window", "history_token_window"],
     ["handoff_tool_enabled", "handoff_tool_enabled"],
+    ["cases_enabled", "cases_enabled"],
   ];
   return fields
     .filter(([k]) => a[k] !== b[k])
