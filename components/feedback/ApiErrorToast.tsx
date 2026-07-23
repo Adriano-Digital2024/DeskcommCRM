@@ -42,6 +42,10 @@ const COPY: Record<string, { variant: Variant; msg: string }> = {
     variant: "warning",
     msg: "Outro atendente já assumiu.",
   },
+  invalid_state: {
+    variant: "warning",
+    msg: "Este caso já foi respondido ou fechado.",
+  },
   rate_limited: {
     variant: "warning",
     msg: "Calma — muitas tentativas. Espere alguns segundos.",

@@ -10,13 +10,14 @@ const TABS = [
   { href: "/app/ai/knowledge/sources", label: "Conhecimento" },
   { href: "/app/ai/usage", label: "Uso" },
   { href: "/app/ai/inbox", label: "Inbox" },
+  { href: "/app/ai/cases", label: "Casos" },
 ];
 
 const HUB_PATHS = new Set(TABS.map((t) => t.href));
 
 /**
  * Abas da área de IA. Renderiza só nos hubs (lista de agents, credenciais,
- * conhecimento, uso, inbox) — telas de edição ([id]) ficam limpas.
+ * conhecimento, uso, inbox, casos) — telas de edição ([id]) ficam limpas.
  */
 export function AiSectionTabs() {
   const pathname = usePathname();
