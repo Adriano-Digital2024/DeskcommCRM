@@ -52,6 +52,13 @@ export interface ToolBreakerOptions {
   logFields?: Record<string, unknown>;
 }
 
+/**
+ * Registro EXPLÍCITO das tools do run SEM efeito colateral — só elas entram no
+ * modo idempotent_no_progress do breaker (F2-15). send_message e
+ * update_lead_state são MUTANTES e ficam fora por construção, não por heurística.
+ */
+export const READ_ONLY_TOOLS = ['get_lead_context', 'get_lead_note', 'search_knowledge'] as const;
+
 /** Resultado sintético de bloqueio — mesma convenção de ensino das tools do run. */
 export interface BreakerBlockedResult {
   ok: false;

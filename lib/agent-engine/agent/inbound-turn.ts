@@ -33,6 +33,7 @@ import type { ChannelAdapter, ChannelSendResult } from '../channel-adapter';
 
 import { withFields, type Logger } from '../obs/logger';
 import { getLeadContext, type LeadContext, type LeadContextResult } from '../edge/crm/get-lead-context';
+import { citationsFromHits, searchKnowledge } from './search-knowledge';
 import type { CrmEdgeConfig } from '../edge/crm/mcp-client';
 import { WahaChannelAdapter } from '../edge/channel/waha-adapter';
 // applySendOutcome é disposição de FILA (cancel/reschedule + cache de opt-out), não
@@ -80,7 +81,7 @@ import {
   renderMatchedSkillBodies,
   renderSkillIndex,
 } from './skills';
-import { wrapToolsWithBreaker, type ToolBreakerThresholds } from './tool-breaker';
+import { READ_ONLY_TOOLS, wrapToolsWithBreaker, type ToolBreakerThresholds } from './tool-breaker';
 import { runBeforeSend } from '../guardrails/before-send';
 import type { DisclosureMode } from '../guardrails/disclosure/template';
 import { decidePromise } from '../guardrails/promise/engine';
@@ -93,13 +94,6 @@ import {
   type JailbreakClassifierKnobs,
   type JailbreakLevel,
 } from '../guardrails/jailbreak/classifier';
-
-/**
- * Registro EXPLÍCITO das tools do run SEM efeito colateral — só elas entram no
- * modo idempotent_no_progress do breaker (F2-15). send_message e
- * update_lead_state são MUTANTES e ficam fora por construção, não por heurística.
- */
-export const READ_ONLY_TOOLS = ['get_lead_context', 'get_lead_note'] as const;
 
 /**
  * Superfície ESTÁTICA das tools do agente (description + inputSchema) — parte do
@@ -177,6 +171,16 @@ export const AGENT_TOOL_DEFS = {
       'entre colchetes). Use quando a headline no índice não bastar e você precisar do detalhe.',
     inputSchema: z.object({
       note_id: z.string().describe('id da nota (como aparece no índice, entre colchetes)'),
+    }).passthrough(),
+  },
+  search_knowledge: {
+    description:
+      'Busca na BASE DE CONHECIMENTO da organização (FAQ, políticas, catálogo) os trechos mais ' +
+      'relevantes para uma pergunta. Use ANTES de responder qualquer dúvida factual sobre produto, ' +
+      'preço, prazo, política ou funcionamento — responda com base nos trechos retornados e não ' +
+      'invente o que não encontrar. Sem resultados = diga que vai confirmar, nunca chute.',
+    inputSchema: z.object({
+      query: z.string().min(2).describe('a pergunta ou termos a buscar, em pt-br'),
     }).passthrough(),
   },
   request_human_handoff: {
@@ -742,6 +746,9 @@ export async function runAgentTurn(
       : undefined;
   let outOfTablePromiseAttempted = false;
   const outcomes: ChannelSendResult[] = [];
+  // Citações acumuladas por buscas de conhecimento DESTE turno — anexadas à
+  // próxima outbound enviada (shape de lib/ai/citations/types, que a UI já lê).
+  let pendingCitations: ReturnType<typeof citationsFromHits> = [];
   let runError: Error | null = null;
   const noteRunError = (err: Error): void => {
     runError ??= err;
@@ -766,6 +773,28 @@ export async function runAgentTurn(
             error: { code: 'internal_error', message: 'erro interno ao ler o contexto — encerre o turno agora.' },
           };
         }
+      },
+    }),
+    search_knowledge: tool({
+      ...AGENT_TOOL_DEFS.search_knowledge,
+      execute: async ({ query }) => {
+        if (agentConfig?.activeKbVersionId == null) {
+          return {
+            ok: false,
+            error: { code: 'no_knowledge_base', message: 'este agente não tem base de conhecimento ativa — siga sem ela.' },
+          };
+        }
+        const out = await searchKnowledge(pool, {
+          organizationId: tenantId,
+          kbVersionId: agentConfig.activeKbVersionId,
+          query,
+          topK: agentConfig.ragTopK,
+          threshold: agentConfig.ragSimilarityThreshold,
+        });
+        if (out.ok && out.results.length > 0) {
+          pendingCitations = citationsFromHits(out.results);
+        }
+        return out;
       },
     }),
     send_message: tool({
@@ -824,6 +853,24 @@ export async function runAgentTurn(
           }
           const outcome = chain.outcome;
           outcomes.push(outcome);
+          if (outcome.kind === 'sent' && pendingCitations.length > 0) {
+            try {
+              await pool.query(
+                `update messages
+                 set metadata = coalesce(metadata, '{}'::jsonb)
+                   || jsonb_build_object('citations', $3::jsonb, 'ai_generated', true)
+                 where organization_id = $1 and id = $2`,
+                [tenantId, outcome.messageId, JSON.stringify(pendingCitations)],
+              );
+            } catch (err) {
+              // citação é enriquecimento, não invariante — falha só loga.
+              runLog.warn('citações não anexadas à outbound', {
+                message_id: outcome.messageId,
+                error: (err instanceof Error ? err.message : String(err)).slice(0, 120),
+              });
+            }
+            pendingCitations = [];
+          }
           switch (outcome.kind) {
             case 'sent':
             case 'already_sent':
@@ -1037,9 +1084,15 @@ export async function runAgentTurn(
     delete rawTools.request_human_handoff;
   }
 
+  // Fase 0 (convergência): a tool de conhecimento só entra quando o agente
+  // publicado tem KB ativa — def estática permanece no AGENT_TOOL_DEFS (prefixo).
+  if (agentConfig?.activeKbVersionId == null) {
+    delete rawTools.search_knowledge;
+  }
+
   // 2B-tools: tools do catálogo MCP habilitadas NA TELA entram no run (audit +
   // role/scope da ponte nativa; envio e handoff do catálogo são bloqueados —
-  // ver edge/crm/mcp-tools.ts). As 7 tools do engine têm precedência de nome.
+  // ver edge/crm/mcp-tools.ts). As 8 tools do engine têm precedência de nome.
   let mcpCleanup: (() => Promise<void>) | null = null;
   if (agentConfig !== null && agentConfig.toolIds.length > 0) {
     try {
