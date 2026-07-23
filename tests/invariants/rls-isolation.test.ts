@@ -140,13 +140,30 @@ beforeAll(() => {
           insert into public.crm_leads (organization_id, pipeline_id, stage_id, title)
             values (v_org, v_pipe, v_stage, 'RLS invariant lead');
         end if;
+
+        if not exists (select 1 from public.org_memory_versions where organization_id = v_org) then
+          insert into public.org_memory_versions (organization_id, version_number, content)
+            values (v_org, 1, 'RLS invariant memory doc');
+        end if;
+
+        if not exists (select 1 from public.org_memory_entries where organization_id = v_org) then
+          insert into public.org_memory_entries (organization_id, title, body, source)
+            values (v_org, 'RLS invariant entry', 'RLS invariant body', 'manual');
+        end if;
       end loop;
     end
     $seed$;
   `);
 });
 
-const TABLES = ["conversations", "messages", "contacts", "crm_leads"] as const;
+const TABLES = [
+  "conversations",
+  "messages",
+  "contacts",
+  "crm_leads",
+  "org_memory_versions",
+  "org_memory_entries",
+] as const;
 
 describe("RLS tenant isolation (fn_user_org_ids pattern)", () => {
   for (const table of TABLES) {
