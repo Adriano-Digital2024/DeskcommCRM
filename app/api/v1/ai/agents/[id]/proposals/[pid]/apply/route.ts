@@ -51,6 +51,18 @@ export async function POST(_req: NextRequest, ctx: Ctx): Promise<Response> {
     return fail(result.code, result.message, HTTP_BY_CODE[result.code], { requestId });
   }
 
+  if ("entryId" in result) {
+    await audit({
+      action: "ai.flywheel_proposal_applied",
+      actorUserId: authUser.id,
+      organizationId: org.orgId,
+      resourceType: "flywheel_distiller_proposals",
+      resourceId: pid,
+      metadata: { agent_id: id, entry_id: result.entryId },
+    });
+    return ok({ entry_id: result.entryId }, { requestId });
+  }
+
   await audit({
     action: "ai.flywheel_proposal_applied",
     actorUserId: authUser.id,

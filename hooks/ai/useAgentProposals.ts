@@ -6,7 +6,7 @@ export interface ProposalRow {
   id: string;
   run_id: string;
   dataset: string;
-  type: "playbook_bullet" | "golden_case" | "reentry_trigger";
+  type: "playbook_bullet" | "golden_case" | "reentry_trigger" | "org_memory_entry";
   target: string;
   content: string;
   evidence: Record<string, unknown>;

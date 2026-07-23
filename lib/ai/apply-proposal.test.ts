@@ -155,4 +155,17 @@ describe("applyProposal — guards e fluxo publish-por-ponteiro", () => {
     expect(r).toMatchObject({ ok: false, code: "publish_failed" });
     expect((r as { message: string }).message).toContain("channel_session_offline");
   });
+
+  it("tipo org_memory_entry → grava org_memory_entries (source=flywheel) e NÃO cria versão de agent", async () => {
+    const ENTRY = "99999999-0000-4000-8000-000000000009";
+    const admin = stubAdmin({
+      flywheel_distiller_proposals: [
+        { id: PROPOSAL, type: "org_memory_entry", content: "A loja não vende aos domingos.", applied_at: null },
+        {}, // update de marcação applied_*
+      ],
+      org_memory_entries: [{ id: ENTRY }],
+    });
+    const r = await applyProposal(admin, { orgId: ORG, agentId: AGENT, proposalId: PROPOSAL, userId: USER });
+    expect(r).toEqual({ ok: true, entryId: ENTRY });
+  });
 });
