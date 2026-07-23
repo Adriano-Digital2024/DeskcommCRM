@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Archive, ArrowsClockwise, Plus } from "@/lib/ui/icons";
+import { usePermission } from "@/hooks/auth/AuthProvider";
 import {
   useOrgMemory,
   usePublishOrgMemory,
@@ -30,7 +31,6 @@ import {
 
 interface Props {
   initialState: OrgMemoryState;
-  canPublish: boolean;
 }
 
 function formatDate(iso: string): string {
@@ -43,11 +43,12 @@ function formatDate(iso: string): string {
   });
 }
 
-export function OrgMemoryClient({ initialState, canPublish }: Props) {
+export function OrgMemoryClient({ initialState }: Props) {
   const { data } = useOrgMemory(initialState);
   const document = data?.document ?? null;
   const versions = data?.versions ?? [];
   const entries = data?.entries ?? [];
+  const canPublish = usePermission("ai.memory.publish");
 
   const [content, setContent] = React.useState(document?.content ?? "");
   const [historyTarget, setHistoryTarget] = React.useState<OrgMemoryVersionMeta | null>(null);

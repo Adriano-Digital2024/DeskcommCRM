@@ -71,7 +71,7 @@ export default async function OrgMemoryPage() {
           conversa — não é uma configuração de um agente específico.
         </p>
       </header>
-      <OrgMemoryClient initialState={initialState} canPublish={user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin} />
+      <OrgMemoryClient initialState={initialState} />
     </div>
   );
 }
