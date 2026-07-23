@@ -70,6 +70,7 @@ import {
   type StageClassifierKnobs,
 } from './stage-classifier';
 import { loadPlaybook } from './playbook';
+import { composeSystemPrompt, loadOrgMemory, renderOrgMemory } from './org-memory';
 import { loadPublishedAgentConfig, matchesHandoffKeyword } from './agent-config';
 import { buildMcpTurnTools } from '../edge/crm/mcp-tools';
 import { cancelPendingCronsForLead } from '../cron/scheduler';
@@ -556,10 +557,14 @@ export async function runAgentTurn(
   // ponteiros a cada run: trocar/rollback de skill = mover o ponteiro, sem restart.
   const skills = await loadSkills(pool, tenantId);
   const skillIndex = renderSkillIndex(skills);
-  const system =
-    skillIndex === ''
-      ? playbook.prompt
-      : `${playbook.prompt}\n\n=== skills (índice — o corpo carrega no turno quando a situação dispara) ===\n${skillIndex}`;
+  // Fase 1 (harness): memória geral da org — prefixo estável, resolvida a cada
+  // turno como o playbook (publicar ⇒ próximo turno vale).
+  const orgMemory = await loadOrgMemory(pool, tenantId);
+  const system = composeSystemPrompt({
+    playbookPrompt: playbook.prompt,
+    orgMemoryBlock: renderOrgMemory(orgMemory),
+    skillIndex,
+  });
   const previous = await latestCheckpoint(pool, tenantId, leadId);
   const leadState = await getLeadState(pool, tenantId, leadId);
   const openingContext = await getLeadContext(
