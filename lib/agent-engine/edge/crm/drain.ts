@@ -120,6 +120,17 @@ async function processEvent(
   }
   const p = parsed.data;
 
+  // Spec 14: org em modo 'external' tem agente EXTERNO como dono da conversa —
+  // o engine não responde por cima. Evento é consumido (done) sem job.
+  const { rows: modeRows } = await pool.query<{ mode: string | null }>(
+    `select settings->>'ai_dispatch_mode' as mode from organizations where id = $1`,
+    [event.organization_id],
+  );
+  if (modeRows[0]?.mode === 'external') {
+    log.info('drain: org em modo external (spec 14) — evento pulado', { event_id: event.id });
+    return;
+  }
+
   // Grupos: skip, sem exceção (regra dura nº 12).
   const { rows: convRows } = await pool.query<{ is_group: boolean }>(
     'select is_group from conversations where organization_id = $1 and id = $2',
