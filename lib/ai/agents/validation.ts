@@ -67,6 +67,7 @@ const versionShapeSchema = z
       .max(20)
       .default(["falar com humano", "atendente", "pessoa real"]),
     handoff_tool_enabled: z.boolean().default(true),
+    cases_enabled: z.boolean().default(false),
   })
   .strict();
 

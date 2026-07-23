@@ -158,4 +158,5 @@ export type AuditAction =
   | "conversation.snooze_cancelled"
   | "conversation.snooze_watcher_run"
   | "conversation.note_added"
-  | "conversation.note_deleted";
+  | "conversation.note_deleted"
+  | "ai.case_replied";

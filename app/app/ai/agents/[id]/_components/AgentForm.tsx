@@ -94,6 +94,7 @@ interface FormState {
   history_token_window: number;
   handoff_keywords: string[];
   handoff_tool_enabled: boolean;
+  cases_enabled: boolean;
 }
 
 const DEFAULT_TRIGGER: TriggerValue = {
@@ -136,6 +137,7 @@ function buildState(args: {
       "pessoa real",
     ],
     handoff_tool_enabled: version?.handoff_tool_enabled ?? true,
+    cases_enabled: version?.cases_enabled ?? false,
   };
 }
 
@@ -155,6 +157,7 @@ function toVersionPayload(s: FormState) {
     history_token_window: s.history_token_window,
     handoff_keywords: s.handoff_keywords,
     handoff_tool_enabled: s.handoff_tool_enabled,
+    cases_enabled: s.cases_enabled,
   };
 }
 
@@ -645,6 +648,26 @@ export function AgentForm(props: Props) {
               onChange={(v) => patch({ handoff_keywords: v })}
               disabled={disabled}
             />
+          </Card>
+
+          {/* Casos humanos */}
+          <Card className="space-y-3 p-4">
+            <h3 className="text-sm font-medium">Casos humanos</h3>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="cases_enabled"
+                checked={form.cases_enabled}
+                onCheckedChange={(v) => patch({ cases_enabled: v })}
+                disabled={disabled}
+              />
+              <Label htmlFor="cases_enabled">
+                Abrir casos para um humano (a IA delega tarefas e continua na conversa)
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Diferente do handoff: o agente não sai da conversa — ele abre um caso quando
+              esbarra num bloqueio (ex.: aprovar desconto) e retoma assim que o humano responde.
+            </p>
           </Card>
         </div>
       </div>

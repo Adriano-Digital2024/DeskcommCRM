@@ -33,6 +33,7 @@ export const ApiErrorCodes = {
   // 409 — conflito
   idempotency_conflict: "idempotency_conflict",
   state_conflict: "state_conflict",
+  invalid_state: "invalid_state", // ação de resposta a um agent_case já terminal (spec 15 §7)
   tenant_already_exists: "tenant_already_exists",
   duplicate_external_id: "duplicate_external_id",
   event_gone: "event_gone", // resend de run cujo event_log original foi apagado (on delete set null)
