@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/api/types";
 import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
 import { audit } from "@/lib/audit";
 import { resolveOwnerPatch, type OwnerPatch, type OwnerPatchInput } from "@/lib/leads/owner-patch";
+import { emitLeadActivity, stageChangeReason } from "@/lib/leads/activity-emitter";
 import type { CreateLeadInput, UpdateLeadInput } from "@/lib/schemas";
 
 type SB = SupabaseClient;
@@ -458,7 +459,7 @@ export async function moveLeadHandler(
 
   const { data: stage, error: stageErr } = await supabase
     .from("crm_stages")
-    .select("id, pipeline_id, organization_id")
+    .select("id, pipeline_id, organization_id, name")
     .eq("id", input.to_stage_id)
     .maybeSingle();
   if (stageErr) {
@@ -541,6 +542,38 @@ export async function moveLeadHandler(
     .then(({ error }) => {
       if (error) console.error("[lead.move] emit_event failed", error.message);
     });
+
+  // Wave 3 (CORE 2): a mudança de estágio entra no barramento da vida do lead.
+  // É mudança de ESTADO do negócio — passa no teste "isto muda o que alguém
+  // faria a seguir?". O nome do estágio de origem sai de crm_stages para o
+  // reason ser legível ("Movido de Avaliação para Proposta enviada") em vez de
+  // dois UUIDs.
+  const { data: fromStage } = await supabase
+    .from("crm_stages")
+    .select("name")
+    .eq("id", lead.stage_id)
+    .maybeSingle();
+
+  const atividade = await emitLeadActivity(supabase, {
+    organizationId: lead.organization_id,
+    leadId,
+    contactId: (lead as { contact_id: string | null }).contact_id,
+    type: "stage_changed",
+    sourceModule: "crm",
+    sourceId: leadId,
+    actor: ctx.actor,
+    reason: input.reason
+      ? `${stageChangeReason(fromStage?.name ?? null, stage.name)} — ${input.reason}`
+      : stageChangeReason(fromStage?.name ?? null, stage.name),
+    payload: {
+      from_stage_id: lead.stage_id,
+      to_stage_id: input.to_stage_id,
+      pipeline_id: lead.pipeline_id,
+    },
+  });
+  if (!atividade.ok) {
+    console.error("[lead.move] activity insert failed", atividade.error);
+  }
 
   await audit({
     action: "lead.moved",

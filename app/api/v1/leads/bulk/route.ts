@@ -15,6 +15,7 @@ import { ApiError } from "@/lib/api/types";
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { resolveOwnerPatch } from "@/lib/leads/owner-patch";
+import { emitLeadActivity, stageChangeReason } from "@/lib/leads/activity-emitter";
 import { bulkLeadActionSchema, validateRequest } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -138,6 +139,45 @@ export async function POST(req: NextRequest): Promise<Response> {
       // consumes per-entity events) fires for bulk moves too — mirrors
       // moveLeadHandler's payload. Skip leads already at the target stage.
       const movedIds = new Set((data ?? []).map((r) => r.id as string));
+
+      // Wave 3 (CORE 2): mover 30 cards de uma vez é 30 mudanças de estado —
+      // cada uma entra no barramento, senão o lote inteiro fica invisível na
+      // timeline e a operação em massa vira o buraco por onde a atividade some.
+      const nomesEstagio = new Map<string, string>();
+      const { data: stageRows } = await supabase
+        .from("crm_stages")
+        .select("id, name")
+        .eq("organization_id", organizationId)
+        .in("id", [input.params.stage_id, ...visible.map((r) => r.stage_id as string)]);
+      for (const s of (stageRows ?? []) as Array<{ id: string; name: string }>) {
+        nomesEstagio.set(s.id, s.name);
+      }
+
+      await Promise.all(
+        visible
+          .filter((row) => movedIds.has(row.id) && row.stage_id !== input.params.stage_id)
+          .map(async (row) => {
+            const r = await emitLeadActivity(supabase, {
+              organizationId,
+              leadId: row.id as string,
+              type: "stage_changed",
+              sourceModule: "crm",
+              sourceId: row.id as string,
+              actor: { type: "user", id: user.id },
+              reason: stageChangeReason(
+                nomesEstagio.get(row.stage_id as string) ?? null,
+                nomesEstagio.get(input.params.stage_id) ?? null,
+              ),
+              payload: {
+                from_stage_id: row.stage_id,
+                to_stage_id: input.params.stage_id,
+                pipeline_id: row.pipeline_id,
+                bulk: true,
+              },
+            });
+            if (!r.ok) console.error("[lead.bulk_moved] activity insert failed", r.error);
+          }),
+      );
       await Promise.all(
         visible
           .filter((row) => movedIds.has(row.id) && row.stage_id !== input.params.stage_id)
