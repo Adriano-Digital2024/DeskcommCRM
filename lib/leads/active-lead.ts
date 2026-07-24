@@ -3,6 +3,12 @@ import type { LeadStatus } from "@/lib/types/leads";
 /** O mínimo para decidir qual negócio da pessoa está em jogo agora. */
 export interface LeadCandidate {
   id: string;
+  /**
+   * Obrigatório para a função poder RECUSAR uma lista misturada — ver
+   * `assertMesmaOrg`. Ela é pura e não consulta nada; sem este campo, não teria
+   * como se defender de um chamador que esqueceu o filtro.
+   */
+  organization_id: string;
   pipeline_id: string;
   status: LeadStatus;
   /** ISO; null quando o lead nunca teve atividade. */
@@ -38,6 +44,7 @@ export function resolveActiveLeadForContact(
   candidates: LeadCandidate[],
   opts: { defaultPipelineId?: string | null } = {},
 ): ActiveLeadResolution {
+  assertMesmaOrg(candidates);
   const abertos = candidates.filter((c) => c.status === "open");
 
   if (abertos.length === 0) {
@@ -75,6 +82,32 @@ export function resolveActiveLeadForContact(
   }
 
   return { routed: true, leadId: ordenados[0]!.id };
+}
+
+/**
+ * A lista JÁ tem de vir filtrada por `organization_id` — esta função é pura e
+ * não consulta o banco, então não consegue verificar tenancy sozinha.
+ *
+ * Por que falhar alto em vez de confiar no chamador: o resultado daqui vira uma
+ * ESCRITA em `crm_lead_activities` com FK para o lead. Uma lista misturada faria
+ * a função rotear a atividade de um tenant para o negócio de OUTRO — e o
+ * vazamento pareceria decisão correta, porque ela "decidiu certo" com a lista
+ * que recebeu. Erro de tenancy que passa despercebido é o mais caro do repo
+ * (`CLAUDE.md`: toda query tenant-aware filtra `organization_id` explicitamente).
+ *
+ * Lança em vez de devolver `routed: false`: candidato de outra org não é
+ * ambiguidade de negócio, é bug de quem chamou — e bug de chamador tem de
+ * estourar no desenvolvimento, não virar linha silenciosa no `event_log`.
+ */
+function assertMesmaOrg(candidates: LeadCandidate[]): void {
+  if (candidates.length < 2) return;
+  const orgs = new Set(candidates.map((c) => c.organization_id));
+  if (orgs.size > 1) {
+    throw new Error(
+      `resolveActiveLeadForContact: candidatos de ${orgs.size} organizações diferentes ` +
+        `(${[...orgs].join(", ")}). A lista tem de vir filtrada por organization_id.`,
+    );
+  }
 }
 
 /** Quando este negócio se mexeu pela última vez (cai para a criação). */

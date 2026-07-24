@@ -13,7 +13,10 @@ import { resolveActiveLeadForContact, type LeadCandidate } from "./active-lead";
 const DEFAULT_PIPE = "pipe-default";
 const OUTRO_PIPE = "pipe-outro";
 
+const ORG = "org-a";
+
 const lead = (over: Partial<LeadCandidate> & { id: string }): LeadCandidate => ({
+  organization_id: ORG,
   pipeline_id: DEFAULT_PIPE,
   status: "open",
   last_activity_at: "2026-07-20T10:00:00.000Z",
@@ -159,5 +162,45 @@ describe("resolveActiveLeadForContact — quando SE RECUSA a escolher", () => {
     );
     // Ambos caem para 0 e empatam — recusa, em vez de escolher por ordem do array.
     expect(r.routed).toBe(false);
+  });
+});
+
+describe("resolveActiveLeadForContact — tenancy", () => {
+  // A função é pura e não consulta o banco: ela não tem como VERIFICAR tenancy,
+  // então o tipo obriga e a lista mistura é recusada. Uma lista de duas orgs
+  // rotearia a atividade de um tenant para o negócio de outro, e o vazamento
+  // pareceria decisão correta — a função "decidiu certo" com o que recebeu.
+  it("recusa candidatos de organizações diferentes — estoura, não roteia", () => {
+    expect(() =>
+      resolveActiveLeadForContact(
+        [
+          lead({ id: "l-a", organization_id: "org-a" }),
+          lead({ id: "l-b", organization_id: "org-b" }),
+        ],
+        { defaultPipelineId: DEFAULT_PIPE },
+      ),
+    ).toThrow(/organizações diferentes/);
+  });
+
+  // Estourar é para BUG DE CHAMADOR. Ambiguidade de negócio dentro da mesma org
+  // continua sendo `routed: false` — a distinção importa: uma vira exceção no
+  // desenvolvimento, a outra vira linha no event_log em produção.
+  it("mesma org com ambiguidade real continua devolvendo routed:false, sem estourar", () => {
+    const r = resolveActiveLeadForContact(
+      [
+        lead({ id: "l-1", last_activity_at: "2026-07-20T10:00:00.000Z" }),
+        lead({ id: "l-2", last_activity_at: "2026-07-20T10:00:00.000Z" }),
+      ],
+      { defaultPipelineId: DEFAULT_PIPE },
+    );
+    expect(r.routed).toBe(false);
+  });
+
+  it("uma org só não estoura", () => {
+    expect(() =>
+      resolveActiveLeadForContact([lead({ id: "l-1" }), lead({ id: "l-2" })], {
+        defaultPipelineId: DEFAULT_PIPE,
+      }),
+    ).not.toThrow();
   });
 });
