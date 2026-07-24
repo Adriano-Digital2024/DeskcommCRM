@@ -20,40 +20,6 @@ export interface LoadedOrgMemory {
   entries: OrgMemoryEntry[];
 }
 
-export async function insertOrgMemoryVersion(
-  db: pg.Pool,
-  input: { tenantId: string; content: string; createdBy?: string | null },
-): Promise<{ id: string; versionNumber: number }> {
-  const { rows } = await db.query<{ id: string; version_number: number }>(
-    `insert into org_memory_versions (organization_id, version_number, content, created_by)
-     values ($1,
-             coalesce((select max(version_number) from org_memory_versions where organization_id = $1), 0) + 1,
-             $2, $3)
-     returning id, version_number`,
-    [input.tenantId, input.content, input.createdBy ?? null],
-  );
-  const r = rows[0];
-  if (r === undefined) throw new Error('insertOrgMemoryVersion: insert não retornou linha');
-  return { id: r.id, versionNumber: r.version_number };
-}
-
-export async function setOrgMemoryPointer(
-  db: pg.Pool,
-  input: { tenantId: string; versionId: string },
-): Promise<void> {
-  // Escopo vem DA VERSÃO no SQL (padrão do playbook): ponteiro nunca aponta
-  // para versão de outra org.
-  const { rowCount } = await db.query(
-    `insert into org_memory_pointers (organization_id, version_id, updated_at)
-     select v.organization_id, v.id, now()
-     from org_memory_versions v
-     where v.id = $2 and v.organization_id = $1
-     on conflict (organization_id) do update set version_id = excluded.version_id, updated_at = now()`,
-    [input.tenantId, input.versionId],
-  );
-  if (rowCount === 0) throw new Error('setOrgMemoryPointer: versão não encontrada para esta org');
-}
-
 export async function loadOrgMemory(db: pg.Pool, tenantId: string): Promise<LoadedOrgMemory> {
   const { rows: docRows } = await db.query<{ content: string }>(
     `select v.content

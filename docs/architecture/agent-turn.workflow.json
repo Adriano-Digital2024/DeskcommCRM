@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Turno do Agente de IA",
+    "subtitle": "do inbound no WhatsApp à resposta aprovada pelos guardrails",
+    "output": "agent-turn.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "canal",
+      "label": "Canal (WAHA)"
+    },
+    {
+      "id": "app",
+      "label": "App (ingestão)"
+    },
+    {
+      "id": "worker",
+      "label": "Agent Worker"
+    },
+    {
+      "id": "guardrails",
+      "label": "Guardrails"
+    },
+    {
+      "id": "humano",
+      "label": "Handoff Humano",
+      "variant": "exception"
+    },
+    {
+      "id": "config",
+      "label": "Config (Memória da Org)",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "inbound",
+    "ingest",
+    "eventlog",
+    "turn",
+    "gates",
+    "send"
+  ],
+  "nodes": [
+    {
+      "id": "inbound",
+      "lane": "canal",
+      "col": 0,
+      "type": "frontend",
+      "label": "Msg inbound",
+      "sublabel": "cliente escreve"
+    },
+    {
+      "id": "send",
+      "lane": "canal",
+      "col": 5,
+      "type": "frontend",
+      "label": "Resposta sai",
+      "sublabel": "via WahaAdapter"
+    },
+    {
+      "id": "ingest",
+      "lane": "app",
+      "col": 1,
+      "type": "backend",
+      "label": "Webhook ingest",
+      "sublabel": "HMAC + dedup"
+    },
+    {
+      "id": "eventlog",
+      "lane": "app",
+      "col": 3,
+      "type": "messagebus",
+      "label": "event_log",
+      "sublabel": "fila em Postgres"
+    },
+    {
+      "id": "followup",
+      "lane": "worker",
+      "col": 1,
+      "type": "backend",
+      "label": "Follow-up cron",
+      "sublabel": "reentrada agendada"
+    },
+    {
+      "id": "turn",
+      "lane": "worker",
+      "col": 3,
+      "type": "backend",
+      "label": "Turno IA",
+      "sublabel": "contexto + RAG + modelo",
+      "tag": "runAgentTurn"
+    },
+    {
+      "id": "toolbreaker",
+      "lane": "guardrails",
+      "col": 2,
+      "type": "security",
+      "label": "Tool Breaker",
+      "sublabel": "circuit breaker de tools"
+    },
+    {
+      "id": "gates",
+      "lane": "guardrails",
+      "col": 4,
+      "type": "security",
+      "label": "Before-send",
+      "sublabel": "cadeia de 7 gates",
+      "tag": "veto = HARD"
+    },
+    {
+      "id": "handoff",
+      "lane": "humano",
+      "col": 3,
+      "type": "frontend",
+      "label": "Handoff",
+      "sublabel": "humano: roteamento G5"
+    },
+    {
+      "id": "memoryscreen",
+      "lane": "config",
+      "col": 0,
+      "type": "frontend",
+      "label": "Memória da Org",
+      "sublabel": "tela + API (app/app/ai/memory)"
+    },
+    {
+      "id": "orgmemory",
+      "lane": "config",
+      "col": 1,
+      "type": "backend",
+      "label": "org_memory",
+      "sublabel": "versão + ponteiro + aprendizados"
+    }
+  ],
+  "edges": [
+    {
+      "id": "inbound-ingest",
+      "from": "inbound",
+      "to": "ingest",
+      "route": "drop"
+    },
+    {
+      "id": "ingest-eventlog",
+      "from": "ingest",
+      "to": "eventlog",
+      "label": "emite evento"
+    },
+    {
+      "id": "eventlog-turn",
+      "from": "eventlog",
+      "to": "turn",
+      "label": "drain",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "drop"
+    },
+    {
+      "id": "followup-turn",
+      "from": "followup",
+      "to": "turn",
+      "label": "reentrada",
+      "variant": "dashed"
+    },
+    {
+      "id": "turn-toolbreaker",
+      "from": "turn",
+      "to": "toolbreaker",
+      "label": "tools do CRM",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "right",
+      "route": "drop",
+      "labelDy": -75
+    },
+    {
+      "id": "turn-gates",
+      "from": "turn",
+      "to": "gates",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "drop",
+      "bias": 0.6
+    },
+    {
+      "id": "gates-veto",
+      "from": "gates",
+      "to": "turn",
+      "label": "veto instrutivo",
+      "variant": "security",
+      "fromSide": "left",
+      "toSide": "left",
+      "route": "return-left"
+    },
+    {
+      "id": "gates-send",
+      "from": "gates",
+      "to": "send",
+      "label": "aprovado",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "route": "outside-right"
+    },
+    {
+      "id": "turn-handoff",
+      "from": "turn",
+      "to": "handoff",
+      "label": "handoff",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "drop"
+    },
+    {
+      "id": "memoryscreen-orgmemory",
+      "from": "memoryscreen",
+      "to": "orgmemory",
+      "label": "escreve versão/aprendizado",
+      "labelDy": 50
+    },
+    {
+      "id": "orgmemory-turn",
+      "from": "orgmemory",
+      "to": "turn",
+      "label": "injeta no prefixo estável",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "route": "drop"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Ordem dos 7 gates (invariante)",
+      "items": [
+        "1 stop/opt-out · 2 LGPD · 3 pacing anti-ban",
+        "4 spinning · 5 promise · 6 semantic_promise",
+        "7 disclosure (1ª msg se apresenta como IA)",
+        "Veto volta ao modelo como erro instrutivo"
+      ]
+    }
+  ]
+}
