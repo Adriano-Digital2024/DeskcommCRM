@@ -795,11 +795,17 @@ export async function runAgentTurn(
       ...skillMatch.matched.map((s) => [s.name, s.versionId, 'hard'] as [string, string | null, string]),
       ...skillMatch.missCandidates.map((m) => [m.skill, null, 'probe'] as [string, string | null, string]),
     ];
-    for (const [name, verId, trig] of rows) {
+    if (rows.length > 0) {
+      const values: string[] = [];
+      const params: unknown[] = [];
+      rows.forEach(([name, verId, trig], i) => {
+        const b = i * 5;
+        values.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5})`);
+        params.push(tenantId, name, verId, trig, job.id);
+      });
       await pool.query(
-        `insert into skill_activations (organization_id, skill_name, skill_version_id, trigger, job_id)
-         values ($1,$2,$3,$4,$5)`,
-        [tenantId, name, verId, trig, job.id],
+        `insert into skill_activations (organization_id, skill_name, skill_version_id, trigger, job_id) values ${values.join(',')}`,
+        params,
       );
     }
   } catch (err) {
