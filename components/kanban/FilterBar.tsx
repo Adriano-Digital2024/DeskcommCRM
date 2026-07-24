@@ -13,7 +13,8 @@ import {
 import { useUser } from "@/hooks/auth/AuthProvider";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAssignableAgents } from "@/hooks/kanban/useAssignableAgents";
-import type { Lead } from "@/lib/types/leads";
+import type { Lead, OwnerKind } from "@/lib/types/leads";
+import { OwnerBadge } from "./OwnerBadge";
 import {
   agentOwnerFilter,
   parseAgentOwnerFilter,
@@ -58,6 +59,40 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
   }, [leads]);
 
   const filteredAgentId = parseAgentOwnerFilter(filters.owner);
+
+  /**
+   * Responsáveis atribuíveis numa lista única — humanos e agentes ordenados
+   * juntos. O dono de um lead é UM campo; quem pode ser dono aparece numa lista
+   * só. A distinção é geométrica (avatar), nunca posicional.
+   */
+  const assignees = useMemo(() => {
+    type Row = {
+      key: string;
+      owner: string;
+      name: string;
+      kind: OwnerKind;
+      version: number | null;
+    };
+    const rows: Row[] = [
+      ...(members ?? [])
+        .filter((m) => m.user_id !== user.id)
+        .map((m) => ({
+          key: `u:${m.user_id}`,
+          owner: m.user_id,
+          name: m.full_name ?? "Sem nome",
+          kind: "user" as OwnerKind,
+          version: null,
+        })),
+      ...(agents ?? []).map((a) => ({
+        key: `a:${a.agent_id}`,
+        owner: agentOwnerFilter(a.agent_id),
+        name: a.name,
+        kind: "ai" as OwnerKind,
+        version: a.version_number,
+      })),
+    ];
+    return rows.sort((x, y) => x.name.localeCompare(y.name, "pt-BR"));
+  }, [members, agents, user.id]);
   const ownerLabel =
     filters.owner === "unassigned"
       ? "Sem responsável"
@@ -101,36 +136,26 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
           <DropdownMenuItem onClick={() => onChange({ ...filters, owner: user.id })}>
             Eu
           </DropdownMenuItem>
-          {members && members.filter((m) => m.user_id !== user.id).length > 0 && (
+          {/*
+            Humanos e agentes numa lista SÓ, ordenados juntos por nome. Não existe
+            separador entre eles: separador agrupa, e agrupar comunica "as pessoas,
+            e depois também os bots" — segregação por posição, que é a mesma ideia
+            do badge "AI" colorido que o contrato de UI proíbe. Quem distingue é o
+            avatar (disco preenchido = humano, círculo vazado com anel = agente),
+            reusando o OwnerBadge do card para os dois não divergirem.
+            O separador ACIMA (linha do "Eu") fica: ele divide as opções meta
+            (Todos / Sem responsável / Eu) das pessoas, e ali agrupar está certo.
+          */}
+          {assignees.length > 0 && (
             <>
               <DropdownMenuSeparator />
-              {members
-                .filter((m) => m.user_id !== user.id)
-                .map((m) => (
-                  <DropdownMenuItem
-                    key={m.user_id}
-                    onClick={() => onChange({ ...filters, owner: m.user_id })}
-                  >
-                    {m.full_name ?? "Sem nome"}
-                  </DropdownMenuItem>
-                ))}
-            </>
-          )}
-          {/* Agentes na MESMA lista dos humanos: o dono é um só campo. */}
-          {agents && agents.length > 0 && (
-            <>
-              <DropdownMenuSeparator />
-              {agents.map((a) => (
-                <DropdownMenuItem
-                  key={a.agent_id}
-                  onClick={() => onChange({ ...filters, owner: agentOwnerFilter(a.agent_id) })}
-                >
-                  {a.name}
-                  {a.version_number != null && (
-                    <span className="ml-1.5 font-mono text-[10px] text-text-muted">
-                      v{a.version_number}
-                    </span>
-                  )}
+              {assignees.map((a) => (
+                <DropdownMenuItem key={a.key} onClick={() => onChange({ ...filters, owner: a.owner })}>
+                  <OwnerBadge
+                    ownerKind={a.kind}
+                    ownerName={a.name}
+                    agentVersion={a.version}
+                  />
                 </DropdownMenuItem>
               ))}
             </>
