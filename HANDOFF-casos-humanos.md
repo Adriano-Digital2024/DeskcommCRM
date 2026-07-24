@@ -64,3 +64,8 @@ Sistema de casos/tickets: a IA delega uma tarefa a um humano de retaguarda e **c
 
 ## Log
 - 2026-07-23 **W0**: runtime confirmado (`AGENT_DISPATCH_CONSUMER`=engine default, .env.example/.env.hostgator.example=engine; `workers/agent-worker/main.ts:188`). Spec/plano corrigidos (string `engine`, não `agent-engine`). Ambiguidades da spec resolvidas nas extrações: handoff canônico = `performHumanHandoff` (human-handoff.ts:149); guardrail = gate novo em before-send.ts; UI = polling 60s (useAgentInbox). Sem código de produção ainda.
+
+### VALIDADO PELO RAFAEL (24/jul, teste manual na tela) — "Funcionou 100%!"
+Rafael rodou o loop inteiro na mão pela UI, em caso LIMPO (fd622ad2 "Reagendar entrega da 2ª via", info nova = CEP): clicou "Preciso de info do cliente" → IA perguntou o CEP ao lead no WhatsApp → Rafael respondeu como o lead → IA chamou provide_case_update sozinha → caso voltou pra "Aguardando você" com o CEP na timeline. Loop A→B→C→D validado pelo usuário, não só por mim.
+Aprendizado do teste: a 1ª tentativa dele "não atualizou" porque o caso de teste ef1aaf1c estava POLUÍDO (o CPF já estava no histórico de mensagens de uma prova minha anterior), então a IA se adiantou e chamou provide_case_update antes da confirmação do cliente. NÃO era bug — era dado de teste sujo. Caso limpo (info que a IA não sabe) resolve. Lição: ao montar prova de provide_case_update, a info pedida ao lead NÃO pode já existir no histórico da conversa.
+Conflito de worker entre sessões documentado em memory reference_shared_worker_cross_session.
