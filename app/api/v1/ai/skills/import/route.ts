@@ -29,6 +29,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!authz.ok) return authz.response;
   const { user: authUser, org } = authz;
 
+  // Guard against large uploads before buffering into memory. `parseSkillPackage`'s
+  // ≤5MB check is authoritative (defense in depth); this header check cheaply rejects
+  // the obvious large-body case before `req.formData()` materializes it in RAM.
+  const MAX_UPLOAD_BYTES = 6 * 1024 * 1024; // 6MB: teto do envelope multipart (5MB skill + overhead)
+  const contentLength = Number(req.headers.get("content-length") ?? "0");
+  if (contentLength > MAX_UPLOAD_BYTES) {
+    return fail("skill_upload_too_large", "O arquivo enviado é grande demais (máx. 5 MB por skill).", 413, { requestId });
+  }
+
   let formData: FormData;
   try {
     formData = await req.formData();

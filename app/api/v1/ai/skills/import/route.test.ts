@@ -137,4 +137,19 @@ describe("POST /api/v1/ai/skills/import", () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
   });
+
+  it("content-length > 6MB → 413 skill_upload_too_large antes de bufferizar", async () => {
+    mockAuthzOk();
+    const req = new NextRequest("http://localhost/api/v1/ai/skills/import", {
+      method: "POST",
+      headers: { "content-length": "7000000" },
+      body: new FormData(), // nunca é lido — guard falha antes
+    });
+    const { POST } = await import("./route");
+    const res = await POST(req);
+    expect(res.status).toBe(413);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("skill_upload_too_large");
+    expect(importSkillPackage).not.toHaveBeenCalled();
+  });
 });
