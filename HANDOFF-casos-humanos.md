@@ -23,8 +23,15 @@
 4. case-reply-turn descartava a conclusão (checava "aberto", mas W5 já transicionou) → IA nunca repassava ao lead (`f111c58`).
 5. provide_case_update inalcançável no caminho comum (modelo sem case_id quando o lead responde) (`f111c58`).
 
-### PRÓXIMO (após reset do limite, 25/jul 02h)
-Re-rodar a prova E2E das etapas C/D/E com os fixes aplicados, em conversa REAL (WAHA), provando o envio outbound ao lead. Brief: w7-brief.md.
+### Re-run da prova (24/jul, controller) — bug#4 PROVADO ao vivo, resto BLOQUEADO por crédito
+- Worker reiniciado com o código f111c58 (o que estava vivo era de 23/jul, pré-fix, no-watch).
+- **PROVA VIVA do bug#4:** re-enfileirei `case_reply_turn(resolved)` p/ o caso resolved `be89f3cf` e o worker NOVO deu **0 no-op / 5 linhas chegando à API** → o handler prosseguiu até `runAgentTurn` num caso resolved (o velho daria no-op antes do LLM). Integração real (worker+banco).
+- **BLOQUEIO (precisa do Rafael):** credencial Anthropic da org e2e SEM CRÉDITO ("credit balance is too low") → nenhum turno de modelo completa. Etapas C (lead→provide_case_update) e D/E (outbound real) não proveis ao vivo até haver crédito OU trocar p/ credencial financiada (a de OpenAI gpt-4o já foi validada em ondas anteriores).
+- Wart pré-existente do ambiente E2E: `ephemeral_token_insert_failed` (duplicate api_tokens prefix) impede as tools MCP DA TELA de montar — não afeta as tools nativas de caso (open/provide/send).
+- bug#2 (toggle) segue travado pelo teste de drift; prova viva no navegador ficou bloqueada (form de agente read-only p/ manager; :3000 é build velho, :3010 é dev com o toggle presente porém desabilitado).
+
+### PRÓXIMO
+Com crédito Anthropic (ou trocando a credencial do agente de teste p/ a de OpenAI financiada), re-rodar C/D/E em conversa REAL provando o outbound ao lead. Tudo o mais está pronto e verde.
 **A INVARIANTE CENTRAL (W4) ESTÁ SEGURA** — review opus confirmou: lead nunca recebe promessa-de-humano sem caso aberto (garantia estrutural: fail-safe re-roda a cadeia inteira, zero envio fora dela).
 **Nota de execução:** 2 implementers caíram por session limit (W4 1ª tentativa, W5). Ambos retomados sem perda — a W5 estava verde na árvore e foi verificada/commitada pelo controller.
 **Decisão de escopo:** need_lead_info NÃO arma cron novo (agente já tem schedule_followup); lead_unresponsive→aviso fica como enhancement documentado.
