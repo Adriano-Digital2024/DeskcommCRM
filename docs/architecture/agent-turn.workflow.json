@@ -33,6 +33,11 @@
       "id": "config",
       "label": "Config (Memória da Org)",
       "variant": "exception"
+    },
+    {
+      "id": "skills",
+      "label": "Skills instaláveis (Fase 2)",
+      "variant": "exception"
     }
   ],
   "mainPath": [
@@ -133,6 +138,22 @@
       "type": "backend",
       "label": "org_memory",
       "sublabel": "versão + ponteiro + aprendizados"
+    },
+    {
+      "id": "skillsscreen",
+      "lane": "skills",
+      "col": 0,
+      "type": "frontend",
+      "label": "Skills",
+      "sublabel": "tela + import .zip (app/app/ai/skills)"
+    },
+    {
+      "id": "skillcatalog",
+      "lane": "skills",
+      "col": 1,
+      "type": "backend",
+      "label": "Skill catalog",
+      "sublabel": "skill_versions + pointers"
     }
   ],
   "edges": [
@@ -230,6 +251,24 @@
       "fromSide": "top",
       "toSide": "bottom",
       "route": "drop"
+    },
+    {
+      "id": "skillsscreen-skillcatalog",
+      "from": "skillsscreen",
+      "to": "skillcatalog",
+      "label": "importa .zip / instala do catálogo",
+      "labelAt": [154, 903]
+    },
+    {
+      "id": "skillcatalog-turn",
+      "from": "skillcatalog",
+      "to": "turn",
+      "label": "índice no prefixo + corpo casado no sufixo + read_skill_reference",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "right",
+      "route": "outside-right",
+      "labelDy": 40
     }
   ],
   "cards": [
