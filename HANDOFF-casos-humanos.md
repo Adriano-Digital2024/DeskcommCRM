@@ -9,13 +9,22 @@
 - **Execução:** subagent-driven (implementer fresco/task + task review + review final)
 
 ## Estado atual
-**Waves 1-6 COMPLETAS e revisadas.** Código do épico inteiro no ar: schema, repositório, tools no turno, handler de re-entrada, guardrail, rotas, toggle e UI do atendente. `test:unit` 533/533, `test:db` 234, typecheck/lint 0.
-**Próximo: Wave 7 — PROVA E2E do loop completo** (brief: w7-brief.md; base 8b1a906). É a wave que fecha: clicar cada botão no navegador em conta real, provar o loop IA↔humano↔lead e avaliar a experiência.
+**Waves 1-6 completas e revisadas. Wave 7 (prova E2E) PARCIAL** — interrompida por limite SEMANAL de API (reseta 25/jul 02h). Código todo verde: `test:unit` 533/533, `test:db` 236, typecheck/lint 0.
 
-**3 bugs reais achados e corrigidos pelas reviews** (nenhum apareceria em typecheck/teste comum):
-1. Transição de caso e seu efeito não eram atômicos → caso podia ficar travado sem recuperação pela API (`a124444`).
-2. `cases_enabled` em 2 de 7 cópias de `VERSION_COLUMNS` → toggle se desmarcava sozinho e revertia o valor no save seguinte (`e698c72`, + teste que trava divergência futura).
-3. "Concluí" pré-selecionado no painel → atendente fechava o caso sem querer (`8b1a906`).
+### O que a prova E2E mostrou (docs/evidence/casos-humanos/, 7 telas, cenário real "assinatura inativa após pagamento", agente anthropic real)
+- **PROVADO na tela:** abertura do caso pela IA (summary/blocker escritos pelo agente) · lista com "Aguardando você" · detalhe com blocos rotulados · ação "Preciso de info do cliente" → badge vira "Aguardando o cliente" + painel desabilitado com a razão certa · conclusão → aba "Abertos (0)" + estado vazio. **UX aprovada por mim**: clara, ensina, de-quem-é-a-bola óbvio, 3 ações inequívocas, zero enum cru. O fix do W6 (sem pré-seleção) confirmado ao vivo.
+- **NÃO provado ao vivo (re-provar após reset):** etapa C — lead responde → IA chama `provide_case_update` sozinha. No teste, o modelo respondeu ao cliente mas não chamou a tool (faltava o `case_id` no contexto). **Corrigido em código** (`getCaseAwaitingLead`, commit f111c58) mas o re-teste caiu no limite; a prova seguiu com a transição aplicada à mão (documentado honestamente na timeline do caso).
+- **NÃO provado:** envio outbound REAL ao lead (WAHA) em cada etapa; escalação ponta-a-ponta (E). Faltou re-rodar.
+
+**5 bugs reais achados e corrigidos** (nenhum apareceria em typecheck/teste com mock — todos de INTERAÇÃO entre waves):
+1. Transição de caso + efeito não atômicos → caso travado sem recuperação (`a124444`).
+2. `cases_enabled` em 2 de 7 cópias de `VERSION_COLUMNS` → toggle se desmarcava e revertia no save (`e698c72` + teste anti-divergência).
+3. "Concluí" pré-selecionado → atendente fechava caso sem querer (`8b1a906`).
+4. case-reply-turn descartava a conclusão (checava "aberto", mas W5 já transicionou) → IA nunca repassava ao lead (`f111c58`).
+5. provide_case_update inalcançável no caminho comum (modelo sem case_id quando o lead responde) (`f111c58`).
+
+### PRÓXIMO (após reset do limite, 25/jul 02h)
+Re-rodar a prova E2E das etapas C/D/E com os fixes aplicados, em conversa REAL (WAHA), provando o envio outbound ao lead. Brief: w7-brief.md.
 **A INVARIANTE CENTRAL (W4) ESTÁ SEGURA** — review opus confirmou: lead nunca recebe promessa-de-humano sem caso aberto (garantia estrutural: fail-safe re-roda a cadeia inteira, zero envio fora dela).
 **Nota de execução:** 2 implementers caíram por session limit (W4 1ª tentativa, W5). Ambos retomados sem perda — a W5 estava verde na árvore e foi verificada/commitada pelo controller.
 **Decisão de escopo:** need_lead_info NÃO arma cron novo (agente já tem schedule_followup); lead_unresponsive→aviso fica como enhancement documentado.
