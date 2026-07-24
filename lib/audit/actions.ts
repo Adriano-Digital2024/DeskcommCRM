@@ -143,4 +143,7 @@ export type AuditAction =
   | "automation.rule_updated"
   | "automation.rule_deleted"
   | "automation.rule_executed"
-  | "automation.run_resent";
+  | "automation.run_resent"
+  | "ai.skill_imported"
+  | "ai.skill_installed"
+  | "ai.skill_uninstalled";
