@@ -87,10 +87,21 @@ export function validateSkillBody(body: string): void {
 /**
  * Publica uma versão nova de skill (imutável desde o INSERT — o trigger do banco veta
  * UPDATE). `tenantId` null = skill de plataforma (global). O matcher é validado aqui.
+ * `manifest` (lista de arquivos do pacote instalável) e `forkedFromVersionId` (fork-on-
+ * install do marketplace) são opcionais — default `[]`/null preserva os chamadores
+ * existentes (playbook seed, testes).
  */
 export async function insertSkillVersion(
   db: Queryable,
-  input: { tenantId: string | null; name: string; description: string; body: string; matcher: SkillMatcher },
+  input: {
+    tenantId: string | null;
+    name: string;
+    description: string;
+    body: string;
+    matcher: SkillMatcher;
+    manifest?: unknown[];
+    forkedFromVersionId?: string | null;
+  },
 ): Promise<SkillVersionRow> {
   if (input.name.trim() === '') {
     throw new Error('skill sem name — o índice precisa de um nome estável');
@@ -101,10 +112,18 @@ export async function insertSkillVersion(
   validateSkillBody(input.body);
   const matcher = skillMatcherSchema.parse(input.matcher);
   const { rows } = await db.query<SkillVersionRow>(
-    `insert into skill_versions (organization_id, name, description, body, matcher)
-     values ($1, $2, $3, $4, $5)
+    `insert into skill_versions (organization_id, name, description, body, matcher, manifest, forked_from_version_id)
+     values ($1, $2, $3, $4, $5, $6, $7)
      returning *`,
-    [input.tenantId, input.name, input.description, input.body, JSON.stringify(matcher)],
+    [
+      input.tenantId,
+      input.name,
+      input.description,
+      input.body,
+      JSON.stringify(matcher),
+      JSON.stringify(input.manifest ?? []),
+      input.forkedFromVersionId ?? null,
+    ],
   );
   const row = rows[0];
   if (row === undefined) {
