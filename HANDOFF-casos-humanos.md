@@ -35,8 +35,14 @@ Job `done`, zero erro. **A nota interna do humano virou mensagem pro cliente e F
 - Wart pré-existente do ambiente E2E: `ephemeral_token_insert_failed` (duplicate api_tokens prefix) impede as tools MCP DA TELA de montar — não afeta as tools nativas de caso (open/provide/send).
 - bug#2 (toggle) segue travado pelo teste de drift; prova viva no navegador ficou bloqueada (form de agente read-only p/ manager; :3000 é build velho, :3010 é dev com o toggle presente porém desabilitado).
 
-### PRÓXIMO (opcional — o crítico já está provado)
-Falta só provar ao vivo a etapa C isolada (lead responde a um `awaiting_lead` → modelo chama `provide_case_update` sozinho, bug#5): já coberta por teste de integração (test:db) e o caminho está confirmado alcançável (a maquinaria do turno rodou com crédito). Para provar ao vivo: pôr um caso em awaiting_lead + inbound real do lead + observar o bloco getCaseAwaitingLead no turno e a chamada da tool. Requer isolar o worker de casos de novo. Tudo o mais do épico está pronto, revisado e verde.
+### PROVA VIVA da etapa C / bug#5 (24/jul) — FEITA
+Montei um caso NOVO `ef1aaf1c` em awaiting_lead (pedido do humano: "confirme o CPF do titular") + inseri a mensagem inbound do cliente respondendo o CPF, e enfileirei um inbound_turn REAL. Achado que virou aprendizado: na 1ª tentativa o caso NÃO transicionou — porque a Lia (agente publicado da conversa) estava com `cases_enabled=false`, então `provide_case_update` e o bloco getCaseAwaitingLead corretamente NÃO montam (o gating funcionando, não é bug). Liguei `cases_enabled=true` na versão publicada e re-disparei:
+- Caso `awaiting_lead` → **`awaiting_human`**; novo evento `lead_provided` (actor=lead): "Cliente informou que o CPF do titular é 312.456.789-09...". Job inbound_turn `done`.
+- Ou seja: o modelo viu o bloco getCaseAwaitingLead (case_id + o ask), viu a resposta do cliente e **chamou provide_case_update sozinho** — o exato fix do bug#5. Sem ele (case_id ausente do contexto), o modelo não teria como.
+
+**LOOP A→B→C→D PROVADO AO VIVO com o código corrigido.** (D/conclusão→outbound real = bug#4 acima; C/lead→provide_case_update = aqui.) Restaurei tudo: cases_enabled da Lia de volta p/ false, worker do feat/operacao-visivel de volta, worker de casos parado. Artefatos de teste deixados no DB dev (casos be89f3cf/ef1aaf1c) como evidência — inócuos na org e2e.
+
+### Épico pronto para merge review. Nada mergeado (branch feat/inbox-multimodal).
 **A INVARIANTE CENTRAL (W4) ESTÁ SEGURA** — review opus confirmou: lead nunca recebe promessa-de-humano sem caso aberto (garantia estrutural: fail-safe re-roda a cadeia inteira, zero envio fora dela).
 **Nota de execução:** 2 implementers caíram por session limit (W4 1ª tentativa, W5). Ambos retomados sem perda — a W5 estava verde na árvore e foi verificada/commitada pelo controller.
 **Decisão de escopo:** need_lead_info NÃO arma cron novo (agente já tem schedule_followup); lead_unresponsive→aviso fica como enhancement documentado.
