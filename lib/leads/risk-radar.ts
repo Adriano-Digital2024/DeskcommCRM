@@ -48,8 +48,14 @@ export interface RiskInput {
   now: Date;
   /** há follow-up agendado no futuro (cron_jobs kind='at' enabled) para o contato. */
   inFlight: boolean;
-  /** Janela do estágio; omitida = janelas globais (compat com quem já chamava). */
-  window?: StageWindow;
+  /**
+   * Janela do estágio — OBRIGATÓRIA. Era opcional durante a transição, e
+   * opcional aqui significa "esquecer é silencioso": o chamador que não passa
+   * volta a classificar tudo pela janela global e o esfriamento de uma clínica
+   * vira o de um contrato. Quem não tem estágio à mão passa
+   * `resolveStageWindow(null)` e o fallback fica explícito na chamada.
+   */
+  window: StageWindow;
 }
 
 export interface RiskResult {
@@ -60,7 +66,7 @@ export interface RiskResult {
 }
 
 export function classifyRisk({ lastActivityAt, now, inFlight, window }: RiskInput): RiskResult {
-  const { coldHours, criticalHours } = window ?? resolveStageWindow(null);
+  const { coldHours, criticalHours } = window;
   const hoursSinceActivity = Math.max(
     0,
     (now.getTime() - lastActivityAt.getTime()) / 3_600_000,
