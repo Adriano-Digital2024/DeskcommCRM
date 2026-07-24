@@ -2139,6 +2139,8 @@ export type Database = {
           last_activity_at: string | null
           lost_reason: string | null
           organization_id: string
+          owner_agent_id: string | null
+          owner_kind: string | null
           owner_user_id: string | null
           pipeline_id: string
           position_in_stage: number
@@ -2166,6 +2168,8 @@ export type Database = {
           last_activity_at?: string | null
           lost_reason?: string | null
           organization_id: string
+          owner_agent_id?: string | null
+          owner_kind?: string | null
           owner_user_id?: string | null
           pipeline_id: string
           position_in_stage?: number
@@ -2193,6 +2197,8 @@ export type Database = {
           last_activity_at?: string | null
           lost_reason?: string | null
           organization_id?: string
+          owner_agent_id?: string | null
+          owner_kind?: string | null
           owner_user_id?: string | null
           pipeline_id?: string
           position_in_stage?: number
@@ -2206,6 +2212,13 @@ export type Database = {
           value_cents?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_leads_owner_agent_id_fkey"
+            columns: ["owner_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_leads_contact_id_fkey"
             columns: ["contact_id"]

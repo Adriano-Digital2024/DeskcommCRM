@@ -4,6 +4,7 @@ import type { MouseEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/types/leads";
+import type { OwnerDisplay } from "@/lib/kanban/owner";
 import { KanbanCardActions } from "./KanbanCardActions";
 import { OwnerBadge } from "./OwnerBadge";
 
@@ -11,8 +12,8 @@ interface KanbanCardProps {
   lead: Lead;
   index: number;
   pipelineId: string;
-  /** Nome do responsável, resolvido no board via useAssignableMembers. */
-  ownerName?: string | null;
+  /** Dono já resolvido no board (humano ou agente) — ver lib/kanban/owner.ts. */
+  owner?: OwnerDisplay;
   isSelected?: boolean;
   onSelect?: (leadId: string, additive: boolean) => void;
 }
@@ -35,7 +36,7 @@ export function KanbanCard({
   lead,
   index,
   pipelineId,
-  ownerName,
+  owner,
   isSelected,
   onSelect,
 }: KanbanCardProps) {
@@ -92,8 +93,9 @@ export function KanbanCard({
 
           <div className="mt-3 flex items-center justify-between">
             <OwnerBadge
-              ownerUserId={lead.owner_user_id}
-              ownerName={ownerName ?? null}
+              ownerKind={owner?.kind ?? null}
+              ownerName={owner?.name ?? null}
+              agentVersion={owner?.agentVersion ?? null}
             />
           </div>
         </div>

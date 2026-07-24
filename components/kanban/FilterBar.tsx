@@ -12,8 +12,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUser } from "@/hooks/auth/AuthProvider";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
+import { useAssignableAgents } from "@/hooks/kanban/useAssignableAgents";
 import type { Lead } from "@/lib/types/leads";
-import type { LeadFilters } from "@/lib/kanban/filters";
+import {
+  agentOwnerFilter,
+  parseAgentOwnerFilter,
+  type LeadFilters,
+} from "@/lib/kanban/filters";
 import { cn } from "@/lib/utils";
 
 interface FilterBarProps {
@@ -32,6 +37,8 @@ const STATUS_OPTIONS: Array<{ value: NonNullable<LeadFilters["status"]>; label: 
 export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
   const user = useUser();
   const { data: members } = useAssignableMembers(true);
+  const { data: agents } = useAssignableAgents(true);
+  const activeAgents = (agents ?? []).filter((a) => a.is_active);
   const [searchInput, setSearchInput] = useState(filters.search ?? "");
 
   // Debounce search 250ms
@@ -51,15 +58,18 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
     return Array.from(set).sort();
   }, [leads]);
 
+  const filteredAgentId = parseAgentOwnerFilter(filters.owner);
   const ownerLabel =
-    filters.ownerUserId === "unassigned"
+    filters.owner === "unassigned"
       ? "Sem responsável"
-      : !filters.ownerUserId || filters.ownerUserId === "any"
+      : !filters.owner || filters.owner === "any"
         ? "Todos"
-        : filters.ownerUserId === user.id
-          ? "Eu"
-          : (members?.find((m) => m.user_id === filters.ownerUserId)?.full_name ??
-            "Responsável");
+        : filteredAgentId
+          ? (agents?.find((a) => a.agent_id === filteredAgentId)?.name ?? "Agente")
+          : filters.owner === user.id
+            ? "Eu"
+            : (members?.find((m) => m.user_id === filters.owner)?.full_name ??
+              "Responsável");
 
   const statusLabel =
     STATUS_OPTIONS.find((o) => o.value === (filters.status ?? "all"))?.label ?? "Todos";
@@ -83,13 +93,13 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
         <DropdownMenuContent align="start">
           <DropdownMenuLabel>Responsável</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onChange({ ...filters, ownerUserId: "any" })}>
+          <DropdownMenuItem onClick={() => onChange({ ...filters, owner: "any" })}>
             Todos
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onChange({ ...filters, ownerUserId: "unassigned" })}>
+          <DropdownMenuItem onClick={() => onChange({ ...filters, owner: "unassigned" })}>
             Sem responsável
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onChange({ ...filters, ownerUserId: user.id })}>
+          <DropdownMenuItem onClick={() => onChange({ ...filters, owner: user.id })}>
             Eu
           </DropdownMenuItem>
           {members && members.filter((m) => m.user_id !== user.id).length > 0 && (
@@ -100,11 +110,32 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
                 .map((m) => (
                   <DropdownMenuItem
                     key={m.user_id}
-                    onClick={() => onChange({ ...filters, ownerUserId: m.user_id })}
+                    onClick={() => onChange({ ...filters, owner: m.user_id })}
                   >
                     {m.full_name ?? "Sem nome"}
                   </DropdownMenuItem>
                 ))}
+            </>
+          )}
+          {/* Agentes na MESMA lista dos humanos: o dono é um só campo.
+              Filtrar por agente desativado não é útil — ele não recebe leads
+              novos —, mas o nome dele continua resolvendo no rótulo acima. */}
+          {activeAgents.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              {activeAgents.map((a) => (
+                <DropdownMenuItem
+                  key={a.agent_id}
+                  onClick={() => onChange({ ...filters, owner: agentOwnerFilter(a.agent_id) })}
+                >
+                  {a.name}
+                  {a.version_number != null && (
+                    <span className="ml-1.5 font-mono text-[10px] text-text-muted">
+                      v{a.version_number}
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              ))}
             </>
           )}
         </DropdownMenuContent>
@@ -160,7 +191,7 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
       </label>
 
       {(filters.search ||
-        filters.ownerUserId ||
+        filters.owner ||
         filters.tag ||
         filters.overdueOnly ||
         (filters.status && filters.status !== "all")) && (

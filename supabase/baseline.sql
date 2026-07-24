@@ -6860,3 +6860,82 @@ begin
     execute format('revoke all on public.%I from anon', t);
   end loop;
 end $$;
+
+-- ---- crm_leads owner_kind/owner_agent_id (migration 0070) ----
+-- CRM Vivo · Wave 1 (CORE 1): a IA é dona do NEGÓCIO, não só da conversa.
+-- Mesmo padrão da 0032 (conversations.assignee_kind): backfill ANTES da
+-- constraint, CHECK de coerência em forma de implicação, drop+add re-aplicável.
+-- owner_agent_id aponta para ai_agents (identidade), NUNCA ai_agent_versions —
+-- o tooltip "Nome · vN" resolve a versão publicada por join na hora de exibir.
+alter table public.crm_leads
+  add column if not exists owner_kind text
+  check (owner_kind in ('user','ai'));
+
+alter table public.crm_leads
+  add column if not exists owner_agent_id uuid
+  references public.ai_agents(id) on delete set null;
+
+update public.crm_leads
+   set owner_kind = 'user'
+ where owner_user_id is not null
+   and owner_kind is distinct from 'user';
+
+update public.crm_leads
+   set owner_kind = null
+ where owner_user_id is null
+   and owner_agent_id is null
+   and owner_kind = 'user';
+
+update public.crm_leads
+   set owner_kind = 'ai'
+ where owner_agent_id is not null
+   and owner_kind is distinct from 'ai';
+
+alter table public.crm_leads
+  drop constraint if exists crm_leads_owner_kind_coherence;
+alter table public.crm_leads
+  add constraint crm_leads_owner_kind_coherence check (
+    (owner_kind = 'user' and owner_user_id is not null and owner_agent_id is null) or
+    (owner_kind = 'ai'   and owner_agent_id is not null and owner_user_id is null) or
+    (owner_kind is null)
+  );
+
+create index if not exists idx_crm_leads_owner_agent
+  on public.crm_leads (organization_id, owner_agent_id)
+  where owner_agent_id is not null;
+
+-- lead.assigned passa a cobrir o dono agente (corpo da 0043 + ramo do agente).
+create or replace function public.fn_emit_event_on_lead_change() returns trigger
+    language plpgsql
+    set search_path to 'public', 'pg_temp'
+    as $$
+begin
+  if tg_op = 'INSERT' then
+    return new;
+  end if;
+
+  if new.status is distinct from old.status then
+    if new.status = 'won' then
+      perform public.fn_log_event(new.organization_id, 'lead.won',
+        jsonb_build_object('lead_id', new.id, 'value_cents', new.value_cents));
+    elsif new.status = 'lost' then
+      perform public.fn_log_event(new.organization_id, 'lead.lost',
+        jsonb_build_object('lead_id', new.id, 'lost_reason', new.lost_reason));
+    elsif new.status = 'open' then
+      perform public.fn_log_event(new.organization_id, 'lead.reopened',
+        jsonb_build_object('lead_id', new.id));
+    end if;
+  end if;
+
+  if new.owner_user_id is distinct from old.owner_user_id
+     or new.owner_agent_id is distinct from old.owner_agent_id then
+    perform public.fn_log_event(new.organization_id, 'lead.assigned',
+      jsonb_build_object(
+        'lead_id', new.id,
+        'from_user_id', old.owner_user_id, 'to_user_id', new.owner_user_id,
+        'from_agent_id', old.owner_agent_id, 'to_agent_id', new.owner_agent_id,
+        'owner_kind', new.owner_kind));
+  end if;
+
+  return new;
+end$$;

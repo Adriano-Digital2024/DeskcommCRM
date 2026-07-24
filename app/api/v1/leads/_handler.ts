@@ -291,9 +291,57 @@ export async function updateLeadHandler(
   if (input.contact_id !== undefined) patch.contact_id = input.contact_id;
   if (input.value_cents !== undefined) patch.value_cents = input.value_cents;
   if (input.currency !== undefined) patch.currency = input.currency;
+  // Dono do negócio (0070): humano OU agente, nunca os dois. owner_kind é
+  // DERIVADO de qual campo veio — nunca lido do body — para que a constraint
+  // crm_leads_owner_kind_coherence não dependa do cliente.
+  if (input.owner_user_id != null && input.owner_agent_id != null) {
+    throw new ApiError(
+      422,
+      "validation_failed",
+      undefined,
+      ctx.requestId,
+      "Um lead tem um dono: informe owner_user_id OU owner_agent_id.",
+    );
+  }
+
   if (input.owner_user_id !== undefined) {
     patch.owner_user_id = input.owner_user_id;
+    patch.owner_agent_id = null;
+    patch.owner_kind = input.owner_user_id === null ? null : "user";
     if (input.owner_user_id !== null) {
+      patch.assigned_at = new Date().toISOString();
+    }
+  }
+
+  if (input.owner_agent_id !== undefined) {
+    if (input.owner_agent_id !== null) {
+      // A FK garante que o agente EXISTE, não que é da MESMA org — sem este
+      // check, um id vazado atribuiria o negócio a um agente de outro tenant.
+      const { data: agent, error: agentErr } = await supabase
+        .from("ai_agents")
+        .select("id")
+        .eq("id", input.owner_agent_id)
+        .eq("organization_id", ctx.organization_id)
+        .is("archived_at", null)
+        .maybeSingle();
+
+      if (agentErr) {
+        throw new ApiError(500, "internal_error", undefined, ctx.requestId, agentErr.message);
+      }
+      if (!agent) {
+        throw new ApiError(
+          422,
+          "validation_failed",
+          undefined,
+          ctx.requestId,
+          "Agente não encontrado nesta organização.",
+        );
+      }
+    }
+    patch.owner_agent_id = input.owner_agent_id;
+    patch.owner_user_id = null;
+    patch.owner_kind = input.owner_agent_id === null ? null : "ai";
+    if (input.owner_agent_id !== null) {
       patch.assigned_at = new Date().toISOString();
     }
   }

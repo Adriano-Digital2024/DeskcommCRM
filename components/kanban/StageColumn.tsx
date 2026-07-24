@@ -4,6 +4,8 @@ import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/types/leads";
 import type { Stage } from "@/lib/kanban/types";
+import { resolveLeadOwner } from "@/lib/kanban/owner";
+import type { AssignableAgent } from "@/hooks/kanban/useAssignableAgents";
 import { KanbanCard } from "./KanbanCard";
 
 interface StageColumnProps {
@@ -12,6 +14,8 @@ interface StageColumnProps {
   pipelineId: string;
   /** owner_user_id → nome, resolvido no board. */
   ownerNames?: Map<string, string | null>;
+  /** owner_agent_id → agente (nome + versão publicada), resolvido no board. */
+  agentsById?: Map<string, AssignableAgent>;
   selectedLeadIds?: Set<string>;
   onSelect?: (leadId: string, additive: boolean) => void;
 }
@@ -33,6 +37,7 @@ export function StageColumn({
   leads,
   pipelineId,
   ownerNames,
+  agentsById,
   selectedLeadIds,
   onSelect,
 }: StageColumnProps) {
@@ -82,11 +87,7 @@ export function StageColumn({
                 lead={lead}
                 index={idx}
                 pipelineId={pipelineId}
-                ownerName={
-                  lead.owner_user_id
-                    ? ownerNames?.get(lead.owner_user_id) ?? null
-                    : null
-                }
+                owner={resolveLeadOwner(lead, ownerNames, agentsById)}
                 isSelected={selectedLeadIds?.has(lead.id)}
                 onSelect={onSelect}
               />

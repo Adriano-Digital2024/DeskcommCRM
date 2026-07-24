@@ -6,6 +6,12 @@
  */
 export type LeadStatus = "open" | "won" | "lost";
 
+/**
+ * 0070 — o dono do negócio é humano ou agente de IA (mesmo padrão de
+ * `conversations.assignee_kind`, 0032). `null` = sem dono.
+ */
+export type OwnerKind = "user" | "ai" | null;
+
 export interface Lead {
   id: string;
   organization_id: string;
@@ -20,6 +26,10 @@ export interface Lead {
   value_cents: number | null;
   currency: string | null;
   owner_user_id: string | null;
+  /** 0070: quem é dono do negócio — humano, agente de IA, ou ninguém. */
+  owner_kind: OwnerKind;
+  /** 0070: identidade do agente dono (ai_agents.id), nunca a versão. */
+  owner_agent_id: string | null;
   assigned_at: string | null;
   last_activity_at: string | null;
   expected_close_date: string | null;
