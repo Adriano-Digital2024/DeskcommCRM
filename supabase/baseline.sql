@@ -402,10 +402,14 @@ begin
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('messages', v_count);
 
-  -- 4. crm_lead_activities — strip both payload and metadata (jsonb may contain message bodies / contact info)
+  -- 4. crm_lead_activities — strip payload, metadata E reason (migration 0071).
+  --    `reason` é texto livre escrito por LLM sobre a conversa do lead: supor que
+  --    nunca conterá um nome é a suposição que falha. `evidence` NÃO é limpa —
+  --    guarda só ids, e as linhas apontadas são redigidas por conta própria.
   update crm_lead_activities set
     payload = '{}'::jsonb,
-    metadata = '{}'::jsonb
+    metadata = '{}'::jsonb,
+    reason = null
   where organization_id = p_organization_id
     and (
       contact_id = p_contact_id
@@ -4055,7 +4059,10 @@ end $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['messages','conversations','crm_leads','ai_agents','ai_agent_runs','ai_knowledge_sources']
+  -- crm_lead_activities (migration 0071): o dossiê assina a timeline filtrada
+  -- por lead_id (§3.5). O board não assina esta tabela — ele escuta crm_leads
+  -- por pipeline_id, e toda atividade toca o lead via fn_update_last_activity_at.
+  foreach t in array array['messages','conversations','crm_leads','ai_agents','ai_agent_runs','ai_knowledge_sources','crm_lead_activities']
   loop
     if not exists (
       select 1 from pg_publication_tables
@@ -6939,3 +6946,182 @@ begin
 
   return new;
 end$$;
+
+
+-- ---- crm_lead_activities: barramento único da vida do lead (migration 0071) ----
+-- Wave 3, bloco 1 do CRM Vivo. actor_kind/actor_agent_id/reason/evidence +
+-- stage_changed_at em crm_leads. Realtime desta tabela entra pelo array do loop
+-- de publicação, acima.
+--
+-- FRONTEIRA DIRC: source_module/source_id = O QUE ORIGINOU (um ponteiro);
+-- evidence = O QUE SUSTENTA (N referências). evidence nunca repete o source_id.
+--
+-- Idempotente e AUTO-CURATIVO: o backfill lê actor_kind/reason de metadata (onde
+-- o orquestrador de handoff já os grava hoje) ANTES de a constraint existir, e
+-- degrada para 'system' a linha marcada como 'ai' sem lastro nenhum — senão o
+-- update.sh de um clone quebraria ao criar a constraint.
+
+-- ---------------------------------------------------------------------------
+-- A. Colunas do barramento
+-- ---------------------------------------------------------------------------
+
+-- 'contact' é a PESSOA do outro lado — não 'lead': deste lado da casa lead é o
+-- NEGÓCIO (crm_leads), então 'lead' diria "o negócio falou". Também não
+-- adotamos 'agent'/'human' de agent_case_events: aqui 'agent' já é papel humano
+-- de RBAC (viewer < agent < manager < admin) e colidiria.
+alter table public.crm_lead_activities
+  add column if not exists actor_kind text
+  check (actor_kind in ('user','ai','system','rule','contact'));
+
+alter table public.crm_lead_activities
+  add column if not exists actor_agent_id uuid
+  references public.ai_agents(id) on delete set null;
+
+-- O PORQUÊ em texto legível por humano — é o que a timeline mostra embaixo da
+-- linha, e o que torna a decisão da IA discutível em vez de mágica.
+alter table public.crm_lead_activities
+  add column if not exists reason text;
+
+-- O LASTRO: {"run_ids": [...], "trace_ids": [...]} — mesmo formato de
+-- flywheel_distiller_proposals.evidence.
+alter table public.crm_lead_activities
+  add column if not exists evidence jsonb;
+
+comment on column public.crm_lead_activities.actor_kind is
+  'Quem agiu: user (humano do time) | ai (agente) | system (o produto) | rule (automação) | contact (a pessoa atendida). NUNCA "lead": lead aqui é o negócio.';
+comment on column public.crm_lead_activities.evidence is
+  'O que SUSTENTA a atividade: {"run_ids":[],"trace_ids":[]} (N referências). Não confundir com source_module/source_id, que é O QUE ORIGINOU (um ponteiro). evidence nunca repete o source_id — origem não é prova.';
+comment on column public.crm_lead_activities.reason is
+  'Por que esta atividade existe, em texto legível. Sem PII: é exibido na timeline e exportado no LGPD.';
+
+-- ---------------------------------------------------------------------------
+-- B. Backfill A PARTIR DO JSONB — antes de qualquer default e antes da
+--    constraint (doutrina de migrations §8).
+--
+--    actor_kind e reason JÁ são gravados hoje dentro de metadata
+--    (lib/ai/handoff/orchestrator.ts). Backfillar tudo como 'system' apagaria
+--    informação que já existe — seria perda de dado disfarçada de migration.
+-- ---------------------------------------------------------------------------
+
+-- ORDEM IMPORTA: o lastro sobe ANTES do ator. Promover para 'ai' e degradar
+-- depois funciona na primeira aplicação (a constraint ainda não existe) e
+-- QUEBRA no update.sh de um clone, onde ela já existe e recusa a linha no ato.
+-- Aqui nenhum estado intermediário inválido chega a existir.
+
+-- 1. Lastro que já existe em metadata sobe para a coluna (nunca inventado).
+update public.crm_lead_activities
+   set evidence = jsonb_strip_nulls(
+         jsonb_build_object(
+           'run_ids',   metadata->'run_ids',
+           'trace_ids', metadata->'trace_ids'
+         ))
+ where evidence is null
+   and (jsonb_typeof(metadata->'run_ids') = 'array'
+     or jsonb_typeof(metadata->'trace_ids') = 'array');
+
+-- 2. Atores que não são a IA: promoção direta.
+update public.crm_lead_activities
+   set actor_kind = metadata->>'actor_kind'
+ where actor_kind is null
+   and metadata->>'actor_kind' in ('user','system','rule','contact');
+
+-- 3. 'ai' só quando há execução que sustente a afirmação.
+update public.crm_lead_activities
+   set actor_kind = 'ai'
+ where actor_kind is null
+   and metadata->>'actor_kind' = 'ai'
+   and (coalesce(jsonb_array_length(evidence->'run_ids'), 0) > 0
+     or coalesce(jsonb_array_length(evidence->'trace_ids'), 0) > 0);
+
+-- 4. 'ai' sem lastro nenhum vira 'system': o registro continua inteiro (o
+--    reason é preservado); o que se recusa a afirmar é a AUTORIA da IA, porque
+--    não há execução que a sustente.
+update public.crm_lead_activities
+   set actor_kind = 'system'
+ where actor_kind is null
+   and metadata->>'actor_kind' = 'ai';
+
+update public.crm_lead_activities
+   set reason = metadata->>'reason'
+ where reason is null
+   and nullif(metadata->>'reason', '') is not null;
+
+-- 5. Quem tem autor humano registrado é 'user' — o dado está na coluna, só não
+--    estava nomeado.
+update public.crm_lead_activities
+   set actor_kind = 'user'
+ where actor_kind is null
+   and performed_by_user_id is not null;
+
+-- 6. Cura de banco onde a constraint ainda não existia e uma linha 'ai' entrou
+--    sem lastro (não alcançável depois que a constraint existe — por isso vem
+--    por último e é no-op no caminho feliz).
+update public.crm_lead_activities
+   set actor_kind = 'system'
+ where actor_kind = 'ai'
+   and coalesce(jsonb_array_length(evidence->'run_ids'), 0) = 0
+   and coalesce(jsonb_array_length(evidence->'trace_ids'), 0) = 0;
+
+-- ---------------------------------------------------------------------------
+-- C. Constraint de lastro (drop+add — re-aplicável)
+--
+--    A doutrina do CORE 3 ("número sem porquê não é gravado") aplicada uma wave
+--    antes: se a IA afirma algo na timeline, existe run_id ou trace_id que
+--    sustente. `jsonb_array_length(...) > 0`, NÃO `evidence ? 'run_ids'` — a
+--    segunda passa com array VAZIO, e lastro vazio não sustenta nada.
+-- ---------------------------------------------------------------------------
+
+alter table public.crm_lead_activities
+  drop constraint if exists crm_lead_activities_ai_needs_evidence;
+alter table public.crm_lead_activities
+  add constraint crm_lead_activities_ai_needs_evidence check (
+    actor_kind <> 'ai'
+    or coalesce(jsonb_array_length(evidence->'run_ids'), 0) > 0
+    or coalesce(jsonb_array_length(evidence->'trace_ids'), 0) > 0
+  );
+
+-- Timeline por ator (o dossiê filtra "só o que a IA fez"), parcial porque a
+-- maioria das linhas não é de agente.
+create index if not exists idx_lead_activities_org_actor_agent
+  on public.crm_lead_activities (organization_id, actor_agent_id, performed_at desc)
+  where actor_agent_id is not null;
+
+-- ---------------------------------------------------------------------------
+-- D. stage_changed_at — de carona, porque esta wave passa a emitir atividade na
+--    mudança de estágio. Sem a coluna, "3d em Negociação" no card continua
+--    medindo tempo SEM RESPOSTA (last_activity_at) e mente sobre o estágio.
+--    Trigger puro: carimba a coluna, sem HTTP (doutrina — trigger nunca faz rede).
+-- ---------------------------------------------------------------------------
+
+alter table public.crm_leads
+  add column if not exists stage_changed_at timestamptz;
+
+-- Bancos existentes: o melhor palito honesto é a criação do lead — nunca
+-- inventar uma data de entrada no estágio que ninguém registrou.
+update public.crm_leads
+   set stage_changed_at = created_at
+ where stage_changed_at is null;
+
+alter table public.crm_leads
+  alter column stage_changed_at set default now();
+
+create or replace function public.fn_stamp_stage_changed_at() returns trigger
+    language plpgsql
+    set search_path to 'public', 'pg_temp'
+    as $$
+begin
+  if tg_op = 'INSERT' then
+    new.stage_changed_at := coalesce(new.stage_changed_at, now());
+  elsif new.stage_id is distinct from old.stage_id then
+    new.stage_changed_at := now();
+  end if;
+  return new;
+end$$;
+
+drop trigger if exists trg_stamp_stage_changed_at on public.crm_leads;
+create trigger trg_stamp_stage_changed_at
+  before insert or update on public.crm_leads
+  for each row execute function public.fn_stamp_stage_changed_at();
+
+comment on column public.crm_leads.stage_changed_at is
+  'Quando o lead entrou no estágio atual. Carimbado por trigger. É o relógio de "tempo no estágio" do card — distinto de last_activity_at, que é "tempo sem resposta".';
