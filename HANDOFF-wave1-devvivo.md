@@ -1,3 +1,7 @@
+# Waves 1 e 2 — DevVivo · 2026-07-24
+
+> Wave 1 (CORE 1 — a IA é dona do negócio) abaixo; **Wave 2 (o slot) no fim do arquivo.**
+
 # Wave 1 — CORE 1: a IA é dona do negócio · 2026-07-24 · implementação concluída
 
 > Bloco do **@DevVivo** para o `HANDOFF-crm-vivo.md` (quem escreve o handoff oficial é o
@@ -132,3 +136,113 @@ e `update` (re-aplicação) verdes — o gate do item 7 da doutrina de migration
 - **Estendi o trigger `lead.assigned` para o agente** (além do contrato). Alternativa descartada: deixar para a Wave 3 — mas aí a coluna nasceria ilha e atribuir a um agente seria mutação silenciosa, exatamente a doença que esta entrega cura.
 - **Rota nova em vez de reusar `GET /api/v1/ai/agents`** (manager+). Alternativa descartada: baixar o RBAC daquela rota — ela expõe `system_prompt`, `guardrails` e `config`; um vendedor não precisa disso para saber de quem é o card.
 - **Filtro por agente reusa o param `?owner=`** com prefixo `agent:`. Alternativa descartada: um segundo seletor "Agente" na FilterBar — dois controles para a mesma pergunta ("de quem é isto?") é o começo do card inflado que a §5 proíbe.
+
+---
+
+# Wave 2 — o slot: card em 3 faixas, altura constante · 2026-07-24 · implementação concluída
+
+## O que entrou
+
+- **`lib/kanban/card-state.ts`** *(novo)* — `CardInput` (o card **não** recebe `Lead`),
+  `resolveCardState()` com a precedência estrita **aguardando > esfriando > normal**, e
+  `buildCardInput()`, o único lugar onde a linha do banco encosta no card. Testes em
+  `card-state.test.ts` (13 casos, incluindo "nunca acumula" e a precedência do cenário 24).
+- **`lib/leads/risk-radar.ts`** — `resolveStageWindow()` exportada: a janela de esfriamento
+  passa a sair de `crm_stages.expected_duration_hours`, com fallback nas constantes atuais e
+  a mesma razão crítico/frio (3×). `classifyRisk` aceita `window` — **um classificador só**.
+- **`components/kanban/KanbanCard.tsx`** — reconstruído: 3 faixas de altura reservada, título
+  em bloco fixo de 2 linhas, valor com linha própria e `—` quando null, faixa do agente
+  presente mesmo vazia, rodapé com dono + tempo no estágio. Tags saem do card (ficam no
+  hover); **uma** tag canônica vira ponto de 6px ao lado do título.
+- **`components/kanban/OwnerBadge.tsx`** — disco do humano agora é **sólido** (`bg-accent` +
+  `text-accent-foreground`): a um metro, humano é mancha escura e agente é anel claro, sem
+  depender da borda. "Sem responsável" ganhou a mesma geometria (disco tracejado + rótulo),
+  para o rodapé não mudar de altura conforme o lead tem dono.
+- **`StageColumn` / `KanbanBoard`** — montam o `CardInput`; o board passa `coolingIds`
+  (do radar) e `canonicalTags` (de `settings`).
+
+## Checklist sistema-vivo (as 7 respostas)
+
+1. **Quem me alimenta:** o board (`/api/v1/pipelines/[id]/board`) para lead/dono/estágio, e
+   **o radar** (`/api/v1/leads/at-risk`) para "esfriando" — a mesma fonte do `/app/radar`.
+2. **Quem eu alimento:** o card e, nas waves 4/5/7, os ramos de cima da precedência. A borda
+   de estado é o que faz o humano olhar para um card e não para outro.
+3. **Log que emito:** nenhum — é camada de apresentação. Quem registra é o handler por trás
+   de cada ação (waves 3 e 4).
+4. **Onde apareço na tela:** o card inteiro. Provado por medição, não a olho.
+5. **Anti-morte:** o estado *esfriando* nasce ligado — um lead parado além da janela do
+   estágio passa a se anunciar no board, não só no radar. Antes, morrer em silêncio era o
+   comportamento padrão do Kanban.
+6. **Continuidade IA↔humano:** o slot é o lugar reservado para a IA falar com o humano
+   (proposta, alerta, score). Nesta wave ele nasce vazio de propósito — as waves 4/5 o
+   preenchem sem mexer no layout.
+7. **Mapa vivo:** não existe nesta base (ver Wave 1); as peças a acrescentar são
+   `resolveCardState` e `resolveStageWindow`.
+
+## Verificação visual — medida por ferramenta
+
+| # | Critério | Antes | Depois |
+|---|---|---|---|
+| Gate | `Set(alturas).size === 1` | 116–154px (**38px** de variação) | **[144]** — `size = 1`, variação **0px** |
+| axe | violações no board | `nested-interactive` + outras | **`[]` — zero violações**, `nested-interactive: 0` |
+| Título 120 caracteres | quebrava o layout | crescia o card | 2 linhas fixas, 144px como os demais |
+| Valor nulo | some | linha some, card encolhe | linha reservada com `—` |
+| 8 tags | 3 tags + "+5" no card | empurrava o rodapé | fora do card, no hover |
+| Tag canônica | — | — | ponto de 6px ao lado do título |
+
+Screenshot: `evidence/wave-2-devvivo-board.png` (11 cards, 4 colunas).
+
+**Como o `nested-interactive` morreu:** o handle de arraste do dnd marca o card como
+`role="button"`, e o menu de ações é outro botão dentro dele. Troquei o papel do container
+para `role="group"` com `aria-label` — o `tabIndex` e os handlers de teclado continuam vindo
+do spread do dnd, então arrastar por teclado segue funcionando. **Sem `aria-hidden`, sem
+suprimir regra.**
+
+**Contraste:** `text-warning` puro dá 3,7:1 em 12px (reprovado). O slot esfriando usa
+`text-warning-fg` — a variante de texto que o `/app/radar` já usava; a cor cheia ficou só na
+borda de estado, que é gráfica. O ponto da tag ganhou `role="img"` (um `span` nu não aceita
+`aria-label` — era o `aria-prohibited-attr`).
+
+## Bugs encontrados
+
+| Sintoma | Causa raiz | Correção | Re-testado |
+|---|---|---|---|
+| Board inteiro caiu em "Algo deu errado" ao abrir | Criei `hooks/kanban/useAtRiskLeads.ts` supondo que a rota devolvia array; ela devolve `{items, counts, total}` — `for...of` sobre objeto explodiu no `useMemo`. **E o hook já existia** (`hooks/leads/useAtRiskLeads.ts`, usado pelo `/app/radar`) | Apaguei o meu e passei a consumir o que já existia | Sim, board volta com 11 cards |
+| `aria-prohibited-attr` (3 nós) | `aria-label` em `span` sem role | `role="img"` no ponto da tag | axe zerado |
+| `color-contrast` (4 nós) | `text-warning` em 12px = 3,7:1 | `text-warning-fg` | axe zerado |
+
+## O que ficou para trás (e por quê)
+
+- **O slot nasce vazio quando não há sinal de IA.** Considerei preenchê-lo com o tempo no
+  estágio, mas ⑤ já mostra isso no rodapé e duplicar violaria a Lei B. A altura fica
+  reservada, que é o que o gate desta wave exige.
+- **"Tempo no estágio" é medido pela última atividade**, não pela entrada no estágio —
+  `crm_leads` não tem `stage_entered_at`. Vira exato quando a Wave 3 registrar a mudança de
+  estágio como atividade.
+- **`resolveStageWindow` ainda não está ligada ao endpoint `/api/v1/leads/at-risk`** (ele usa
+  a janela global). Está exportada e integrada ao `classifyRisk`; plugar no endpoint é a
+  reconciliação da Wave 7.
+- **Densidade "Compacta" não existe no board** — o controle vive no `/app/design`
+  (playground de tokens). Não inventei um toggle novo; se o cenário 6 exige o board em modo
+  compacto, é feature nova e precisa de decisão.
+- **Movimento (pulso, crossfade) não entrou** — é da Wave 3, quando houver evento chegando.
+
+## Débito / risco introduzido
+
+- **Uma chamada a mais no board** (`/api/v1/leads/at-risk`, cache 60s, compartilhada com o
+  radar via mesma queryKey). Se o board ficar pesado num tenant grande, o caminho é o
+  endpoint aceitar `pipeline_id` em vez de filtrar no cliente.
+- **`role="group"` no card** depende de o dnd continuar entregando `tabIndex` pelo spread. Se
+  uma atualização do `@hello-pangea/dnd` mudar isso, o card perde foco por teclado — o teste
+  de acessibilidade da wave pega, desde que continue rodando.
+
+## Decisões tomadas no caminho
+
+- **O board não reclassifica esfriamento**: consome o radar. Alternativa descartada: chamar
+  `classifyRisk` no cliente — teria dado um segundo classificador (rejeição automática de
+  review pelo §3.3) e ignoraria o `in_flight`, marcando como abandonado quem já tem
+  follow-up agendado.
+- **`em_voo` não vira alerta no card.** Se a IA prometeu voltar, não há decisão pendente para
+  o humano; alertar ali seria ruído com cara de urgência.
+- **`CardInput` em vez de `Lead`**: o card responde quatro perguntas, e receber a linha
+  inteira do banco é o convite para a quinta.

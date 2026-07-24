@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/types/leads";
 import type { Stage } from "@/lib/kanban/types";
-import { resolveLeadOwner } from "@/lib/kanban/owner";
+import { buildCardInput } from "@/lib/kanban/card-state";
 import { KanbanCard } from "./KanbanCard";
 
 interface StageColumnProps {
@@ -13,6 +13,10 @@ interface StageColumnProps {
   pipelineId: string;
   /** owner_user_id → nome, resolvido no board. O dono agente vem no lead. */
   ownerNames?: Map<string, string | null>;
+  /** ids que o radar classificou como esfriando (fonte única, não recalculada). */
+  coolingIds?: Set<string>;
+  /** `settings.canonical_tags` do pipeline — a única tag que fica no card. */
+  canonicalTags?: string[];
   selectedLeadIds?: Set<string>;
   onSelect?: (leadId: string, additive: boolean) => void;
 }
@@ -34,6 +38,8 @@ export function StageColumn({
   leads,
   pipelineId,
   ownerNames,
+  coolingIds,
+  canonicalTags,
   selectedLeadIds,
   onSelect,
 }: StageColumnProps) {
@@ -80,10 +86,15 @@ export function StageColumn({
             {leads.map((lead, idx) => (
               <KanbanCard
                 key={lead.id}
+                card={buildCardInput(lead, {
+                  stageName: stage.name,
+                  ownerNames,
+                  coolingIds,
+                  canonicalTags,
+                })}
                 lead={lead}
                 index={idx}
                 pipelineId={pipelineId}
-                owner={resolveLeadOwner(lead, ownerNames)}
                 isSelected={selectedLeadIds?.has(lead.id)}
                 onSelect={onSelect}
               />

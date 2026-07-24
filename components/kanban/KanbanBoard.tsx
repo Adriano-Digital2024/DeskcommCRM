@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBoard } from "@/hooks/kanban/useBoard";
 import { useMoveCard } from "@/hooks/kanban/useMoveCard";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
+import { useAtRiskLeads } from "@/hooks/leads/useAtRiskLeads";
 import { midpoint } from "@/lib/kanban/fractional-indexing";
 import type { Lead } from "@/lib/types/leads";
 import type { Pipeline, Stage } from "@/lib/kanban/types";
@@ -69,6 +70,24 @@ export function KanbanBoard({
     () => new Map((members ?? []).map((m) => [m.user_id, m.full_name])),
     [members],
   );
+  // Esfriando vem do MESMO radar que alimenta /app/radar — o board não
+  // reclassifica nada (contrato §3.3). `em_voo` fica de fora: a IA já prometeu
+  // voltar, então não há decisão pendente para o humano.
+  const { data: atRisk } = useAtRiskLeads();
+  const coolingIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of atRisk?.items ?? []) {
+      if (item.pipeline_id !== pipelineId) continue;
+      if (item.risk === "em_risco" || item.risk === "critico") ids.add(item.id);
+    }
+    return ids;
+  }, [atRisk, pipelineId]);
+  // A tag canônica do pipeline é a ÚNICA que fica no card (como ponto de 6px);
+  // as outras saem para o hover. Já existe em settings — não inventa campo.
+  const canonicalTags = useMemo(() => {
+    const raw = (pipelineProp ?? queryResult.data?.pipeline)?.settings?.canonical_tags;
+    return Array.isArray(raw) ? raw.filter((t): t is string => typeof t === "string") : [];
+  }, [pipelineProp, queryResult.data?.pipeline]);
 
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const selectedLeadIds = useMemo(
@@ -192,6 +211,8 @@ export function KanbanBoard({
             leads={grouped.get(stage.id) ?? []}
             pipelineId={pipelineId}
             ownerNames={ownerNames}
+            coolingIds={coolingIds}
+            canonicalTags={canonicalTags}
             selectedLeadIds={selectedLeadIds}
             onSelect={handleSelect}
           />

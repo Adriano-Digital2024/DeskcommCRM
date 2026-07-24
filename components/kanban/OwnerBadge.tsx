@@ -30,14 +30,16 @@ export function OwnerBadge({
   agentVersion?: number | null;
 }) {
   if (!ownerKind) {
+    // Mesma geometria dos outros dois estados (disco de 24px + rótulo), para o
+    // rodapé do card não mudar de altura conforme o lead tem dono ou não.
     return (
-      <Badge
-        variant="outline"
-        className="border-dashed px-2 text-text-muted"
-        aria-label="Sem responsável"
-      >
-        Sem responsável
-      </Badge>
+      <div className="flex items-center gap-1.5" aria-label="Sem responsável">
+        <span
+          className="h-6 w-6 shrink-0 rounded-full border border-dashed border-border-strong"
+          aria-hidden
+        />
+        <span className="truncate text-xs text-text-muted">Sem responsável</span>
+      </div>
     );
   }
 
@@ -55,8 +57,12 @@ export function OwnerBadge({
       <span
         className={
           isAgent
-            ? "flex h-6 w-6 items-center justify-center rounded-full border border-accent font-mono text-[10px] font-semibold text-accent ring-1 ring-inset ring-accent/40"
-            : "flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-[10px] font-semibold text-accent"
+            ? // Vazado com anel: o fundo do card atravessa o disco.
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-accent bg-surface font-mono text-[10px] font-semibold text-accent ring-1 ring-inset ring-accent/40"
+            : // Preenchido SÓLIDO: a um metro, o humano é uma mancha escura e o
+              // agente é um anel claro. Contraste que não depende da borda —
+              // fundo suave fazia os dois lerem como "círculo claro".
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground"
         }
         aria-hidden
       >

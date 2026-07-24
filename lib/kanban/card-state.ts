@@ -1,0 +1,165 @@
+import { resolveLeadOwner, type OwnerDisplay } from "@/lib/kanban/owner";
+import type { Lead } from "@/lib/types/leads";
+
+/**
+ * O que o card do Kanban precisa saber — e SÓ isso.
+ *
+ * Explicitamente não é `Lead`: o card responde quatro perguntas (quanto vale ·
+ * vai fechar · o que fazer agora · quem está tocando), e receber a linha inteira
+ * do banco é o convite para uma quinta. Quem monta este objeto é o board, que
+ * tem o estágio, a janela de esfriamento e o dono resolvidos.
+ */
+export interface CardInput {
+  id: string;
+  title: string;
+  valueCents: number | null;
+  currency: string | null;
+  owner: OwnerDisplay;
+  /** Nome do estágio atual — o "3d em Negociação" do rodapé. */
+  stageName: string;
+  /** Horas paradas no estágio (board calcula; null = sem sinal). */
+  hoursInStage: number | null;
+  /**
+   * Esfriou pela janela DO ESTÁGIO. Quem classifica é o board, via
+   * `resolveStageWindow` (lib/leads/risk-radar.ts) — o card não classifica nada:
+   * um segundo classificador de esfriamento seria a doença que esta entrega cura.
+   */
+  isCooling: boolean;
+  /** Wave 4 — próxima ação proposta pelo agente, aguardando decisão humana. */
+  nextAction?: { label: string } | null;
+  /** Wave 5 — probabilidade 0-100 com evidência. */
+  probability?: number | null;
+  /** Uma tag canônica do pipeline vira ponto ao lado do título; o resto sai do card. */
+  canonicalTag?: string | null;
+  /** Todas as tags — fora do card, acessíveis no hover. */
+  tags: string[];
+}
+
+/**
+ * Monta o CardInput a partir do que o board tem em mãos. Pura e testável: é
+ * aqui que se decide o que o card VÊ, e é o único lugar onde a linha do banco
+ * encosta no card.
+ */
+export function buildCardInput(
+  lead: Pick<
+    Lead,
+    | "id"
+    | "title"
+    | "value_cents"
+    | "currency"
+    | "tags"
+    | "last_activity_at"
+    | "created_at"
+    | "owner_kind"
+    | "owner_user_id"
+    | "owner_agent_id"
+    | "owner_agent"
+  >,
+  opts: {
+    stageName: string;
+    ownerNames: Map<string, string | null> | undefined;
+    /** ids que o radar (fonte única) classificou como esfriando. */
+    coolingIds?: Set<string>;
+    /** `crm_pipelines.settings.canonical_tags` — só a primeira que o lead tiver. */
+    canonicalTags?: string[];
+    now?: Date;
+  },
+): CardInput {
+  const reference = lead.last_activity_at ?? lead.created_at;
+  const now = opts.now ?? new Date();
+  // ponytail: "tempo no estágio" é medido pela última ATIVIDADE, não pela
+  // entrada no estágio — crm_leads não tem stage_entered_at. Vira exato quando
+  // a Wave 3 registrar a mudança de estágio como atividade.
+  const hoursInStage = reference
+    ? Math.max(0, (now.getTime() - new Date(reference).getTime()) / 3_600_000)
+    : null;
+
+  return {
+    id: lead.id,
+    title: lead.title,
+    valueCents: lead.value_cents,
+    currency: lead.currency,
+    owner: resolveLeadOwner(lead, opts.ownerNames),
+    stageName: opts.stageName,
+    hoursInStage,
+    isCooling: opts.coolingIds?.has(lead.id) ?? false,
+    canonicalTag: (opts.canonicalTags ?? []).find((t) => lead.tags.includes(t)) ?? null,
+    tags: lead.tags,
+  };
+}
+
+/** O conteúdo da faixa ③ — um por vez, nunca acumulado. */
+export type CardSlot =
+  | { type: "awaiting"; label: string }
+  | { type: "cooling"; label: string }
+  | { type: "meter"; probability: number }
+  | { type: "idle" };
+
+export interface CardState {
+  kind: "awaiting" | "cooling" | "normal";
+  /** Cor da borda de estado — a ÚNICA cor do card (Lei C). */
+  border: "accent" | "warning" | "neutral";
+  slot: CardSlot;
+}
+
+/**
+ * Precedência estrita da faixa ③ (contrato de UI §5).
+ *
+ * Um lead pode estar em todos os estados ao mesmo tempo; o card mostra **só o
+ * que exige decisão agora**. Empilhar os três é o que mata o Kanban — o card
+ * não ganha informação, ganha estado.
+ *
+ * Função pura e única: card, radar e testes leem daqui. Precedência
+ * reimplementada dentro de componente é rejeição de review.
+ */
+export function resolveCardState(input: CardInput): CardState {
+  if (input.nextAction?.label) {
+    return {
+      kind: "awaiting",
+      border: "accent",
+      slot: { type: "awaiting", label: input.nextAction.label },
+    };
+  }
+
+  if (input.isCooling) {
+    return {
+      kind: "cooling",
+      border: "warning",
+      slot: { type: "cooling", label: coolingLabel(input.hoursInStage) },
+    };
+  }
+
+  if (typeof input.probability === "number") {
+    return {
+      kind: "normal",
+      border: "neutral",
+      slot: { type: "meter", probability: clampPercent(input.probability) },
+    };
+  }
+
+  // Sem sinal de IA ainda (waves 4 e 5 preenchem): a faixa continua existindo e
+  // ocupando a mesma altura — o card não pode crescer quando o dado chegar.
+  return { kind: "normal", border: "neutral", slot: { type: "idle" } };
+}
+
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+/** "Sem resposta há 6 dias" — dias quando passa de 48h, senão horas. */
+export function coolingLabel(hoursInStage: number | null): string {
+  if (hoursInStage == null) return "Sem resposta";
+  const hours = Math.max(0, Math.floor(hoursInStage));
+  if (hours >= 48) return `Sem resposta há ${Math.floor(hours / 24)} dias`;
+  if (hours >= 1) return `Sem resposta há ${hours}h`;
+  return "Sem resposta";
+}
+
+/** "3d" / "5h" / "agora" — o tempo parado no estágio, no rodapé do card. */
+export function stageAgeLabel(hoursInStage: number | null): string {
+  if (hoursInStage == null) return "";
+  const hours = Math.floor(hoursInStage);
+  if (hours >= 24) return `${Math.floor(hours / 24)}d`;
+  if (hours >= 1) return `${hours}h`;
+  return "agora";
+}
