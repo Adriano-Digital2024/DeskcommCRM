@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Fase 4A-1 — o lado do CONSUMIDOR NATIVO: com AGENT_DISPATCH_CONSUMER='engine'
- * (default do produto fundido), o cron agent-dispatcher é NO-OP mecânico —
- * dispatchAgents NÃO pode ser chamado (senão dois consumidores disputam os
- * mesmos eventos = turno duplicado/perdido). Em 'native', despacha normalmente.
+ * Fase 0 (convergência, spec 2026-07-23): dispatch nativo aposentado — a rota
+ * cron é NO-OP permanente em QUALQUER valor de AGENT_DISPATCH_CONSUMER
+ * ('engine' ou 'native'). O agent-worker (drain) é o único consumidor de
+ * ai_agent.dispatch_requested; dispatchAgents nunca é chamado por este cron.
  */
 
 const dispatchAgentsMock = vi.fn().mockResolvedValue({
@@ -42,17 +42,22 @@ describe("4A-1 — cron agent-dispatcher respeita o dono do dispatch", () => {
     envMock.AGENT_DISPATCH_CONSUMER = "engine";
     const res = await callRoute();
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { skipped?: boolean; reason?: string } };
+    const body = (await res.json()) as { data: { skipped?: boolean; deprecated?: boolean; reason?: string } };
     expect(body.data.skipped).toBe(true);
-    expect(body.data.reason).toBe("dispatch_owned_by_agent_engine");
+    expect(body.data.deprecated).toBe(true);
+    expect(body.data.reason).toBe("native dispatcher retired (Fase 0)");
     expect(dispatchAgentsMock).not.toHaveBeenCalled();
   });
 
-  it("modo 'native': despacha normalmente (deploy sem worker)", async () => {
+  it("modo 'native' (obsoleto, Fase 0): também no-opa, NÃO despacha", async () => {
     envMock.AGENT_DISPATCH_CONSUMER = "native";
     const res = await callRoute();
     expect(res.status).toBe(200);
-    expect(dispatchAgentsMock).toHaveBeenCalledTimes(1);
+    const body = (await res.json()) as { data: { skipped?: boolean; deprecated?: boolean; reason?: string } };
+    expect(body.data.skipped).toBe(true);
+    expect(body.data.deprecated).toBe(true);
+    expect(body.data.reason).toBe("native dispatcher retired (Fase 0)");
+    expect(dispatchAgentsMock).not.toHaveBeenCalled();
   });
 
   it("sem secret: 403 em qualquer modo (nada muda na auth)", async () => {

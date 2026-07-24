@@ -19,6 +19,7 @@ const TYPE_LABEL: Record<ProposalRow["type"], string> = {
   playbook_bullet: "Regra de playbook",
   golden_case: "Caso exemplar",
   reentry_trigger: "Gatilho de reengajamento",
+  org_memory_entry: "Memória da organização",
 };
 
 export function ProposalsPanel({
@@ -36,7 +37,11 @@ export function ProposalsPanel({
   const handleApply = async (p: ProposalRow) => {
     try {
       await apply.mutateAsync(p.id);
-      toast.success("Proposta aplicada como versão nova do agente.");
+      toast.success(
+        p.type === "org_memory_entry"
+          ? "Proposta aplicada como memória da organização."
+          : "Proposta aplicada como versão nova do agente.",
+      );
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Não foi possível aplicar a proposta.");
     }
@@ -90,7 +95,7 @@ export function ProposalsPanel({
                 disabled={apply.isPending}
                 onClick={() => void handleApply(p)}
               >
-                Aplicar como versão nova
+                {p.type === "org_memory_entry" ? "Aplicar como memória da org" : "Aplicar como versão nova"}
               </Button>
             ) : null}
           </li>

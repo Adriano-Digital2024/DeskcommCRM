@@ -18,6 +18,7 @@ export function composeAppliedPrompt(basePrompt: string, bulletContent: string):
 
 export type ApplyProposalResult =
   | { ok: true; versionId: string; versionNumber: number }
+  | { ok: true; entryId: string }
   | { ok: false; code: ApplyProposalErrorCode; message: string };
 
 export type ApplyProposalErrorCode =
@@ -51,9 +52,43 @@ export async function applyProposal(
     return {
       ok: false,
       code: "proposal_already_applied",
-      message: "Proposta já foi aplicada como versão nova.",
+      message: "Proposta já foi aplicada.",
     };
   }
+  if (proposal.type === "org_memory_entry") {
+    const title =
+      proposal.content.length > 80 ? `${proposal.content.slice(0, 77)}...` : proposal.content;
+    const { data: entry, error: entryErr } = await admin
+      .from("org_memory_entries")
+      .insert({
+        organization_id: orgId,
+        title,
+        body: proposal.content,
+        source: "flywheel",
+        status: "active",
+        proposal_id: proposalId,
+        created_by: userId,
+      })
+      .select("id")
+      .single();
+    if (entryErr || !entry) {
+      return { ok: false, code: "internal_error", message: "Falha ao gravar a memória da org." };
+    }
+    const { error: markErr } = await admin
+      .from("flywheel_distiller_proposals")
+      .update({ applied_at: new Date().toISOString(), applied_by: userId })
+      .eq("id", proposalId)
+      .eq("organization_id", orgId);
+    if (markErr) {
+      return {
+        ok: false,
+        code: "internal_error",
+        message: "Memória gravada, mas falhou ao marcar a proposta.",
+      };
+    }
+    return { ok: true, entryId: entry.id };
+  }
+
   if (proposal.type !== "playbook_bullet") {
     return {
       ok: false,

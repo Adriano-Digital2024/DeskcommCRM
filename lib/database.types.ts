@@ -3888,6 +3888,128 @@ export type Database = {
           },
         ]
       }
+      org_memory_entries: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          proposal_id: string | null
+          source: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          proposal_id?: string | null
+          source: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          proposal_id?: string | null
+          source?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_memory_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_memory_entries_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "flywheel_distiller_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_memory_pointers: {
+        Row: {
+          organization_id: string
+          updated_at: string
+          version_id: string
+        }
+        Insert: {
+          organization_id: string
+          updated_at?: string
+          version_id: string
+        }
+        Update: {
+          organization_id?: string
+          updated_at?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_memory_pointers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_memory_pointers_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "org_memory_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_memory_versions: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          version_number: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          version_number: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_memory_versions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           ai_budget_cents: number | null

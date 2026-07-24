@@ -42,6 +42,9 @@ const AGENT: PublishedAgentConfig = {
   multimodalInput: false,
   casesEnabled: false,
   toolIds: [],
+  activeKbVersionId: null,
+  ragTopK: 5,
+  ragSimilarityThreshold: 0.72,
   versionCreatedBy: null,
   agentCreatedBy: null,
 };

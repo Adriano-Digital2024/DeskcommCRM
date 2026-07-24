@@ -180,25 +180,23 @@ export async function startWorker(
   const loopsAbort = new AbortController();
 
   // Drain do event_log (mesmo banco pós-fusão) — transforma dispatch_requested em
-  // jobs. SÓ liga quando este worker é o DONO do dispatch (AGENT_DISPATCH_CONSUMER
-  // = 'engine'); em 'native' o dispatcher EPIC-13 consome e ligar o drain aqui
-  // duplicaria/roubaria turnos (bug real da Fase 4).
-  const drainLoop =
-    env.AGENT_DISPATCH_CONSUMER === 'engine'
-      ? runDrainLoop(
-          pool,
-          {
-            batchSize: env.CRM_DRAIN_BATCH_SIZE,
-            intervalMs: env.CRM_DRAIN_INTERVAL_MS,
-            idleIntervalMs: env.CRM_DRAIN_IDLE_INTERVAL_MS,
-            debounceMs: env.INBOUND_DEBOUNCE_MS,
-            reapTimeoutMs: env.CRM_EVENT_REAP_TIMEOUT_MS,
-          },
-          log,
-          loopsAbort.signal,
-        )
-      : (log.warn('drain DESLIGADO — AGENT_DISPATCH_CONSUMER=native (dispatcher EPIC-13 é o dono)', {}),
-        Promise.resolve());
+  // jobs. Fase 0 (convergência, spec 2026-07-23): o drain liga SEMPRE — o
+  // dispatcher nativo EPIC-13 foi aposentado, o engine é o único consumidor.
+  if (env.AGENT_DISPATCH_CONSUMER === 'native') {
+    log.warn('AGENT_DISPATCH_CONSUMER=native é OBSOLETO (Fase 0) — o drain do engine é o único consumidor; valor ignorado', {});
+  }
+  const drainLoop = runDrainLoop(
+    pool,
+    {
+      batchSize: env.CRM_DRAIN_BATCH_SIZE,
+      intervalMs: env.CRM_DRAIN_INTERVAL_MS,
+      idleIntervalMs: env.CRM_DRAIN_IDLE_INTERVAL_MS,
+      debounceMs: env.INBOUND_DEBOUNCE_MS,
+      reapTimeoutMs: env.CRM_EVENT_REAP_TIMEOUT_MS,
+    },
+    log,
+    loopsAbort.signal,
+  );
 
   // Watchdog de sessão (4A-2): reconcilia channel_sessions×WAHA + redrive de
   // queued. Liga só com as credenciais do WAHA no env (sem elas: warn + off).

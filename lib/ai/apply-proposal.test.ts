@@ -155,4 +155,58 @@ describe("applyProposal — guards e fluxo publish-por-ponteiro", () => {
     expect(r).toMatchObject({ ok: false, code: "publish_failed" });
     expect((r as { message: string }).message).toContain("channel_session_offline");
   });
+
+  it("tipo org_memory_entry → grava org_memory_entries (source=flywheel) e NÃO cria versão de agent", async () => {
+    vi.mocked(publishAgentVersion).mockClear();
+    const ENTRY = "99999999-0000-4000-8000-000000000009";
+    const baseAdmin = stubAdmin({
+      flywheel_distiller_proposals: [
+        { id: PROPOSAL, type: "org_memory_entry", content: "A loja não vende aos domingos.", applied_at: null },
+        {}, // update de marcação applied_*
+      ],
+      org_memory_entries: [{ id: ENTRY }],
+    });
+    // Intercepta insert/update calls para validar payloads
+    const captured: Record<string, unknown> = {};
+    const admin = {
+      from: (table: string) => {
+        const chain = baseAdmin.from(table) as unknown as Record<string, unknown>;
+        const originalInsert = chain.insert as (payload: unknown) => unknown;
+        const originalUpdate = chain.update as (payload: unknown) => unknown;
+        chain.insert = vi.fn((payload: unknown) => {
+          captured[`${table}_insert`] = payload;
+          return originalInsert(payload);
+        });
+        chain.update = vi.fn((payload: unknown) => {
+          captured[`${table}_update`] = payload;
+          return originalUpdate(payload);
+        });
+        return chain as unknown;
+      },
+    } as unknown as SupabaseClient;
+
+    const r = await applyProposal(admin, { orgId: ORG, agentId: AGENT, proposalId: PROPOSAL, userId: USER });
+    expect(r).toEqual({ ok: true, entryId: ENTRY });
+
+    // Valida payload do insert na org_memory_entries
+    const insertPayload = captured["org_memory_entries_insert"] as Record<string, unknown>;
+    expect(insertPayload).toMatchObject({
+      organization_id: ORG,
+      title: "A loja não vende aos domingos.",
+      body: "A loja não vende aos domingos.",
+      source: "flywheel",
+      status: "active",
+      proposal_id: PROPOSAL,
+      created_by: USER,
+    });
+
+    // Valida que a proposta foi marcada como aplicada
+    const updatePayload = captured["flywheel_distiller_proposals_update"] as Record<string, unknown>;
+    expect(updatePayload).toBeDefined();
+    expect(updatePayload?.applied_at).toBeDefined();
+    expect(updatePayload?.applied_by).toBe(USER);
+
+    // Valida que NÃO foi criada versão de agent
+    expect(publishAgentVersion).not.toHaveBeenCalled();
+  });
 });

@@ -4,7 +4,7 @@
  * loop agendado do worker chamam o MESMO runFlywheelOnce. Gate humano
  * inegociável: propostas só viram comportamento quando o dono publica na tela.
  */
-import pg from 'pg';
+import type pg from 'pg';
 
 import { runModelCall, type LlmEdgeConfig } from '../edge/llm/run-model-call';
 import type { Logger } from '../obs/logger';
@@ -102,7 +102,10 @@ function distillerPrompt(missingFacts: string[]): string {
     'Causa raiz típica: o agente consolida notas com "supersedes" apagando fatos de OUTRO assunto.',
     'Proponha UM único bullet de playbook, em pt-BR, imperativo, ≤3 linhas, que previna essa classe',
     'de falha sem proibir consolidação legítima. NÃO cite dados do lead.',
-    'Responda SOMENTE JSON: {"content": string}',
+    'Decida também o ESCOPO do aprendizado: "org" quando vale para TODO atendimento da organização',
+    '(política, tom de voz, fato do negócio — ex.: "a loja não vende aos domingos"); "agent" quando é',
+    'específico do comportamento deste agente.',
+    'Responda SOMENTE JSON: {"content": string, "scope": "agent" | "org"}',
   ].join('\n');
 }
 
@@ -192,15 +195,18 @@ export async function runFlywheelOnce(
         },
         { log },
       );
-      const proposal = parseJson<{ content: string }>(distilled.result.text);
+      const proposal = parseJson<{ content: string; scope?: string }>(distilled.result.text);
+      const isOrg = proposal.scope?.toLowerCase().trim() === 'org';
       await pool.query(
         `insert into flywheel_distiller_proposals
            (organization_id, run_id, dataset, type, target, content, evidence)
-         values ($1,$2,$3,'playbook_bullet','tenant',$4,$5)`,
+         values ($1,$2,$3,$4,$5,$6,$7)`,
         [
           turn.organization_id,
           runId,
           DATASET,
+          isOrg ? 'org_memory_entry' : 'playbook_bullet',
+          isOrg ? 'org' : 'tenant',
           proposal.content,
           JSON.stringify({ trace_ids: [turn.job_id], dimension: DIMENSION, verdict_run_id: runId }),
         ],

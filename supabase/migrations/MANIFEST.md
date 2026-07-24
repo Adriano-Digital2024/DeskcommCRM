@@ -65,6 +65,7 @@ Migrations applied to Supabase project `rrydmwnporysaiysiztn` (sa-east-1, Postgr
 | `20260722160000` | `0062_conversation_snooze` | Colunas snooze_* em conversations + kind snooze_expired em agent_inbox_items (Onda 5.3). NNNN=0062 (0061 tomado por `feat/followup-flows` concorrentemente — verificado contra todas as branches/worktrees locais). |
 | `20260723120000` | `0063_conversation_notes` | Tabela `conversation_notes` (notas internas de conversa, visíveis só ao time, RLS select/write) — Onda 5.2. |
 | `20260724000000` | `0066_human_cases` | Tabelas `agent_cases` + `agent_case_events` (loop assíncrono IA↔humano, spec 15) + `ai_agent_versions.cases_enabled` + CHECKs de `job_queue.kind`/coerência e `cron_jobs.job_kind` estendidos p/ `case_reply_turn` — Wave 1 casos-humanos. NNNN=0066 (0064/0065 tomados na `main`/`feat/followup-flows` concorrentemente — verificado contra todas as branches remotas). |
+| `20260724010000` | `0067_org_memory` | Épico Harness (F1): memória geral da org — `org_memory_versions` (doc-mãe imutável, padrão playbook 0004), `org_memory_pointers` (1 ponteiro/org), `org_memory_entries` (aprendizados manual/flywheel, status proposed/active/archived, FK proposal_id). Check de `flywheel_distiller_proposals.type` ganha `org_memory_entry`. RLS `tenant_isolation_*_all` nas 3 tabelas. NNNN=0067 (último era 0066 — `20260724000000_0066_human_cases.sql` em outra branch local; verificado via `git ls-tree` em TODAS as branches, não só `main`/`HEAD`). `database.types.ts` regenerado. |
 
 ## Reproducibility
 

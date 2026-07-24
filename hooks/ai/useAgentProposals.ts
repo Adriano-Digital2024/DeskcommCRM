@@ -6,7 +6,7 @@ export interface ProposalRow {
   id: string;
   run_id: string;
   dataset: string;
-  type: "playbook_bullet" | "golden_case" | "reentry_trigger";
+  type: "playbook_bullet" | "golden_case" | "reentry_trigger" | "org_memory_entry";
   target: string;
   content: string;
   evidence: Record<string, unknown>;
@@ -38,6 +38,7 @@ export function useApplyProposal(agentId: string) {
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ["agent-proposals", agentId] });
       void qc.invalidateQueries({ queryKey: ["agent-versions", agentId] });
+      void qc.invalidateQueries({ queryKey: ["org-memory"] });
     },
   });
 }
