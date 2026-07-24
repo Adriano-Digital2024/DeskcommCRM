@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { copyToClipboard } from "@/lib/clipboard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,8 +112,10 @@ export function InviteTeamForm() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    void navigator.clipboard.writeText(u.accept_url);
-                    toast.success("Link copiado.");
+                    void copyToClipboard(u.accept_url).then((ok) => {
+                      if (ok) toast.success("Link copiado.");
+                      else toast.error("Não consegui copiar — selecione e copie o link manualmente.");
+                    });
                   }}
                 >
                   Copiar link
