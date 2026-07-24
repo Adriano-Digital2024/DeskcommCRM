@@ -62,6 +62,7 @@ export interface SkillVersionRow {
 
 /** Skill ativa carregada por ponteiro — o que o runtime resolve no início do run. */
 export interface LoadedSkill {
+  versionId: string;
   name: string;
   description: string;
   body: string;
@@ -149,13 +150,14 @@ export async function setSkillPointer(
  */
 export async function loadSkills(db: Queryable, tenantId: string): Promise<LoadedSkill[]> {
   const { rows } = await db.query<{
+    id: string;
     organization_id: string | null;
     name: string;
     description: string;
     body: string;
     matcher: SkillMatcher;
   }>(
-    `select v.organization_id, v.name, v.description, v.body, v.matcher
+    `select v.id, v.organization_id, v.name, v.description, v.body, v.matcher
      from skill_pointers p
      join skill_versions v on v.id = p.version_id
      where p.organization_id is null or p.organization_id = $1`,
@@ -165,7 +167,7 @@ export async function loadSkills(db: Queryable, tenantId: string): Promise<Loade
   const byName = new Map<string, LoadedSkill>();
   for (const r of rows) {
     if (!byName.has(r.name) || r.organization_id !== null) {
-      byName.set(r.name, { name: r.name, description: r.description, body: r.body, matcher: r.matcher });
+      byName.set(r.name, { versionId: r.id, name: r.name, description: r.description, body: r.body, matcher: r.matcher });
     }
   }
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
