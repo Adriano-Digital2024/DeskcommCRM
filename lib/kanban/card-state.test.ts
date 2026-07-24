@@ -26,6 +26,7 @@ describe("resolveCardState — precedência estrita", () => {
       kind: "normal",
       border: "neutral",
       slot: { type: "idle" },
+      showStageAge: true,
     });
   });
 
@@ -34,7 +35,28 @@ describe("resolveCardState — precedência estrita", () => {
       kind: "normal",
       border: "neutral",
       slot: { type: "meter", probability: 72 },
+      showStageAge: true,
     });
+  });
+
+  // UM relógio por card: enquanto "tempo no estágio" e "tempo sem resposta"
+  // saem os dois de last_activity_at, mostrar ambos é o mesmo número duas vezes.
+  it("esfriando: o slot conta o tempo, o rodapé cala o número", () => {
+    expect(resolveCardState({ ...base, isCooling: true }).showStageAge).toBe(false);
+  });
+
+  it("aguardando e normal: o rodapé mantém o relógio", () => {
+    expect(resolveCardState({ ...base, nextAction: { label: "Ligar" } }).showStageAge).toBe(true);
+    expect(resolveCardState({ ...base, probability: 10 }).showStageAge).toBe(true);
+    expect(resolveCardState(base).showStageAge).toBe(true);
+  });
+
+  it("esfriando E aguardando: quem manda é o slot de cima, e o relógio volta", () => {
+    // "Aguardando você" não conta tempo, então o rodapé volta a mostrá-lo —
+    // continua havendo exatamente UM relógio no card.
+    const r = resolveCardState({ ...base, isCooling: true, nextAction: { label: "Ligar" } });
+    expect(r.kind).toBe("awaiting");
+    expect(r.showStageAge).toBe(true);
   });
 
   it("esfriando vence o score", () => {

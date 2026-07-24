@@ -160,11 +160,9 @@ export function KanbanCard({
               ownerName={card.owner.name}
               agentVersion={card.owner.agentVersion}
             />
-            {age && (
-              <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-text-muted">
-                {age} em {card.stageName}
-              </span>
-            )}
+            <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-text-muted">
+              {state.showStageAge && age ? `${age} em ${card.stageName}` : `em ${card.stageName}`}
+            </span>
           </div>
         </div>
       )}

@@ -100,6 +100,15 @@ export interface CardState {
   /** Cor da borda de estado — a ÚNICA cor do card (Lei C). */
   border: "accent" | "warning" | "neutral";
   slot: CardSlot;
+  /**
+   * O rodapé mostra o número de horas/dias, ou só o nome do estágio.
+   *
+   * UM relógio por card: hoje "sem resposta há 6 dias" e "6d em Proposta
+   * enviada" saem os dois de `last_activity_at`, então mostrar os dois é o
+   * mesmo número duas vezes — ruído com cara de informação. Quando o slot já
+   * conta o tempo, o rodapé fica só com o lugar ("em Proposta enviada").
+   */
+  showStageAge: boolean;
 }
 
 /**
@@ -118,6 +127,7 @@ export function resolveCardState(input: CardInput): CardState {
       kind: "awaiting",
       border: "accent",
       slot: { type: "awaiting", label: input.nextAction.label },
+      showStageAge: true,
     };
   }
 
@@ -126,6 +136,8 @@ export function resolveCardState(input: CardInput): CardState {
       kind: "cooling",
       border: "warning",
       slot: { type: "cooling", label: coolingLabel(input.hoursInStage) },
+      // O slot já contou o tempo; repetir no rodapé é o mesmo dado duas vezes.
+      showStageAge: false,
     };
   }
 
@@ -134,12 +146,13 @@ export function resolveCardState(input: CardInput): CardState {
       kind: "normal",
       border: "neutral",
       slot: { type: "meter", probability: clampPercent(input.probability) },
+      showStageAge: true,
     };
   }
 
   // Sem sinal de IA ainda (waves 4 e 5 preenchem): a faixa continua existindo e
   // ocupando a mesma altura — o card não pode crescer quando o dado chegar.
-  return { kind: "normal", border: "neutral", slot: { type: "idle" } };
+  return { kind: "normal", border: "neutral", slot: { type: "idle" }, showStageAge: true };
 }
 
 function clampPercent(value: number): number {
