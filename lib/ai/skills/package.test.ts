@@ -59,4 +59,36 @@ describe('parseSkillPackage', () => {
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.error.code).toBe('skill_too_many_files');
   });
+
+  it('extensão de asset fora da whitelist é recusada', () => {
+    const out = parseSkillPackage(makeZip({ 'SKILL.md': validSkillMd, 'assets/x.html': '<p>oi</p>' }));
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error.code).toBe('skill_asset_extension_invalid');
+  });
+
+  it('caminho fora de references/ e assets/ é recusado', () => {
+    const out = parseSkillPackage(makeZip({ 'SKILL.md': validSkillMd, 'docs/readme.md': '# oi' }));
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error.code).toBe('skill_unexpected_path');
+  });
+
+  it('zip-bomb (entrada declara >1MB descompactado) é recusado ANTES de inflar', () => {
+    const zip = makeZip({ 'SKILL.md': validSkillMd, 'references/big.md': 'a'.repeat(1_100_000) });
+    const out = parseSkillPackage(zip);
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error.code).toBe('skill_file_too_large');
+  });
+
+  it('frontmatter com palavra entre aspas vira palavra sem aspas', () => {
+    const withQuotes = `---
+name: frete-gratis
+description: Explica a política de frete grátis ao cliente.
+matcher:
+  any_keywords: ["frete", 'entrega']
+---
+corpo`;
+    const out = parseSkillPackage(makeZip({ 'SKILL.md': withQuotes }));
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.pkg.matcher.any_keywords).toEqual(['frete', 'entrega']);
+  });
 });

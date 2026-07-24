@@ -65,7 +65,7 @@ function parseFrontmatter(raw: string): { name?: string; description?: string; m
     if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) return [];
     const inner = trimmed.slice(1, -1).trim();
     if (inner === '') return [];
-    return inner.split(',').map((s) => s.trim());
+    return inner.split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''));
   };
 
   for (let i = 0; i < lines.length; i += 1) {
@@ -95,12 +95,42 @@ function parseFrontmatter(raw: string): { name?: string; description?: string; m
 }
 
 export function parseSkillPackage(zipBytes: Uint8Array): ParseSkillResult {
+  // Guard contra zip-bomb: fflate expõe o tamanho DECLARADO (do header local do zip) a este
+  // filtro ANTES de inflar cada entrada — recusamos aqui, sem nunca descomprimir o conteúdo
+  // malicioso na memória. Resíduo: um header mentiroso (originalSize menor que o real) ainda
+  // passaria por este filtro — por isso os checks de byteLength pós-unzip abaixo permanecem
+  // como defesa em profundidade.
+  let oversize: { code: 'skill_file_too_large' | 'skill_package_too_large'; message: string } | undefined;
+  let declaredTotal = 0;
   let unzipped: Record<string, Uint8Array>;
   try {
-    unzipped = unzipSync(zipBytes);
+    unzipped = unzipSync(zipBytes, {
+      filter: (f) => {
+        if (oversize !== undefined) return false; // já recusado, não gasta CPU inflando o resto
+        if (f.originalSize > MAX_FILE_BYTES) {
+          oversize = {
+            code: 'skill_file_too_large',
+            message: `O arquivo "${f.name}" tem mais de ${MAX_FILE_BYTES / 1024 / 1024}MB.`,
+          };
+          return false;
+        }
+        declaredTotal += f.originalSize;
+        if (declaredTotal > MAX_TOTAL_BYTES) {
+          oversize = {
+            code: 'skill_package_too_large',
+            message: `O pacote descompactado passa de ${MAX_TOTAL_BYTES / 1024 / 1024}MB.`,
+          };
+          return false;
+        }
+        return true;
+      },
+    });
   } catch {
     return fail('skill_zip_invalid', 'Não consegui abrir o arquivo .zip — verifique se o pacote não está corrompido.');
   }
+  // O filtro acima descarta entradas silenciosamente — não podemos seguir como se o
+  // arquivo parcial resultante fosse o pacote completo.
+  if (oversize !== undefined) return fail(oversize.code, oversize.message);
 
   const entryNames = Object.keys(unzipped).filter((p) => !p.endsWith('/'));
 
