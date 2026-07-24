@@ -4002,6 +4002,51 @@ export type Database = {
           },
         ]
       }
+      skill_activations: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string | null
+          organization_id: string
+          skill_name: string
+          skill_version_id: string | null
+          trigger: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          organization_id: string
+          skill_name: string
+          skill_version_id?: string | null
+          trigger: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          organization_id?: string
+          skill_name?: string
+          skill_version_id?: string | null
+          trigger?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_activations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_activations_skill_version_id_fkey"
+            columns: ["skill_version_id"]
+            isOneToOne: false
+            referencedRelation: "skill_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_pointers: {
         Row: {
           name: string
@@ -4043,7 +4088,9 @@ export type Database = {
           body: string
           created_at: string
           description: string
+          forked_from_version_id: string | null
           id: string
+          manifest: Json
           matcher: Json
           name: string
           organization_id: string | null
@@ -4052,7 +4099,9 @@ export type Database = {
           body: string
           created_at?: string
           description: string
+          forked_from_version_id?: string | null
           id?: string
+          manifest?: Json
           matcher?: Json
           name: string
           organization_id?: string | null
@@ -4061,12 +4110,21 @@ export type Database = {
           body?: string
           created_at?: string
           description?: string
+          forked_from_version_id?: string | null
           id?: string
+          manifest?: Json
           matcher?: Json
           name?: string
           organization_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "skill_versions_forked_from_version_id_fkey"
+            columns: ["forked_from_version_id"]
+            isOneToOne: false
+            referencedRelation: "skill_versions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "skill_versions_organization_id_fkey"
             columns: ["organization_id"]

@@ -150,6 +150,11 @@ beforeAll(() => {
           insert into public.org_memory_entries (organization_id, title, body, source)
             values (v_org, 'RLS invariant entry', 'RLS invariant body', 'manual');
         end if;
+
+        if not exists (select 1 from public.skill_activations where organization_id = v_org) then
+          insert into public.skill_activations (organization_id, skill_name, trigger)
+            values (v_org, 's', 'hard');
+        end if;
       end loop;
     end
     $seed$;
@@ -163,6 +168,7 @@ const TABLES = [
   "crm_leads",
   "org_memory_versions",
   "org_memory_entries",
+  "skill_activations",
 ] as const;
 
 describe("RLS tenant isolation (fn_user_org_ids pattern)", () => {
