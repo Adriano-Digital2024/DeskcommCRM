@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, Brain, PlugsConnected, ChartBar, WebhooksLogo } from "@/lib/ui/icons";
+import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, Brain, PuzzlePiece, PlugsConnected, ChartBar, WebhooksLogo, ClockCountdown } from "@/lib/ui/icons";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -19,6 +19,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/app/inbox", label: "Inbox", icon: Inbox },
+  { href: "/app/radar", label: "Radar", icon: ClockCountdown },
   { href: "/app/connections", label: "Conexões", icon: PlugsConnected, healthDot: true },
   { href: "/app/kanban", label: "Kanban", icon: Kanban },
   { href: "/app/contacts", label: "Contatos", icon: Users },
@@ -27,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/lgpd/requests", label: "LGPD", icon: ScalesSimple, permission: "lgpd.execute_redact" },
   { href: "/app/ai/agents", label: "Agentes IA", icon: Robot, permission: "ai.agents.view" },
   { href: "/app/ai/memory", label: "Memória da IA", icon: Brain, permission: "ai.memory.view" },
+  { href: "/app/ai/skills", label: "Skills da IA", icon: PuzzlePiece, permission: "ai.skills.view" },
   { href: "/app/webhooks", label: "Webhooks", icon: WebhooksLogo, permission: "webhooks.manage" },
   { href: "/app/settings", label: "Configurações", icon: Gear },
 ];
@@ -37,6 +39,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
   const canLgpd = usePermission("lgpd.execute_redact");
   const canAiAgents = usePermission("ai.agents.view");
   const canAiMemory = usePermission("ai.memory.view");
+  const canAiSkills = usePermission("ai.skills.view");
   const canWebhooks = usePermission("webhooks.manage");
 
   return (
@@ -55,6 +58,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
           if (item.permission === "lgpd.execute_redact") return canLgpd;
           if (item.permission === "ai.agents.view") return canAiAgents;
           if (item.permission === "ai.memory.view") return canAiMemory;
+          if (item.permission === "ai.skills.view") return canAiSkills;
           if (item.permission === "webhooks.manage") return canWebhooks;
           return true;
         }).map((item) => {

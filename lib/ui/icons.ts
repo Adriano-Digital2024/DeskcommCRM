@@ -86,4 +86,7 @@ export {
   ArrowRight,
   SignOut,
   WebhooksLogo,
+  PuzzlePiece,
+  UploadSimple,
+  DownloadSimple,
 } from "@phosphor-icons/react/dist/ssr";
