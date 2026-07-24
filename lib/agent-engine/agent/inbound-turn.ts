@@ -73,6 +73,7 @@ import { loadPlaybook } from './playbook';
 import { loadPublishedAgentConfig, matchesHandoffKeyword } from './agent-config';
 import {
   hasOpenCaseForContact,
+  getCaseAwaitingLead,
   openCase,
   provideCaseUpdate,
   openHumanCaseInputSchema,
@@ -1343,7 +1344,24 @@ export async function runAgentTurn(
   const splitHint = (agentConfig?.splitMessages ?? false)
     ? 'Responda em mensagens curtas e naturais, uma ideia por mensagem — como uma pessoa digitando no WhatsApp. Prefira várias mensagens curtas a um texto único e longo.'
     : '';
-  const openingSuffixes = [matchedSkillsBlock, stageHintBlock, splitHint].filter((b) => b !== '');
+  // Spec 15: o `case_id` real do caso 'awaiting_lead' desta conversa, se houver — sem
+  // isso o modelo nunca consegue chamar provide_case_update quando o lead simplesmente
+  // responde (o caminho comum; case_reply_turn só cobre a AÇÃO do humano). Sufixo
+  // por-lead (volátil) — nunca no prefixo cacheável (o case_id muda a cada caso).
+  const caseAwaitingLead =
+    agentConfig !== null && agentConfig.casesEnabled
+      ? await getCaseAwaitingLead(pool, tenantId, input.conversationId)
+      : null;
+  const caseAwaitingLeadBlock =
+    caseAwaitingLead !== null
+      ? `## Caso aguardando resposta deste cliente\n` +
+        `Há um caso aberto (case_id: ${caseAwaitingLead.id}) esperando uma informação dele: "${caseAwaitingLead.ask}". ` +
+        `Se a mensagem dele responde a isso, chame provide_case_update com este case_id e a informação recebida — ` +
+        `NÃO diga que já repassou/avisou o responsável sem chamar a tool.`
+      : '';
+  const openingSuffixes = [matchedSkillsBlock, stageHintBlock, splitHint, caseAwaitingLeadBlock].filter(
+    (b) => b !== '',
+  );
   const openingText =
     openingSuffixes.length === 0 ? openingBase : `${openingBase}\n\n${openingSuffixes.join('\n\n')}`;
   // Onda 3 (aprimoramento): mídia inbound recente vira part nativa (image/file) SÓ para

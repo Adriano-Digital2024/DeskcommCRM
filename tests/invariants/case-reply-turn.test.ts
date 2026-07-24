@@ -42,12 +42,14 @@ const CONTACT = "eeeeeeee-0000-4000-8000-000000000002";
 const SESSION = "eeeeeeee-0000-4000-8000-000000000003";
 const CONV = "eeeeeeee-0000-4000-8000-000000000004";
 
-// awaiting_human — usado no fluxo de sucesso action=resolved
+// resolved — a rota (Wave 5) já commitou a transição ANTES/COM o enqueue deste
+// job; por isso o status aqui é o PÓS-transição (resolved), não awaiting_human.
 const CASE_RESOLVED_FLOW = "eeeeeeee-1000-4000-8000-000000000001";
-// awaiting_lead — usado no fluxo de sucesso action=need_lead_info
+// awaiting_lead — idem, pós-transição de need_lead_info
 const CASE_NEED_INFO_FLOW = "eeeeeeee-1000-4000-8000-000000000002";
-// resolved (terminal) — a resposta chegou tarde, caso já fechado por outra via
-const CASE_TERMINAL = "eeeeeeee-1000-4000-8000-000000000003";
+// escalated — mismatch genuíno: um job action=resolved chega mas o caso foi
+// escalado por outra via (corrida real) → status ≠ EXPECTED_STATUS_FOR_ACTION
+const CASE_STATUS_MISMATCH = "eeeeeeee-1000-4000-8000-000000000003";
 // awaiting_human — recebe uma action fora do escopo de re-entrada (ex.: escalate)
 const CASE_INVALID_ACTION = "eeeeeeee-1000-4000-8000-000000000004";
 const CASE_NONEXISTENT = "eeeeeeee-1000-4000-8000-00000000dead";
@@ -83,9 +85,9 @@ beforeAll(async () => {
       [id, ORG, CONV, status],
     );
   };
-  await insertCase(CASE_RESOLVED_FLOW, "awaiting_human");
+  await insertCase(CASE_RESOLVED_FLOW, "resolved");
   await insertCase(CASE_NEED_INFO_FLOW, "awaiting_lead");
-  await insertCase(CASE_TERMINAL, "resolved");
+  await insertCase(CASE_STATUS_MISMATCH, "escalated");
   await insertCase(CASE_INVALID_ACTION, "awaiting_human");
 });
 
@@ -199,10 +201,10 @@ describe("case_reply_turn — re-entrada do agente pela resposta do humano", () 
     expect(opening).toContain(CASE_NEED_INFO_FLOW);
   });
 
-  it("caso terminal (resolved) → no-op: não chama runAgentTurn, não crasha, e loga", async () => {
+  it("status não bate com o esperado pra ação (ex.: resolved chega mas o caso foi escalado por outra via) → no-op: não chama runAgentTurn, não crasha, e loga", async () => {
     const log = fakeLogger();
     const handler = createCaseReplyTurnHandler(fakeDeps(log));
-    const job = fakeJob(CASE_TERMINAL, "resolved", "resposta tardia — caso já fechado por outra via");
+    const job = fakeJob(CASE_STATUS_MISMATCH, "resolved", "resposta tardia — caso escalado por outra via");
 
     await expect(handler(job, pool, { workerId: "test-worker" })).resolves.toBeUndefined();
     expect(runAgentTurn).not.toHaveBeenCalled();

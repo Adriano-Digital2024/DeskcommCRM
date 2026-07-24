@@ -75,6 +75,43 @@ export async function hasOpenCaseForContact(
   return rows[0]?.open === true;
 }
 
+export interface CaseAwaitingLead {
+  id: string;
+  /** O que o HUMANO pediu ao lead (body do evento need_lead_info mais recente) —
+   * NÃO `agent_cases.blocker` (motivo original da IA travar; `markAwaitingLead`
+   * nunca o atualiza — usá-lo aqui daria ao modelo a pergunta ERRADA). */
+  ask: string;
+}
+
+/**
+ * O caso 'awaiting_lead' da conversa (humano pediu algo ao lead), se houver.
+ * Usado no turno normal (inbound_turn) para dar ao modelo o `case_id` real que
+ * `provide_case_update` exige — sem isso o modelo nunca tem como chamar a tool
+ * quando o lead simplesmente responde a mensagem (o caminho comum; case_reply_turn
+ * só cobre a ação do HUMANO, não a resposta do lead). No máximo 1 por conversa
+ * (mesma garantia de `openCase`/dedup).
+ */
+export async function getCaseAwaitingLead(
+  db: Queryable,
+  tenantId: string,
+  conversationId: string,
+): Promise<CaseAwaitingLead | null> {
+  const { rows } = await db.query<CaseAwaitingLead>(
+    `select c.id, e.body as ask
+       from agent_cases c
+       join lateral (
+         select body from agent_case_events
+          where case_id = c.id and kind = 'human_replied' and human_action = 'need_lead_info'
+          order by created_at desc
+          limit 1
+       ) e on true
+      where c.organization_id = $1 and c.conversation_id = $2 and c.status = 'awaiting_lead'
+      limit 1`,
+    [tenantId, conversationId],
+  );
+  return rows[0] ?? null;
+}
+
 export type OpenCaseResult =
   | { ok: true; caseId: string }
   | { ok: false; error: { code: string; message: string } };

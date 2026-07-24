@@ -49,8 +49,19 @@ function isReentryAction(action: string): action is ReentryAction {
   return (REENTRY_ACTIONS as readonly string[]).includes(action);
 }
 
-/** Casos ainda abertos (não fechados) — mesmo conjunto de `human-cases.ts`. */
-const OPEN_CASE_STATUSES = ['awaiting_human', 'awaiting_lead'] as const;
+/**
+ * Status ESPERADO do caso pra cada ação de re-entrada — a rota (Wave 5) faz a
+ * transição + o enqueue no MESMO commit, então quando este job roda o caso JÁ
+ * está no status pós-transição, não mais em `awaiting_human`. `resolved` é
+ * status TERMINAL de propósito (o humano concluiu); checar contra
+ * "ainda aberto" (como antes) descartava TODO envio de conclusão ao lead —
+ * bug real da Wave 7, achado na prova E2E. Um status diferente do esperado
+ * pra aquela action é sinal genuíno de corrida/anomalia → no-op defensivo.
+ */
+const EXPECTED_STATUS_FOR_ACTION: Record<ReentryAction, string> = {
+  resolved: 'resolved',
+  need_lead_info: 'awaiting_lead',
+};
 
 interface CaseConversationRow {
   conversationId: string;
@@ -60,14 +71,15 @@ interface CaseConversationRow {
 /**
  * Resolve a conversa DO CASO (não a mais recente do contato — o followup_turn
  * faz isso, mas um caso já sabe qual é a sua conversa). Retorna null quando o
- * caso não existe, está em estado terminal (resolved/escalated/cancelled) ou a
- * conversa não tem número associado — todos os casos são NO-OP, nunca crash
- * (a resposta do humano pode ter chegado tarde: caso fechado por outra via).
+ * caso não existe, está num status diferente do esperado pra esta `action`
+ * (ver `EXPECTED_STATUS_FOR_ACTION`) ou a conversa não tem número associado —
+ * todos os casos são NO-OP, nunca crash.
  */
 async function resolveCaseConversation(
   pool: pg.Pool,
   tenantId: string,
   caseId: string,
+  action: ReentryAction,
 ): Promise<CaseConversationRow | null> {
   const { rows } = await pool.query<{ status: string; conversation_id: string; channel_session_id: string | null }>(
     `select ac.status, ac.conversation_id, conv.channel_session_id
@@ -81,7 +93,7 @@ async function resolveCaseConversation(
   if (row === undefined) {
     return null;
   }
-  if (!(OPEN_CASE_STATUSES as readonly string[]).includes(row.status) || row.channel_session_id === null) {
+  if (row.status !== EXPECTED_STATUS_FOR_ACTION[action] || row.channel_session_id === null) {
     return null;
   }
   return { conversationId: row.conversation_id, channelSessionId: row.channel_session_id };
@@ -145,7 +157,7 @@ export function createCaseReplyTurnHandler(deps: InboundTurnDeps) {
     }
     const action: ReentryAction = payload.action;
 
-    const caseConversation = await resolveCaseConversation(pool, tenantId, payload.case_id);
+    const caseConversation = await resolveCaseConversation(pool, tenantId, payload.case_id, action);
     if (caseConversation === null) {
       runLog.info('case_reply_turn no-op — caso inexistente, terminal ou sem número associado', {
         action: payload.action,

@@ -23,6 +23,10 @@ const PROMISES: readonly string[] = [
   "um responsável vai te retornar",
   "vou pedir pra equipe liberar",
   "isso quem resolve é o nosso time",
+  // achado na prova E2E real (Wave 7, modelo anthropic real): alvo humano retomado por
+  // PRONOME em vez do substantivo — "Já passo o número do pedido (#48291) para eles
+  // resolverem junto com a reativação da assinatura."
+  "já passo o número do pedido para eles resolverem junto com a reativação",
 ];
 
 // NÃO detectar: ação própria do bot / frase institucional / checar SISTEMA (≠ humano).
@@ -35,6 +39,8 @@ const NON_PROMISES: readonly string[] = [
   "vou verificar seu pedido no sistema",
   "nossa equipe está sempre à disposição",
   "vou anotar aqui",
+  // pronome sem verbo de resolução depois — só "passar pra eles" não é promessa de AÇÃO.
+  "vou passar o recado pra eles mais tarde",
 ];
 
 describe("detectHumanPromise — calibração (spec 15 §10.2)", () => {

@@ -34,6 +34,15 @@ const gap = (n: number): string => `[^.!?\\n]{0,${n}}?`;
 const PATTERNS: readonly RegExp[] = [
   // (1a) encaminhar/passar/acionar/... → alvo humano: "encaminhar pro setor", "acionar o responsavel".
   new RegExp(`\\b(?:encaminh|repass|transfer|acion|escal|direcion|pass|cham)\\w*${gap(20)}\\b${TARGET}\\b`),
+  // (1a-bis) mesmo verbo de encaminhamento, mas o ALVO é retomado por PRONOME (eles/elas)
+  // em vez do substantivo — achado na prova E2E da Wave 7 real: "já passo o pedido pra
+  // eles resolverem" escapava (1a) porque "eles" não é TARGET). Exige um verbo de
+  // RESOLUÇÃO depois do pronome (não só "passar pra eles" — precisa prometer AÇÃO deles).
+  new RegExp(
+    `\\b(?:encaminh|repass|transfer|acion|escal|direcion|pass|cham)\\w*${gap(30)}` +
+      `\\b(?:pra|para|pro|com)\\b${gap(8)}\\b(?:eles|elas)\\b${gap(25)}` +
+      `\\b(?:resolv|retorn|respond|liber|analis|verific|cuid|assum|atend|aprov|confirm|contat|ajud)\\w*`,
+  ),
   // (1b) verbo de CONSULTA + "com" + alvo humano: "verificar com a equipe", "falar com o pessoal".
   //      Exige "com <humano>": "verificar seu pedido no sistema" (sem "com equipe") NÃO casa.
   new RegExp(`\\b(?:verific|fal|confer|confirm|consult|alinh|valid|chec)\\w*${gap(15)}\\bcom\\b${gap(15)}\\b${TARGET}\\b`),
