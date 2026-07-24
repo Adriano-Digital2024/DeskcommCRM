@@ -82,6 +82,7 @@ import {
   renderMatchedSkillBodies,
   renderSkillIndex,
 } from './skills';
+import { readSkillReference, skillHasReferences } from './skill-references';
 import { READ_ONLY_TOOLS, wrapToolsWithBreaker, type ToolBreakerThresholds } from './tool-breaker';
 import { runBeforeSend } from '../guardrails/before-send';
 import type { DisclosureMode } from '../guardrails/disclosure/template';
@@ -195,6 +196,17 @@ export const AGENT_TOOL_DEFS = {
     // vira erro de ENSINO ao modelo, nunca exceção do SDK nem strip silencioso.
     inputSchema: z.object({
       reason: z.string().optional().describe('por que passar ao humano (curto)'),
+    }).passthrough(),
+  },
+  read_skill_reference: {
+    description:
+      'Lê o conteúdo de UMA reference (arquivo de apoio) do pacote de uma skill situacional que já ' +
+      'CASOU neste turno. Use quando o corpo da skill ativa mencionar uma reference e você precisar do ' +
+      'detalhe completo dela. Só funciona para skills ativas AGORA — pedir skill não ativa ou caminho ' +
+      'fora do manifesto dela volta erro.',
+    inputSchema: z.object({
+      skill_name: z.string().min(1).describe('nome da skill ativa neste turno (como aparece no bloco de skills)'),
+      ref_path: z.string().min(1).describe('caminho da reference dentro do pacote da skill'),
     }).passthrough(),
   },
 } as const;
@@ -759,6 +771,41 @@ export async function runAgentTurn(
     runError ??= err;
   };
 
+  // Guideline-matching if-then (F3-09): o SINAL do turno (última mensagem inbound) decide
+  // quais skills disparam. Corpos casados vão no SUFIXO da abertura (situacional, por-lead —
+  // depois do prefixo cacheável); situação neutra ⇒ nenhum corpo (economia de tokens). Os
+  // near-misses (probe sem hard-match) viram candidatos ao golden set, gravados por fs em
+  // runtime (não a tool Write) — só se o dir estiver configurado. Calculado AQUI, ANTES de
+  // montar rawTools (Fase 2): o gate de read_skill_reference precisa do resultado do match
+  // para decidir se a tool entra no turno (mesmo padrão de gate de search_knowledge/
+  // request_human_handoff, feito antes do wrapToolsWithBreaker).
+  const skillSignal = latestInboundSignal(effectiveContext.messages);
+  const skillMatch = matchSkills(skills, skillSignal);
+  const matchedSkillsBlock = renderMatchedSkillBodies(skillMatch.matched);
+  if (deps.knobs.goldenCandidatesDir !== undefined) {
+    await recordSkillMissCandidates(
+      deps.knobs.goldenCandidatesDir,
+      { tenantId, leadId, jobId: job.id, signal: skillSignal, candidates: skillMatch.missCandidates },
+      runLog,
+    );
+  }
+  // Fase 2: telemetria de ativação de skill (hard match + near-miss probe).
+  try {
+    const rows: Array<[string, string | null, string]> = [
+      ...skillMatch.matched.map((s) => [s.name, s.versionId, 'hard'] as [string, string | null, string]),
+      ...skillMatch.missCandidates.map((m) => [m.skill, null, 'probe'] as [string, string | null, string]),
+    ];
+    for (const [name, verId, trig] of rows) {
+      await pool.query(
+        `insert into skill_activations (organization_id, skill_name, skill_version_id, trigger, job_id)
+         values ($1,$2,$3,$4,$5)`,
+        [tenantId, name, verId, trig, job.id],
+      );
+    }
+  } catch (err) {
+    runLog.warn('skill_activations não gravadas', { error: (err instanceof Error ? err.message : String(err)).slice(0, 120) });
+  }
+
   const rawTools: ToolSet = {
     get_lead_context: tool({
       ...AGENT_TOOL_DEFS.get_lead_context,
@@ -1083,6 +1130,30 @@ export async function runAgentTurn(
     });
   }
 
+  // Fase 2 (Task 6): read_skill_reference só entra quando alguma skill CASADA neste
+  // turno carrega references no manifesto (Task 3) — sem isso oferecer a tool seria
+  // ruído. Read-only (tool-breaker.ts); tenant/matched skills vêm do closure
+  // (skillMatch, calculado acima), nunca do payload do modelo.
+  if (skillMatch.matched.some((s) => skillHasReferences(s))) {
+    rawTools.read_skill_reference = tool({
+      ...AGENT_TOOL_DEFS.read_skill_reference,
+      execute: async ({ skill_name, ref_path }) => {
+        try {
+          return await readSkillReference(
+            { admin: deps.crmCfg.supabase },
+            { organizationId: tenantId, matchedSkills: skillMatch.matched, skillName: skill_name, refPath: ref_path },
+          );
+        } catch (err) {
+          noteRunError(err instanceof Error ? err : new Error(String(err)));
+          return {
+            ok: false,
+            error: { code: 'internal_error', message: 'erro interno ao ler a reference da skill — encerre o turno agora.' },
+          };
+        }
+      },
+    });
+  }
+
   // Fase 2B: a tela pode DESLIGAR a tool de handoff do modelo (a detecção
   // determinística de pedido de humano continua ativa — guardrail nunca sai).
   if (agentConfig !== null && !agentConfig.handoffToolEnabled) {
@@ -1125,22 +1196,6 @@ export async function runAgentTurn(
     readOnlyTools: READ_ONLY_TOOLS,
     log: runLog, // os warns dos gates do breaker saem carimbados com o run
   });
-
-  // Guideline-matching if-then (F3-09): o SINAL do turno (última mensagem inbound) decide
-  // quais skills disparam. Corpos casados vão no SUFIXO da abertura (situacional, por-lead —
-  // depois do prefixo cacheável); situação neutra ⇒ nenhum corpo (economia de tokens). Os
-  // near-misses (probe sem hard-match) viram candidatos ao golden set, gravados por fs em
-  // runtime (não a tool Write) — só se o dir estiver configurado.
-  const skillSignal = latestInboundSignal(effectiveContext.messages);
-  const skillMatch = matchSkills(skills, skillSignal);
-  const matchedSkillsBlock = renderMatchedSkillBodies(skillMatch.matched);
-  if (deps.knobs.goldenCandidatesDir !== undefined) {
-    await recordSkillMissCandidates(
-      deps.knobs.goldenCandidatesDir,
-      { tenantId, leadId, jobId: job.id, signal: skillSignal, candidates: skillMatch.missCandidates },
-      runLog,
-    );
-  }
 
   // F3-11: stage-classifier auxiliar. Roda ANTES do turno (modelo BARATO pelo seam
   // agnóstico) e sugere o estágio; a sugestão entra como HINT no SUFIXO por-lead — o modelo

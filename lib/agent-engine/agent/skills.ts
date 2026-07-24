@@ -67,6 +67,13 @@ export interface LoadedSkill {
   description: string;
   body: string;
   matcher: SkillMatcher;
+  /**
+   * Manifesto do pacote instalável (Fase 2 — migration 0068): lista de arquivos
+   * `{ path, size, sha256, kind }` (kind: 'reference' | 'asset'). Skill sem pacote
+   * (body-only) tem manifest `[]`. Consumido por read_skill_reference (inbound-turn.ts)
+   * para validar que um ref_path pedido pelo modelo é conhecido ANTES de tocar storage.
+   */
+  manifest: unknown[];
 }
 
 function countLines(content: string): number {
@@ -175,8 +182,9 @@ export async function loadSkills(db: Queryable, tenantId: string): Promise<Loade
     description: string;
     body: string;
     matcher: SkillMatcher;
+    manifest: unknown[];
   }>(
-    `select v.id, v.organization_id, v.name, v.description, v.body, v.matcher
+    `select v.id, v.organization_id, v.name, v.description, v.body, v.matcher, v.manifest
      from skill_pointers p
      join skill_versions v on v.id = p.version_id
      where p.organization_id is null or p.organization_id = $1`,
@@ -186,7 +194,14 @@ export async function loadSkills(db: Queryable, tenantId: string): Promise<Loade
   const byName = new Map<string, LoadedSkill>();
   for (const r of rows) {
     if (!byName.has(r.name) || r.organization_id !== null) {
-      byName.set(r.name, { versionId: r.id, name: r.name, description: r.description, body: r.body, matcher: r.matcher });
+      byName.set(r.name, {
+        versionId: r.id,
+        name: r.name,
+        description: r.description,
+        body: r.body,
+        matcher: r.matcher,
+        manifest: r.manifest ?? [],
+      });
     }
   }
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
