@@ -23,15 +23,20 @@
 4. case-reply-turn descartava a conclusão (checava "aberto", mas W5 já transicionou) → IA nunca repassava ao lead (`f111c58`).
 5. provide_case_update inalcançável no caminho comum (modelo sem case_id quando o lead responde) (`f111c58`).
 
-### Re-run da prova (24/jul, controller) — bug#4 PROVADO ao vivo, resto BLOQUEADO por crédito
+### PROVA VIVA COMPLETA do bug#4 (24/jul, após Rafael adicionar crédito Anthropic)
+Worker de casos (worktree, código f111c58) isolado como único consumidor (o worker do feat/operacao-visivel foi pausado com autorização e RESTAURADO ao fim). Re-enfileirei `case_reply_turn(resolved)` p/ o caso resolved `be89f3cf` (conversa WhatsApp REAL, sessão E2E Wave12) e o turno rodou INTEIRO: config publicada → tools montadas → `llm: chamada concluída` → cadeia `before_send` (incl. casePromiseGate) → **mensagem OUTBOUND enviada ao lead**, status `sent`, external_id REAL `3EB07D762269E6C12BEDDA`:
+> "Carlos, boa notícia! 🎉 O time financeiro localizou o seu pagamento e reativou a assinatura — o acesso já está liberado! Pode entrar no portal agora e confirmar se está tudo certo?"
+Job `done`, zero erro. **A nota interna do humano virou mensagem pro cliente e FOI ENVIADA.** Com o código velho, o handler daria no-op (bug#4) e nada sairia — Carlos nunca saberia. Bug#4 provado ponta-a-ponta no sistema real.
+
+### (histórico) 1ª tentativa da re-run — bug#4 provado no nível de handler, resto bloqueado por crédito
 - Worker reiniciado com o código f111c58 (o que estava vivo era de 23/jul, pré-fix, no-watch).
 - **PROVA VIVA do bug#4:** re-enfileirei `case_reply_turn(resolved)` p/ o caso resolved `be89f3cf` e o worker NOVO deu **0 no-op / 5 linhas chegando à API** → o handler prosseguiu até `runAgentTurn` num caso resolved (o velho daria no-op antes do LLM). Integração real (worker+banco).
 - **BLOQUEIO (precisa do Rafael):** credencial Anthropic da org e2e SEM CRÉDITO ("credit balance is too low") → nenhum turno de modelo completa. Etapas C (lead→provide_case_update) e D/E (outbound real) não proveis ao vivo até haver crédito OU trocar p/ credencial financiada (a de OpenAI gpt-4o já foi validada em ondas anteriores).
 - Wart pré-existente do ambiente E2E: `ephemeral_token_insert_failed` (duplicate api_tokens prefix) impede as tools MCP DA TELA de montar — não afeta as tools nativas de caso (open/provide/send).
 - bug#2 (toggle) segue travado pelo teste de drift; prova viva no navegador ficou bloqueada (form de agente read-only p/ manager; :3000 é build velho, :3010 é dev com o toggle presente porém desabilitado).
 
-### PRÓXIMO
-Com crédito Anthropic (ou trocando a credencial do agente de teste p/ a de OpenAI financiada), re-rodar C/D/E em conversa REAL provando o outbound ao lead. Tudo o mais está pronto e verde.
+### PRÓXIMO (opcional — o crítico já está provado)
+Falta só provar ao vivo a etapa C isolada (lead responde a um `awaiting_lead` → modelo chama `provide_case_update` sozinho, bug#5): já coberta por teste de integração (test:db) e o caminho está confirmado alcançável (a maquinaria do turno rodou com crédito). Para provar ao vivo: pôr um caso em awaiting_lead + inbound real do lead + observar o bloco getCaseAwaitingLead no turno e a chamada da tool. Requer isolar o worker de casos de novo. Tudo o mais do épico está pronto, revisado e verde.
 **A INVARIANTE CENTRAL (W4) ESTÁ SEGURA** — review opus confirmou: lead nunca recebe promessa-de-humano sem caso aberto (garantia estrutural: fail-safe re-roda a cadeia inteira, zero envio fora dela).
 **Nota de execução:** 2 implementers caíram por session limit (W4 1ª tentativa, W5). Ambos retomados sem perda — a W5 estava verde na árvore e foi verificada/commitada pelo controller.
 **Decisão de escopo:** need_lead_info NÃO arma cron novo (agente já tem schedule_followup); lead_unresponsive→aviso fica como enhancement documentado.
