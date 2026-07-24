@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, PlugsConnected, ChartBar, WebhooksLogo, FlowArrow, FileText } from "@/lib/ui/icons";
+import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, PlugsConnected, ChartBar, WebhooksLogo, FlowArrow, FileText, ClockCountdown } from "@/lib/ui/icons";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -19,6 +19,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/app/inbox", label: "Inbox", icon: Inbox },
+  { href: "/app/radar", label: "Radar", icon: ClockCountdown },
   { href: "/app/connections", label: "Conexões", icon: PlugsConnected, healthDot: true },
   { href: "/app/kanban", label: "Kanban", icon: Kanban },
   { href: "/app/contacts", label: "Contatos", icon: Users },
