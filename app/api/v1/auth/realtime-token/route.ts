@@ -11,6 +11,16 @@
  * A sessão continua morando no cookie httpOnly. Isto entrega apenas o
  * access_token, em memória, para o cliente autenticar o WebSocket — nunca
  * gravado em storage, e some no reload.
+ *
+ * NÃO ESTENDA ESTE ENDPOINT. Ele existe para UM consumidor: o socket do
+ * Realtime. Precisa de token no browser para outra coisa? A resposta certa é
+ * rota de API no servidor, não mais um campo aqui — senão a exceção vira porta.
+ *
+ * `cache-control: no-store` é obrigatório e não é zelo abstrato: o corpo de
+ * sucesso É um token de sessão, e o deploy tem Caddy na frente. Um 200 cacheado
+ * serviria o token de um usuário para outro. O repo já decidiu isso duas vezes
+ * para carga MENOS sensível — as rotas de QR (`channel-sessions/[id]/qr`,
+ * `onboarding/whatsapp/qr`) setam no-store porque um QR é segredo.
  */
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
@@ -19,6 +29,8 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+const NO_STORE = { "cache-control": "no-store, max-age=0" } as const;
 
 export async function GET(_req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -30,7 +42,7 @@ export async function GET(_req: NextRequest): Promise<Response> {
     error: authErr,
   } = await supabase.auth.getUser();
   if (authErr || !user) {
-    return fail("unauthenticated", "Auth required.", 401, { requestId });
+    return fail("unauthenticated", "Auth required.", 401, { requestId, headers: NO_STORE });
   }
 
   // getSession() aqui NÃO autentica (o getUser acima já autenticou): serve só
@@ -39,11 +51,11 @@ export async function GET(_req: NextRequest): Promise<Response> {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session?.access_token) {
-    return fail("unauthenticated", "Sessão sem token.", 401, { requestId });
+    return fail("unauthenticated", "Sessão sem token.", 401, { requestId, headers: NO_STORE });
   }
 
   return ok(
     { access_token: session.access_token, expires_at: session.expires_at ?? null },
-    { requestId },
+    { requestId, headers: NO_STORE },
   );
 }
