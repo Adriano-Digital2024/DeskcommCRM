@@ -9,11 +9,62 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ApiError } from "@/lib/api/types";
 import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
 import { audit } from "@/lib/audit";
+import { resolveOwnerPatch, type OwnerPatch, type OwnerPatchInput } from "@/lib/leads/owner-patch";
 import type { CreateLeadInput, UpdateLeadInput } from "@/lib/schemas";
 
 type SB = SupabaseClient;
 
 const LEAD_COLS = "*";
+
+/**
+ * Aplica a regra de posse (0070) e valida a tenancy do agente.
+ *
+ * A FK garante que o agente EXISTE, não que é da MESMA org — sem este check um
+ * id vazado atribuiria o negócio a um agente de outro tenant. `null` de retorno
+ * = o chamador não mencionou dono.
+ */
+async function ownerPatchOrThrow(
+  supabase: SB,
+  ctx: HandlerCtx,
+  input: OwnerPatchInput,
+): Promise<OwnerPatch | null> {
+  const result = resolveOwnerPatch(input);
+  if (!result.ok) {
+    throw new ApiError(
+      422,
+      "validation_failed",
+      undefined,
+      ctx.requestId,
+      "Um lead tem um dono: informe owner_user_id OU owner_agent_id.",
+    );
+  }
+  if (!result.patch) return null;
+
+  if (result.patch.owner_agent_id !== null) {
+    const { data: agent, error: agentErr } = await supabase
+      .from("ai_agents")
+      .select("id")
+      .eq("id", result.patch.owner_agent_id)
+      .eq("organization_id", ctx.organization_id)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    if (agentErr) {
+      throw new ApiError(500, "internal_error", undefined, ctx.requestId, agentErr.message);
+    }
+    if (!agent) {
+      throw new ApiError(
+        422,
+        "validation_failed",
+        undefined,
+        ctx.requestId,
+        "Agente não encontrado nesta organização.",
+      );
+    }
+  }
+
+  return result.patch;
+}
 
 function actorAuditPayload(actor: Actor): {
   actorUserId: string | null;
@@ -191,6 +242,12 @@ export async function createLeadHandler(
   }
   const nextPos = maxRow?.position_in_stage ? Number(maxRow.position_in_stage) + 1000 : 1000;
 
+  // Nascer com dono e sem owner_kind é drift silencioso (o CHECK aceita kind
+  // null): o lead teria dono e sumiria do filtro e das métricas por kind.
+  const ownerPatch =
+    (await ownerPatchOrThrow(supabase, ctx, input)) ??
+    ({ owner_user_id: null, owner_agent_id: null, owner_kind: null } satisfies OwnerPatch);
+
   const { data: lead, error: insErr } = await supabase
     .from("crm_leads")
     .insert({
@@ -202,7 +259,9 @@ export async function createLeadHandler(
       contact_id: input.contact_id ?? null,
       value_cents: input.value_cents ?? null,
       currency: input.currency ?? "BRL",
-      owner_user_id: input.owner_user_id ?? null,
+      ...ownerPatch,
+      assigned_at:
+        ownerPatch.owner_kind === null ? null : new Date().toISOString(),
       expected_close_date: input.expected_close_date ?? null,
       tags: input.tags ?? [],
       source: input.source,
@@ -291,57 +350,12 @@ export async function updateLeadHandler(
   if (input.contact_id !== undefined) patch.contact_id = input.contact_id;
   if (input.value_cents !== undefined) patch.value_cents = input.value_cents;
   if (input.currency !== undefined) patch.currency = input.currency;
-  // Dono do negócio (0070): humano OU agente, nunca os dois. owner_kind é
-  // DERIVADO de qual campo veio — nunca lido do body — para que a constraint
-  // crm_leads_owner_kind_coherence não dependa do cliente.
-  if (input.owner_user_id != null && input.owner_agent_id != null) {
-    throw new ApiError(
-      422,
-      "validation_failed",
-      undefined,
-      ctx.requestId,
-      "Um lead tem um dono: informe owner_user_id OU owner_agent_id.",
-    );
-  }
-
-  if (input.owner_user_id !== undefined) {
-    patch.owner_user_id = input.owner_user_id;
-    patch.owner_agent_id = null;
-    patch.owner_kind = input.owner_user_id === null ? null : "user";
-    if (input.owner_user_id !== null) {
-      patch.assigned_at = new Date().toISOString();
-    }
-  }
-
-  if (input.owner_agent_id !== undefined) {
-    if (input.owner_agent_id !== null) {
-      // A FK garante que o agente EXISTE, não que é da MESMA org — sem este
-      // check, um id vazado atribuiria o negócio a um agente de outro tenant.
-      const { data: agent, error: agentErr } = await supabase
-        .from("ai_agents")
-        .select("id")
-        .eq("id", input.owner_agent_id)
-        .eq("organization_id", ctx.organization_id)
-        .is("archived_at", null)
-        .maybeSingle();
-
-      if (agentErr) {
-        throw new ApiError(500, "internal_error", undefined, ctx.requestId, agentErr.message);
-      }
-      if (!agent) {
-        throw new ApiError(
-          422,
-          "validation_failed",
-          undefined,
-          ctx.requestId,
-          "Agente não encontrado nesta organização.",
-        );
-      }
-    }
-    patch.owner_agent_id = input.owner_agent_id;
-    patch.owner_user_id = null;
-    patch.owner_kind = input.owner_agent_id === null ? null : "ai";
-    if (input.owner_agent_id !== null) {
+  // Dono do negócio (0070): regra em lib/leads/owner-patch.ts, compartilhada
+  // com create, bulk e MCP. owner_kind é DERIVADO — nunca lido do body.
+  const ownerPatch = await ownerPatchOrThrow(supabase, ctx, input);
+  if (ownerPatch) {
+    Object.assign(patch, ownerPatch);
+    if (ownerPatch.owner_user_id !== null || ownerPatch.owner_agent_id !== null) {
       patch.assigned_at = new Date().toISOString();
     }
   }

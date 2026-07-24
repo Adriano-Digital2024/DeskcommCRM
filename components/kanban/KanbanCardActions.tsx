@@ -34,8 +34,8 @@ export function KanbanCardActions({ lead, pipelineId }: KanbanCardActionsProps) 
   // PATCH também recusa; aqui é só não oferecer o que seria negado).
   const canAssign = usePermission("pipeline.move_card");
   const { data: members } = useAssignableMembers(canAssign);
+  // A rota já devolve só agente ativo e não arquivado — é o picker.
   const { data: agents } = useAssignableAgents(canAssign);
-  const activeAgents = (agents ?? []).filter((a) => a.is_active);
 
   const reassignToUser = (ownerUserId: string | null) => {
     if (ownerUserId === lead.owner_user_id) return;
@@ -106,10 +106,8 @@ export function KanbanCardActions({ lead, pipelineId }: KanbanCardActionsProps) 
                     {m.full_name ?? "Sem nome"}
                   </DropdownMenuItem>
                 ))}
-                {/* Só agente ativo é destino; inativo continua no mapa só para
-                    o card saber o nome de quem já é dono. */}
-                {activeAgents.length > 0 && <DropdownMenuSeparator />}
-                {activeAgents.map((a) => (
+                {(agents ?? []).length > 0 && <DropdownMenuSeparator />}
+                {(agents ?? []).map((a) => (
                   <DropdownMenuItem
                     key={a.agent_id}
                     disabled={editMutation.isPending || a.agent_id === lead.owner_agent_id}

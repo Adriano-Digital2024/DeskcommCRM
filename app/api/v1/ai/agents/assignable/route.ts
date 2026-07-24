@@ -4,11 +4,16 @@
  * lista os humanos.
  *
  * Por que uma rota nova em vez de reusar GET /api/v1/ai/agents: aquela é
- * manager+ (configuração de agente). Um `agent` (vendedor) precisa ver de quem
- * é o card e transferir o negócio — mesma exceção deliberada e MÍNIMA que a
- * rota de humanos já documenta. Exposto o mínimo: id, nome e a versão
- * PUBLICADA no momento da leitura (o tooltip "Nome · v3" resolve por join,
- * nunca congela a versão no lead).
+ * manager+ (configuração de agente, com system_prompt e guardrails). Um `agent`
+ * (vendedor) precisa apenas escolher o destino de um negócio — mesma exceção
+ * deliberada e MÍNIMA que a rota de humanos já documenta. Exposto o mínimo: id,
+ * nome e a versão PUBLICADA no momento da leitura.
+ *
+ * Esta rota é um PICKER, e só isso: `is_active` e `archived_at` filtrados de
+ * propósito, porque agente desligado não deve receber negócio novo. Quem é o
+ * dono ATUAL de um lead é outra pergunta e NÃO se responde aqui — vem resolvido
+ * do board (`owner_agent`), sem esses filtros. Relaxar os filtros daqui para
+ * "consertar" um nome que não aparece no card é consertar no lugar errado.
  *
  * Auth: cookie session; organization_id vem do JWT — nunca do body/query.
  * RLS-scoped (createClient), sem admin client: não há nada aqui que a RLS do
@@ -28,13 +33,6 @@ export interface AssignableAgent {
   name: string;
   /** null quando o agente ainda não tem versão publicada. */
   version_number: number | null;
-  /**
-   * Só agente ativo é DESTINO de atribuição — mas todo agente não arquivado
-   * entra na lista, porque ela também é o dicionário que RESOLVE o nome do
-   * dono no card. Desligar um bot não pode transformar os negócios dele em
-   * cards anônimos.
-   */
-  is_active: boolean;
 }
 
 export async function GET(_req: NextRequest): Promise<Response> {
@@ -46,8 +44,9 @@ export async function GET(_req: NextRequest): Promise<Response> {
   const supabase = await createClient();
   const { data: agents, error } = await supabase
     .from("ai_agents")
-    .select("id, name, published_version_id, is_active")
+    .select("id, name, published_version_id")
     .eq("organization_id", orgId)
+    .eq("is_active", true)
     .is("archived_at", null)
     .order("priority", { ascending: false })
     .order("created_at", { ascending: true });
@@ -58,7 +57,6 @@ export async function GET(_req: NextRequest): Promise<Response> {
     id: string;
     name: string;
     published_version_id: string | null;
-    is_active: boolean;
   }>;
 
   const publishedIds = rows.map((a) => a.published_version_id).filter((v): v is string => !!v);
@@ -81,7 +79,6 @@ export async function GET(_req: NextRequest): Promise<Response> {
     version_number: a.published_version_id
       ? (versionById.get(a.published_version_id) ?? null)
       : null,
-    is_active: a.is_active,
   }));
 
   return ok(result, { requestId });

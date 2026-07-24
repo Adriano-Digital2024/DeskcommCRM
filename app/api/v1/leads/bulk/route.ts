@@ -14,6 +14,7 @@ import { audit, isServiceRoleConfigured } from "@/lib/audit";
 import { ApiError } from "@/lib/api/types";
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { resolveOwnerPatch } from "@/lib/leads/owner-patch";
 import { bulkLeadActionSchema, validateRequest } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -162,11 +163,24 @@ export async function POST(req: NextRequest): Promise<Response> {
       break;
     }
     case "assign": {
+      // 0070: o trio de posse vem do helper compartilhado. Escrever só
+      // owner_user_id aqui quebrava de dois jeitos: lote com algum lead de dono
+      // AGENTE estourava 23514 e derrubava a operação inteira; e lead sem dono
+      // ganhava dono sem owner_kind (drift silencioso).
+      const owner = resolveOwnerPatch({ owner_user_id: input.params.owner_user_id });
+      if (!owner.ok || !owner.patch) {
+        return fail(
+          "validation_failed",
+          "Um lead tem um dono: informe owner_user_id OU owner_agent_id.",
+          422,
+          { requestId },
+        );
+      }
       const patch: Record<string, unknown> = {
-        owner_user_id: input.params.owner_user_id,
+        ...owner.patch,
         updated_at: nowIso,
       };
-      if (input.params.owner_user_id !== null) {
+      if (owner.patch.owner_kind !== null) {
         patch.assigned_at = nowIso;
       }
       const { data, error } = await supabase

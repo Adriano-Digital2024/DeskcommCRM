@@ -68,6 +68,8 @@ export const createLeadSchema = z.object({
   value_cents: z.coerce.number().int().nonnegative().nullable().optional(),
   currency: z.string().length(3).default("BRL"),
   owner_user_id: z.string().uuid().nullable().optional(),
+  /** Dono agente já na criação (0070) — mesma regra do update: os dois é 422. */
+  owner_agent_id: z.string().uuid().nullable().optional(),
   expected_close_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)

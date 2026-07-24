@@ -26,6 +26,83 @@ interface RouteCtx {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Anexa a identidade do agente dono (nome + versão publicada) aos leads que têm
+ * `owner_kind='ai'`.
+ *
+ * **Sem filtro de `is_active`/`archived_at` de propósito.** Quem é o dono é
+ * pergunta de EXIBIÇÃO e vale para qualquer agente: desativar um bot não pode
+ * transformar os negócios dele em cards anônimos. A lista de agentes que PODEM
+ * receber um lead (o picker, `/api/v1/ai/agents/assignable`) é outra pergunta e
+ * lá os filtros estão certos.
+ *
+ * `organization_id` é filtrado explicitamente — vem do pipeline já validado pela
+ * RLS do caller, nunca do body.
+ */
+async function withOwnerAgents(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  leads: Lead[],
+): Promise<{ leads: Lead[]; error: string | null }> {
+  const agentIds = [
+    ...new Set(
+      leads
+        .filter((l) => l.owner_kind === "ai" && l.owner_agent_id)
+        .map((l) => l.owner_agent_id as string),
+    ),
+  ];
+  if (agentIds.length === 0) return { leads, error: null };
+
+  const { data: agents, error: agentsErr } = await supabase
+    .from("ai_agents")
+    .select("id, name, published_version_id")
+    .eq("organization_id", organizationId)
+    .in("id", agentIds);
+  if (agentsErr) return { leads, error: agentsErr.message };
+
+  const agentRows = (agents ?? []) as Array<{
+    id: string;
+    name: string;
+    published_version_id: string | null;
+  }>;
+
+  const publishedIds = agentRows
+    .map((a) => a.published_version_id)
+    .filter((v): v is string => !!v);
+  const versionById = new Map<string, number>();
+  if (publishedIds.length > 0) {
+    const { data: versions, error: versionsErr } = await supabase
+      .from("ai_agent_versions")
+      .select("id, version_number")
+      .eq("organization_id", organizationId)
+      .in("id", publishedIds);
+    if (versionsErr) return { leads, error: versionsErr.message };
+    for (const v of (versions ?? []) as Array<{ id: string; version_number: number }>) {
+      versionById.set(v.id, v.version_number);
+    }
+  }
+
+  const byId = new Map(agentRows.map((a) => [a.id, a]));
+  return {
+    leads: leads.map((lead) => {
+      if (lead.owner_kind !== "ai" || !lead.owner_agent_id) return lead;
+      const agent = byId.get(lead.owner_agent_id);
+      if (!agent) return lead;
+      return {
+        ...lead,
+        owner_agent: {
+          id: agent.id,
+          name: agent.name,
+          version_number: agent.published_version_id
+            ? (versionById.get(agent.published_version_id) ?? null)
+            : null,
+        },
+      };
+    }),
+    error: null,
+  };
+}
+
 export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
   const requestId = randomUUID();
   const { id: pipelineId } = await ctx.params;
@@ -64,10 +141,19 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
   if (leadsErr) return fail("internal_error", leadsErr.message, 500, { requestId });
   if (!pipeline) return fail("resource_not_found", "Pipeline não encontrado.", 404, { requestId });
 
+  const leadsWithOwner = await withOwnerAgents(
+    supabase,
+    (pipeline as Pipeline).organization_id,
+    (leads ?? []) as Lead[],
+  );
+  if (leadsWithOwner.error) {
+    return fail("internal_error", leadsWithOwner.error, 500, { requestId });
+  }
+
   const board: BoardData = {
     pipeline: pipeline as Pipeline,
     stages: (stages ?? []) as Stage[],
-    leads: (leads ?? []) as Lead[],
+    leads: leadsWithOwner.leads,
   };
 
   return ok(board, { requestId });

@@ -54,7 +54,62 @@ Qualidade: `pnpm typecheck` **0**, `pnpm lint` **0 errors** (151 warnings pré-e
 
 | Sintoma | Causa raiz | Correção | Re-testado |
 |---|---|---|---|
-| Card com dono agente aparecia como `?` + rótulo genérico "Agente" (lead do Caio Ribeiro) | A rota `assignable` filtrava `is_active=true`. Ela serve a **dois** propósitos que eu tratei como um: lista de *destinos* (inativo não deve aparecer) e dicionário de *resolução de nome* (inativo precisa aparecer, se é dono) | Rota devolve todo agente não arquivado com `is_active`; menu/filtro oferecem só os ativos; a resolução usa o mapa inteiro | Sim, do zero: o card agora mostra `BE · Bot Padrão E2E` |
+| Card com dono agente aparecia como `?` + rótulo genérico "Agente" (lead do Caio Ribeiro) | A rota `assignable` filtrava `is_active=true`. Ela serve a **dois** propósitos que eu tratei como um: lista de *destinos* (picker) e dicionário de *resolução de nome* (exibição) | **1ª tentativa (minha, substituída):** relaxar o filtro da rota `assignable` e devolver `is_active`. **Correção final (decisão do orquestrador):** ver abaixo | Sim — mas a 1ª correção foi revertida |
+
+### Correção definitiva — o dado de exibição viaja com o lead
+
+**Registro antes de mexer.** O orquestrador achou o mesmo sintoma de forma independente e vetou a
+minha correção com razão: relaxar o filtro do `assignable` conserta o sintoma **no lugar errado** —
+a rota é um *picker*, e os filtros dela estão certos. Minha versão ainda deixava o agente
+**arquivado** anônimo (eu tinha registrado isso como débito aceito; ele não aceitou, e está certo:
+"peça que perde a identidade do dono é peça que morre sem ninguém ver").
+
+Decisão implementada:
+- `GET /api/v1/pipelines/[id]/board` passa a devolver, para cada lead com dono agente, o **nome e a
+  versão publicada** — join server-side em `ai_agents`/`ai_agent_versions` **sem** filtro de
+  `is_active`/`archived_at`, com `organization_id` filtrado explicitamente (da org do pipeline
+  validado por RLS, nunca do body).
+- `GET /api/v1/ai/agents/assignable` **volta ao estado de picker**: `is_active = true` e
+  `archived_at is null`. O campo `is_active` sai do payload e os filtros locais na UI saem junto.
+- `resolveLeadOwner` deixa de depender de um mapa de agentes: lê o dono direto do lead. A cadeia
+  `KanbanBoard → StageColumn` perde a prop `agentsById`.
+- Fixture de regressão preservada: o lead de agente **inativo** do seed fica como está (não mexi no
+  seed) e o teste `lead de agente inativo continua exibindo nome` fixa o comportamento.
+
+### Gaps de propagação — três escritores de dono fora da regra (achado do orquestrador)
+
+**Registro antes de mexer.** O PATCH estava certo, mas ele não era o único a escrever dono:
+
+| # | Escritor | Defeito | Efeito |
+|---|---|---|---|
+| 1 | `createLeadHandler` (`_handler.ts`) | INSERT grava `owner_user_id` e não grava `owner_kind`/`owner_agent_id` | Lead nasce **com dono e sem `owner_kind`** — o CHECK aceita (3º ramo), então é **drift silencioso**: filtro e métricas por `owner_kind` não enxergam o lead |
+| 2 | `bulk` `case "assign"` | patch só com `owner_user_id` + `assigned_at` | (a) atribuir humano em massa a lead de dono agente → **23514 derruba o lote inteiro**; (b) sem dono anterior → mesmo drift do gap 1, em lote |
+| 3 | MCP (`lib/mcp/tools/leads.ts`) | `crm_create_lead` herda o gap 1 | **A IA corrompendo o próprio registro de posse** — é a superfície pela qual o agente mexe no CRM |
+
+Correção: **um helper puro compartilhado**, `resolveOwnerPatch()` em `lib/leads/owner-patch.ts`, que
+devolve sempre o trio coerente `{owner_user_id, owner_agent_id, owner_kind}` ou recusa "dois donos".
+Create, patch, bulk e MCP passam por ele. Guarda na função compartilhada, não em cada chamador — é o
+único que cobre o escritor que ainda não foi escrito.
+
+Verificado na leitura: `crm_update_lead` (MCP) **não** monta patch próprio, chama o
+`updateLeadHandler` — então herda a regra de graça. O gap real do MCP era só o create.
+
+**Prova dos gaps corrigidos**
+
+| Caminho | Como provei | Resultado |
+|---|---|---|
+| create com dono humano | `POST /api/v1/leads` com a sessão do usuário logado (a UI **não** expõe responsável no "Novo Lead" — não há tela para isto) | 201, `owner_kind='user'` (antes: `null` = drift) |
+| create com dono agente | idem | 201, `owner_kind='ai'`, humano zerado |
+| create com os dois donos | idem | **422** com mensagem explicável (não 500 do banco) |
+| create sem dono | idem | 201, trio todo `null` |
+| **bulk assign sobre lead de dono AGENTE** | **pela UI**: criei um lead próprio, atribuí ao agente pelo menu, selecionei e usei "Atribuir a… → Eu" | Card foi de `LA · Lia — AgendaPlus` para `EM · E2E Manager`, **zero erro na tela** (antes: 23514 derrubava o lote) |
+| estado no banco após o bulk | `psql` no lead da prova | `owner_kind='user'`, humano preenchido, **agente zerado**, `assigned_at` setado |
+| constraint + helper contra Postgres real | `pnpm test:db` (container efêmero, baseline aplicado) | `tests/invariants/lead-owner-kind.test.ts` — 6 casos, incluindo os 3 estados que o banco **recusa** |
+
+Os leads de prova foram apagados ao final (board de volta a 11 leads); nenhuma fixture do QA foi tocada.
+
+`pnpm test:db` também revalidou o **apêndice do baseline**: `install` (banco novo, `ON_ERROR_STOP=1`)
+e `update` (re-aplicação) verdes — o gate do item 7 da doutrina de migrations.
 
 ## O que ficou para trás (e por quê)
 

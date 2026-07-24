@@ -5,17 +5,14 @@ import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/types/leads";
 import type { Stage } from "@/lib/kanban/types";
 import { resolveLeadOwner } from "@/lib/kanban/owner";
-import type { AssignableAgent } from "@/hooks/kanban/useAssignableAgents";
 import { KanbanCard } from "./KanbanCard";
 
 interface StageColumnProps {
   stage: Stage;
   leads: Lead[];
   pipelineId: string;
-  /** owner_user_id → nome, resolvido no board. */
+  /** owner_user_id → nome, resolvido no board. O dono agente vem no lead. */
   ownerNames?: Map<string, string | null>;
-  /** owner_agent_id → agente (nome + versão publicada), resolvido no board. */
-  agentsById?: Map<string, AssignableAgent>;
   selectedLeadIds?: Set<string>;
   onSelect?: (leadId: string, additive: boolean) => void;
 }
@@ -37,7 +34,6 @@ export function StageColumn({
   leads,
   pipelineId,
   ownerNames,
-  agentsById,
   selectedLeadIds,
   onSelect,
 }: StageColumnProps) {
@@ -87,7 +83,7 @@ export function StageColumn({
                 lead={lead}
                 index={idx}
                 pipelineId={pipelineId}
-                owner={resolveLeadOwner(lead, ownerNames, agentsById)}
+                owner={resolveLeadOwner(lead, ownerNames)}
                 isSelected={selectedLeadIds?.has(lead.id)}
                 onSelect={onSelect}
               />

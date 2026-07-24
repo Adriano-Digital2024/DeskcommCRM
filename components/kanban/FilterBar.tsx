@@ -38,7 +38,6 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
   const user = useUser();
   const { data: members } = useAssignableMembers(true);
   const { data: agents } = useAssignableAgents(true);
-  const activeAgents = (agents ?? []).filter((a) => a.is_active);
   const [searchInput, setSearchInput] = useState(filters.search ?? "");
 
   // Debounce search 250ms
@@ -117,13 +116,11 @@ export function FilterBar({ filters, onChange, leads }: FilterBarProps) {
                 ))}
             </>
           )}
-          {/* Agentes na MESMA lista dos humanos: o dono é um só campo.
-              Filtrar por agente desativado não é útil — ele não recebe leads
-              novos —, mas o nome dele continua resolvendo no rótulo acima. */}
-          {activeAgents.length > 0 && (
+          {/* Agentes na MESMA lista dos humanos: o dono é um só campo. */}
+          {agents && agents.length > 0 && (
             <>
               <DropdownMenuSeparator />
-              {activeAgents.map((a) => (
+              {agents.map((a) => (
                 <DropdownMenuItem
                   key={a.agent_id}
                   onClick={() => onChange({ ...filters, owner: agentOwnerFilter(a.agent_id) })}
