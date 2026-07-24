@@ -87,3 +87,6 @@ loop/run-session.sh
 graphify-out/
 package-lock.json
 .e2e-invite.json
+.e2e-owner.json
+.e2e-invite-url.json
+.superpowers/evidence/

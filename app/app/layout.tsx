@@ -68,12 +68,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const enrolled = await isMfaEnrolled();
-  const mustEnroll = requiresMfa(activeOrg?.role, user.is_platform_admin) && !enrolled;
+  const needsMfaGate = requiresMfa(activeOrg?.role, user.is_platform_admin);
+  const shell = <AppShell sidebarCollapsed={collapsed}>{children}</AppShell>;
 
   return (
     <AuthProvider user={user} activeOrg={activeOrg}>
       <ImpersonateBanner impersonating={impersonating} />
-      {mustEnroll ? <MfaEnrollGate /> : <AppShell sidebarCollapsed={collapsed}>{children}</AppShell>}
+      {needsMfaGate ? (
+        // Gate always mounted for MFA-required roles; it latches the blocking
+        // decision client-side so the enroll Server Action's revalidation
+        // can't tear down the recovery-codes screen mid-flow.
+        <MfaEnrollGate enrolled={enrolled}>{shell}</MfaEnrollGate>
+      ) : (
+        shell
+      )}
     </AuthProvider>
   );
 }
