@@ -4053,6 +4053,7 @@ on conflict (id) do nothing;
 
 -- Leitura por org (path {org_id}/...) OU plataforma (path platform/...) por qualquer
 -- usuário autenticado (assets de plataforma são públicos p/ tenants; conteúdo é curado).
+drop policy if exists "skill_assets_read" on storage.objects;
 create policy "skill_assets_read" on storage.objects for select to authenticated
   using (
     bucket_id = 'skill-assets'
