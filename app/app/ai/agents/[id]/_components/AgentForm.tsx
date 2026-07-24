@@ -37,6 +37,7 @@ import { CredentialPicker, findCredential } from "./CredentialPicker";
 import { ToolPicker } from "./ToolPicker";
 import { TriggerEditor, type TriggerValue } from "./TriggerEditor";
 import { HandoffKeywordsInput } from "./HandoffKeywordsInput";
+import { FollowupFlowPicker } from "./FollowupFlowPicker";
 import { PublishConfirmDialog } from "./PublishConfirmDialog";
 import {
   saveAgentDraftAction,
@@ -95,7 +96,15 @@ interface FormState {
   handoff_keywords: string[];
   handoff_tool_enabled: boolean;
   cases_enabled: boolean;
+  followup: FollowupValue;
 }
+
+interface FollowupValue {
+  enabled: boolean;
+  flow_pointer_ids: string[];
+}
+
+const DEFAULT_FOLLOWUP: FollowupValue = { enabled: false, flow_pointer_ids: [] };
 
 const DEFAULT_TRIGGER: TriggerValue = {
   events: ["message"],
@@ -138,6 +147,7 @@ function buildState(args: {
     ],
     handoff_tool_enabled: version?.handoff_tool_enabled ?? true,
     cases_enabled: version?.cases_enabled ?? false,
+    followup: version?.followup ?? DEFAULT_FOLLOWUP,
   };
 }
 
@@ -158,6 +168,7 @@ function toVersionPayload(s: FormState) {
     handoff_keywords: s.handoff_keywords,
     handoff_tool_enabled: s.handoff_tool_enabled,
     cases_enabled: s.cases_enabled,
+    followup: s.followup,
   };
 }
 
@@ -668,6 +679,35 @@ export function AgentForm(props: Props) {
               Diferente do handoff: o agente não sai da conversa — ele abre um caso quando
               esbarra num bloqueio (ex.: aprovar desconto) e retoma assim que o humano responde.
             </p>
+          </Card>
+
+          {/* Follow-up */}
+          <Card className="space-y-3 p-4">
+            <h3 className="text-sm font-medium">Follow-up</h3>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="followup_enabled"
+                checked={form.followup.enabled}
+                onCheckedChange={(v) =>
+                  patch({ followup: { ...form.followup, enabled: v } })
+                }
+                disabled={disabled}
+              />
+              <Label htmlFor="followup_enabled">
+                Habilitar gatilhos automáticos de follow-up
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Gatilhos de silêncio/etapa só enrollam um lead num fluxo abaixo se
+              este agente estiver publicado com follow-up habilitado.
+            </p>
+            <FollowupFlowPicker
+              value={form.followup.flow_pointer_ids}
+              onChange={(ids) =>
+                patch({ followup: { ...form.followup, flow_pointer_ids: ids } })
+              }
+              disabled={disabled}
+            />
           </Card>
         </div>
       </div>
