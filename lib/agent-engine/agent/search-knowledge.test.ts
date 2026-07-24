@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type pg from 'pg';
 
+// search-knowledge importa lib/ai/embed → lib/env, que valida env no import.
+// O CI roda sem .env; o teste injeta seu próprio `embed`, então mockar env
+// evita a validação real (mesmo padrão de dispatcher-external-mode.test.ts).
+vi.mock('@/lib/env', () => ({ env: {} }));
+
 import { citationsFromHits, searchKnowledge } from './search-knowledge';
 
 const hit = {
