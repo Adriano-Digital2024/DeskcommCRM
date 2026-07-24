@@ -186,3 +186,52 @@ describe("0071 — realtime", () => {
     ).toBe("1");
   });
 });
+
+describe("0071 — LGPD: o porquê morre junto, o lastro fica", () => {
+  const CONTATO = "0071aaaa-7777-4000-8000-000000000001";
+  const LEAD_PII = "0071aaaa-5555-4000-8000-000000000002";
+  const ATIV_PII = "0071aaaa-6666-4000-8000-000000000003";
+
+  beforeAll(() => {
+    psql(`
+      insert into contacts (id, organization_id, name, display_name, phone_number)
+      values ('${CONTATO}', '${ORG}', 'Fulano de Tal', 'Fulano', '+5511999990000')
+      on conflict (id) do nothing;
+
+      insert into crm_leads (id, organization_id, pipeline_id, stage_id, title, contact_id)
+      values ('${LEAD_PII}', '${ORG}', '${PIPELINE}', '${STAGE_A}', 'Negócio do Fulano', '${CONTATO}')
+      on conflict (id) do nothing;
+
+      -- reason com PII (é texto livre exibido na timeline) e evidence com ids.
+      insert into crm_lead_activities
+        (id, organization_id, lead_id, contact_id, type, source_module, actor_kind, reason, evidence)
+      values ('${ATIV_PII}', '${ORG}', '${LEAD_PII}', '${CONTATO}', 'note_added', 'ai', 'ai',
+              'cliente pediu retorno no celular da esposa, 11 99999-0000',
+              '{"run_ids":["44444444-4444-4444-8444-444444444444"]}'::jsonb)
+      on conflict (id) do update set
+        reason = 'cliente pediu retorno no celular da esposa, 11 99999-0000',
+        evidence = '{"run_ids":["44444444-4444-4444-8444-444444444444"]}'::jsonb;
+    `);
+    psql(`select fn_lgpd_cascade_redact_contact('${ORG}'::uuid, '${CONTATO}'::uuid, gen_random_uuid());`);
+  });
+
+  it("reason vira null — texto livre na timeline pode carregar PII", () => {
+    expect(psql(`select coalesce(reason, '(null)') from crm_lead_activities where id='${ATIV_PII}';`))
+      .toBe("(null)");
+  });
+
+  it("evidence SOBREVIVE — são ids de execução, não dado pessoal", () => {
+    expect(psql(`select jsonb_array_length(evidence->'run_ids') from crm_lead_activities where id='${ATIV_PII}';`))
+      .toBe("1");
+  });
+
+  it("actor_kind sobrevive: quem agiu não é PII, e some-lo apagaria a auditoria", () => {
+    expect(psql(`select actor_kind from crm_lead_activities where id='${ATIV_PII}';`)).toBe("ai");
+  });
+
+  it("o resto do cascade seguiu funcionando (payload/metadata zerados, contato anonimizado)", () => {
+    expect(psql(`select payload::text || '|' || metadata::text from crm_lead_activities where id='${ATIV_PII}';`))
+      .toBe("{}|{}");
+    expect(psql(`select is_anonymized from contacts where id='${CONTATO}';`)).toBe("t");
+  });
+});

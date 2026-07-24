@@ -254,7 +254,9 @@ begin
     name = v_anon_label,
     display_name = v_anon_label,
     email = null,
-    email_normalized = null,
+    -- email_normalized NÃO entra: é GENERATED ALWAYS AS (lower(trim(email)))
+    -- e o Postgres recusa escrita nela — a linha acima já a zera por derivação.
+    -- Com a atribuição, o cascade INTEIRO abortava e nada era anonimizado.
     phone_number = null,
     cpf_encrypted = null,
     cpf_hash = null,
