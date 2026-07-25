@@ -7161,3 +7161,47 @@ commitada** (consulta → delete → aviso → conserto da memo → commit `6567
 **Consequência: quando o `0/2` foi medido, a anônima já não existia há uns 15 minutos. O veredito de
 DOIS defeitos continua de pé pelo dado que existia** — e a esperança de raiz única morre com
 ancoragem, não com opinião.
+
+## §7.229 — Todo mecanismo que ABSORVE um vermelho tem de mostrar QUAL vermelho absorveu
+
+A catraca proposta (`test.fails` com o motivo na mensagem) tinha um defeito que só apareceu ao rodar:
+**`test.fails` esconde QUAL asserção falhou.** Uma cerca que falha na **pré-condição** (nenhum quadro
+engolido, entrega nunca morta) é **indistinguível** de uma que falha no ponto certo — e estaria
+"documentando" uma lacuna que **nunca exercitou**.
+
+> ***"Um `test.fails` vazio é verde por fora e oco por dentro, e ninguém reauditaria."***
+
+É a §7.153 (instrumento binário sobre realidade ternária) aplicada **ao próprio mecanismo de
+absorção**: "falhou como esperado" funde *"falhou pelo motivo previsto"*, *"falhou antes de começar"* e
+*"falhou por outra coisa"* num único carimbo tranquilizador.
+
+**As três correções, e as três são necessárias:**
+1. **Pré-condição explícita** — engolidos > 0; se não, a execução **não exercitou degradação nenhuma**
+   e diz isso, em vez de virar falha esperada;
+2. **A mudança não pode ter aparecido** — se apareceu, existe outro caminho vivo, a premissa mudou, e
+   **isso também é notícia** (a cerca deixaria de medir o que pensa medir);
+3. **Escape para ver o vermelho cru** (`CERCA_CRUA=1`), porque **a única forma de saber o que a
+   catraca esconde é desligá-la**.
+
+**E foi validada nas duas formas:** com a catraca, falha esperada e suíte verde; com o escape,
+vermelho **na asserção certa**, pré-condição cumprida e a mudança ausente da tela. **A lacuna é
+exercitada de verdade** — e é isso que separa documentação de encenação.
+
+## §7.230 — Regra CONTÁVEL protege; regra que exige julgar a própria qualidade, não
+
+Fecho sobre a §7.217, e vale como filtro para toda esta doutrina:
+
+> *"Contar RESGATES funciona porque não depende de eu julgar a qualidade da minha própria explicação —
+> que é exatamente a coisa que ninguém julga por dentro."*
+
+**Regras que pedem autoavaliação falham no momento em que são necessárias**, porque o estado mental
+que produz o erro é o mesmo que avaliaria a correção. *"Desconfie de explicações fracas"* não protege
+ninguém: quem está errando acha as suas fortes.
+
+**Regras contáveis funcionam porque terceirizam o julgamento para um número:** quantas explicações de
+resgate a tese precisou; quantos lados o par tem; quantos desfechos o instrumento distingue; quantas
+linhas o `−N` removeu; quantos blocos a superfície agrupou.
+
+**Critério para as leis daqui em diante — e para reescrever as antigas:** se uma lei só pode ser
+seguida por quem já está lúcido, ela é lembrete e não cerca. **Procure a versão contável.** Quase
+sempre existe, e quase sempre é mais curta.
