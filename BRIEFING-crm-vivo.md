@@ -9835,3 +9835,42 @@ por atacado.**
 
 **Fica, portanto, como fato medido:** o formato foi usado na primeira ocasião em que cabia, antes de
 qualquer evidência de que renderia algo. **A intenção continua não afirmável — por ninguém.**
+
+## §7.307 — A lei está certa, a instância é falsa, e a falsidade tem a assinatura do próprio dia
+
+**A observação:** *"a correção não chegou na seção ANTERIOR (linha 9591), e as duas agora se
+contradizem no mesmo documento"*.
+
+**O que o `grep` devolve no HEAD `86b0d67`:** zero ocorrências de `"E DESTAS"` / `"destas, 15"`. A
+única ocorrência de `"13 que penduram"` está na **linha 9766, dentro da §7.305**, onde o texto errado
+aparece **citado como o erro que a seção corrige**. A linha 9591 foi corrigida em `c7a386c`, com aviso
+`⚠️ CORRIGIDO` no lugar e a partição inteira colada — precisamente para que ninguém que leia só aquela
+seção reconstrua o `13`.
+
+**A leitura foi feita contra uma versão anterior do arquivo, não contra o HEAD.** É a mesma forma da
+§7.298 — *o objeto sobre o qual se afirma não é o objeto em vigor* — e da lei do alvo em movimento:
+**afirmação sobre estado de arquivo exige carimbo de SHA**, senão mede-se contra o que já mudou. **A
+última ocorrência do defeito do dia foi um relato do defeito do dia.**
+
+### E a lei que ele enunciou é verdadeira, e é o motivo de a correção ter sido feita daquele jeito
+
+> ***"A correção entra onde está sendo discutida e não onde já está escrita. Não é desatenção — é que
+> corrigir o texto NOVO é parte da conversa, e corrigir o texto ANTIGO exige LEMBRAR QUE ELE EXISTE. E
+> ninguém lembra, porque ele já tinha sido aceito."***
+
+**"Já foi aceito" é o que torna um texto invisível para a correção** — sexto item da mesma família:
+o conservador, o verde, o elogioso, o autoacusatório, o escrupuloso, e agora **o já-aceito**. Todos
+entregam ao leitor um motivo para não voltar lá.
+
+**A cerca aplicada:** corrigir **no lugar**, com o aviso do erro anterior **dentro da seção corrigida**
+— não só apender a retificação no fim. Retificação apensa conserta o registro para quem lê o documento
+inteiro e **não conserta nada para quem lê só a seção**, que é como documentos longos são lidos.
+
+### E a segunda metade, aceita sem ressalva
+
+> ***"A gente construiu um incentivo forte para se retratar e NENHUM para VERIFICAR a retratação, e
+> incentivo sem cerca produz exatamente o que você nomeou: inflação."***
+
+É a §7.303 vista do lado do desenho do incentivo, e vale mais que ela: **premiar o gesto sem cobrar a
+medição do gesto fabrica o gesto.** Vale para retratação, para "achei um bug" e para qualquer métrica
+que conte eventos em vez de verificá-los.
