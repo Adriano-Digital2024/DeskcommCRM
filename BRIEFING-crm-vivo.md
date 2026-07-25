@@ -9047,3 +9047,46 @@ completa.
 meça **quanto tempo cada um levou para ser encontrado, e por quem**. Defeito achado pelo próprio
 autor, em minutos, é o processo funcionando. Defeito achado por terceiro, dias depois, é o processo
 ausente — **mesmo que o total de defeitos seja o mesmo.**
+
+## §7.288 — "Não tem a capacidade de detectar" ≠ "tem o defeito"
+
+Auditoria da wave 3 (fechada às 01:29) com o critério da §7.283. **Dois resultados, e a precisão
+entre eles é o que importa:**
+
+**Tranquilizador:** re-rodada agora, com a maquinaria de hoje, **fecha 23/0/0 com carimbo limpo** —
+sem *"sem veredito"*, sem *"mudou durante"*, saída 0. **O veredito de ontem sobrevive às leis de
+hoje.**
+
+**E o outro:** as waves 3, 4 e 5 **não usam o placar atual** — só a 6 e a 7 usam. Seus vereditos
+foram produzidos **sem** os estados acrescentados depois: sem AUSENTE, sem INCONCLUSIVO contando como
+falha, sem o portão de árvore suja.
+
+> ***"O que falta nas waves 3-5 é a CAPACIDADE DE DETECTAR critério pulado, não a evidência de que
+> aconteceu."***
+
+**São status diferentes e a confusão entre eles é cara nas duas direções:** tratar *"instrumento mais
+fraco"* como *"resultado suspeito"* desperdiça retrabalho e mina confiança em veredito bom; tratar
+como *"verificado"* esconde que a verificação não cobria o que hoje se sabe procurar. **A leitura
+correta é: verificado ao padrão da época, não-verificável ao padrão atual — e re-rodar mostrou que se
+sustenta.**
+
+**Decisão:** **não retrofitar**, pelo mesmo argumento aceito para as 16 sondas — churn com risco no
+fecho do épico contra uma capacidade que **hoje não tem defeito para pegar**. **Gatilho declarado:**
+quando alguma dessas waves for reaberta para mudança, ela migra junto.
+
+### §7.288-a — Duas réguas dentro do PRÓPRIO aparato, entre o extrator e o formatador
+
+O comparador errou **duas vezes** antes de servir — sétima ocorrência do dia:
+
+1. contou **chamadas no fonte (27)** contra **critérios impressos (23)** e quase reportou *"4
+   critérios não rodaram"*. As chamadas são **multilinha**, e o regex só pegava as de uma linha —
+   **dois números medindo coisas diferentes**;
+2. corrigido isso, a diferença de conjuntos deu 25 de cada lado — porque **a saída prefixa os ids com
+   `"cenario "` e o fonte não**.
+
+**Duas réguas de novo — agora entre o extrator e o formatador do MESMO autor, no MESMO aparato.** A
+lei das duas réguas não precisa de duas pessoas: **basta um autor e duas funções escritas em momentos
+diferentes.**
+
+> ***"Só na terceira tentativa o número significou alguma coisa. E o alarme das duas primeiras era
+> FALSO — e apontava para a wave que você ia consolidar."***
