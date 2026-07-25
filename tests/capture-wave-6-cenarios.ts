@@ -742,7 +742,15 @@ async function main(): Promise<void> {
     await cardSemContato.click();
     await page.waitForTimeout(1500);
     const textoTimeline = ((await dossie(page).innerText()) ?? "").replace(/\s+/g, " ");
-    const mostraAsAtividades = /a IA respondeu sobre prazo/i.test(textoTimeline);
+    // POR CONTAGEM, não pelo texto de uma atividade. As três da IA colapsam em
+    // "Agente · 3 ações", então procurar o motivo individual reprova por
+    // OCULTAÇÃO — a mesma lei que eu acabei de mecanizar do lado da ausência,
+    // agora mordendo do lado da presença. Presença também precisa de observável
+    // que sobreviva ao agrupamento.
+    const somaBlocos = [...textoTimeline.matchAll(/·\s*(\d+)\s+(?:ações|eventos|atividades)/gi)]
+      .reduce((soma, m) => soma + Number(m[1]), 0);
+    const linhasSoltas = (textoTimeline.match(/\d{2}:\d{2}/g) ?? []).length;
+    const mostraAsAtividades = somaBlocos + linhasSoltas >= 4;
     if (!mostraAsAtividades) {
       await shotPage(page, `wave-6-d26-timeline-vazia-por-eixo${sufixo}.png`, false);
     }
@@ -751,9 +759,9 @@ async function main(): Promise<void> {
       "lead SEM contato mostra as PRÓPRIAS atividades na timeline",
       mostraAsAtividades,
       mostraAsAtividades
-        ? "o lead sem contato exibe as atividades ligadas a ele"
-        : "timeline VAZIA para um lead que TEM 4 atividades — e vazia por falta de eixo se lê " +
-          "igual a vazia por falta de acontecimento",
+        ? `o lead sem contato exibe as atividades ligadas a ele (${somaBlocos + linhasSoltas} contadas)`
+        : `timeline com ${somaBlocos + linhasSoltas} atividade(s) para um lead que TEM 4 — e ` +
+          `vazia por falta de eixo se lê igual a vazia por falta de acontecimento`,
     );
 
     // ---- 24: a FONTE devolve eventos; quem agrupa é a TELA -------------------
@@ -841,7 +849,7 @@ async function main(): Promise<void> {
       joins === 0
         ? "nenhum canal observado nos ciclos, com um lead QUE TEM contato — então o dossiê " +
           "não assina, ou assina com outro nome"
-        : `${CICLOS + 1} aberturas → ${joins} entradas e ${leaves} saídas ` +
+        : `${CICLOS} aberturas DENTRO da janela → ${joins} entradas e ${leaves} saídas ` +
           `— o supabase-js manda um phx_leave ANTES do join do mesmo tópico e outro na ` +
           `desmontagem, então DUAS saídas por entrada é o esperado (mesma razão medida no ` +
           `inbox). A saída que sobra é de um canal aberto ANTES desta janela e fechado dentro ` +
@@ -856,10 +864,13 @@ async function main(): Promise<void> {
             .filter((x) => x.j > 0 || x.l > 0)
             .map((x) => `${x.t.slice(-14)} ${x.j}j/${x.l}s`)
             .join(", ") || "(nenhum)"}` +
-          ` | PREVISÃO registrada ANTES do conserto do eixo: hoje são ${joins} entradas para ` +
-          `${CICLOS + 1} aberturas porque UM dos leads do caso não tem contato e o canal é ` +
-          `indexado por ele — esse dossiê não assina nada. Consertado o D26, esta contagem TEM ` +
-          `de virar ${CICLOS + 1}. Se continuar ${joins}, o conserto está incompleto.`,
+          ` | PREVISÃO RETIRADA, e o erro era MEU: eu previ que a contagem passaria de 4 para 5 ` +
+          `depois do conserto do eixo, atribuindo a diferença ao lead sem contato. Errado em ` +
+          `dois níveis. O canal passou a ser indexado pelo LEAD (timeline-<leadId>), então todo ` +
+          `lead assina — e a diferença nunca foi o eixo. E os "5" eram aritmética minha: o laço ` +
+          `abre ${CICLOS} vezes DENTRO da janela, e a quinta abertura aconteceu ANTES dela (é ` +
+          `dela a saída solta 0j/1s). Previsão construída sobre modelo errado do próprio ` +
+          `instrumento prevê o instrumento, não o produto.`,
       joins === 0 ? "BLOQUEADO" : undefined,
     );
 
