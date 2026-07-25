@@ -9874,3 +9874,48 @@ inteiro e **não conserta nada para quem lê só a seção**, que é como docume
 É a §7.303 vista do lado do desenho do incentivo, e vale mais que ela: **premiar o gesto sem cobrar a
 medição do gesto fabrica o gesto.** Vale para retratação, para "achei um bug" e para qualquer métrica
 que conte eventos em vez de verificá-los.
+
+## §7.308 — "Conferi" é um VEREDITO sobre o próprio processo; o dado é a SAÍDA do comando
+
+A observação foi repetida uma segunda vez, agora com a credencial explícita: *"conferi agora, depois da
+sua mensagem"*. Medição feita antes de responder, no HEAD `4bd3d34`:
+
+```
+$ find ~ -maxdepth 3 -name "BRIEFING-crm-vivo.md"   → 1 arquivo (worktree crm-vivo). Não há segunda cópia.
+$ grep -c "destas, 15" BRIEFING-crm-vivo.md          → 1
+$ sed -n '9591p' BRIEFING-crm-vivo.md
+> **⚠️ CORRIGIDO (§7.305).** A versão original desta seção dizia *"das 28, 15 só sujam"* e *"as 13 que
+```
+
+**A linha 9591 É o aviso de correção.** A única ocorrência da string está dentro dele, citando o texto
+antigo. A frase completa transcrita na observação **não existe mais como texto vivo em lugar nenhum**.
+
+### O que isso torna visível, e é a última e mais forte instância do dia
+
+**A leitura não foi da versão em disco — foi da versão em memória de quem já tinha lido o arquivo.** E
+o relato disso saiu como *"conferi agora"*.
+
+> **"Conferi" é um veredito sobre o próprio processo, e vale exatamente o que vale qualquer veredito
+> (§7.299): não oferece superfície para discordar.** Quem recebe não tem contra o que checar — só pode
+> aceitar ou duvidar da pessoa.
+
+**O dado equivalente é a SAÍDA do comando.** E a diferença entre os dois lados desta troca é
+literalmente essa: de um lado, uma **frase citada** — e frase é prosa, reconstruível de memória sem
+que o autor perceba (§7.294); do outro, **três saídas de comando com o SHA junto** — que não se
+reconstroem de memória, porque ou se rodou, ou não se rodou.
+
+**A cerca, e ela é a mais barata das 308:** ao afirmar que conferiu, **cole a saída**. Não porque o
+colega desconfie — mas porque *lembrar de ter conferido* e *ter conferido* produzem a mesma frase, e
+**nenhum sintoma distingue os dois**. É a §7.298 (*o objeto da ação não é o objeto em vigor*) aplicada
+ao ato de verificar: **verificou-se a lembrança do arquivo, acreditando verificar o arquivo.**
+
+### E a metade que ele acrescentou, que é o contrapeso do outro lado do dia
+
+> ***"A gente passou horas aprendendo a não afirmar sem medir, e o excesso disso é não afirmar NEM O
+> QUE FOI OBSERVADO. TESTEMUNHO É DADO. Recusá-lo também é perder informação — só que a perda parece
+> rigor."***
+
+**Fecha a §7.303 e a §7.306 numa regra só:** relato de quem presenciou é evidência de primeira ordem
+sobre o que presenciou — e **não** sobre o que inferiu do estado interno de outra pessoa. Recusar o
+testemunho junto com a inferência descarta o que havia de sólido, **e a perda passa despercebida
+porque tem a aparência do escrúpulo.**
