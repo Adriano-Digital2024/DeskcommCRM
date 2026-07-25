@@ -4809,3 +4809,48 @@ posto lá?** Preparação completa não é "terminei"; é "está visível de ond
 E anote a graduação: este guarda **acabou de reprovar o próprio autor**, que é a condição da
 §7.106. Ele deixou de ser instrumento presumido e passou a instrumento provado — não porque alguém
 o revisou, mas porque mordeu.
+
+## §7.128 — Cerca de comentário: nomeie a IDEIA ATRAENTE, não a regra
+
+A regra "o `reason` nomeia os campos, nunca os valores" existia no briefing e não existia no
+emissor. Posta no código, ela só protege se estiver escrita de um jeito específico — e a razão
+está na §7.67: **quem vai vazar não desobedece a regra; não RECONHECE que o seu movimento cai
+sob ela.**
+
+Enunciar a regra ("sem PII no `reason`") não basta, porque a pessoa competente lê, CONCORDA, e em
+seguida acrescenta o valor — para ela aquilo não é "PII", é "o detalhe útil". A cerca só é
+reconhecida se **nomear o movimento tentador em primeira pessoa**: *"mostrar o antes-e-depois
+parece só deixar a timeline mais informativa — e neste produto o TÍTULO É O NOME DO CLIENTE"*.
+
+Anatomia da cerca que funciona, nesta ordem: **(1)** o movimento que a pessoa está prestes a
+fazer, dito com as palavras dela; **(2)** por que quebra NESTE produto em específico, não em
+abstrato; **(3)** para onde vai quem precisa daquilo (`api_audit_log`, sob controle de acesso) —
+cerca sem saída vira obstáculo a contornar; **(4)** a EXCEÇÃO junto, senão a regra é aplicada onde
+não vale e quebra outra coisa.
+
+### §7.128-a — Review não protege contra erro DEFENSÁVEL
+
+É a consequência operacional, e é a que decide onde gastar comentário. Nos casos comuns, a
+alternativa ao acerto é o **descuido** — e descuido é pego por tipo, teste e review. Aqui a
+alternativa era **outro desenho razoável**: "timeline mais informativa" é critério que qualquer
+pessoa competente defende numa review — e ganha, porque a defesa é genuinamente boa.
+
+**Review é filtro de competência: pega o que PARECE errado.** Erro alcançado por raciocínio bom
+parece certo também para quem revisa, e a review é justamente a arena onde ele é defendido. Logo,
+contra este erro o processo não serve — a cerca tem de estar no CÓDIGO, no ponto do movimento.
+
+**Inverte o instinto de onde comentar:** não no trecho complicado (esse assusta, e o susto já
+protege), e sim **onde o erro é ATRAENTE**. Comente onde alguém competente iria com convicção para
+o lugar errado.
+
+### §7.128-b — A exceção separada pela ORIGEM, não pela FORMA
+
+A exceção foi escrita certa e o critério dela merece destaque: a atividade de autorização vencida
+mostra antes-e-depois DE PROPÓSITO, porque lá o texto é a proposta do próprio agente, escrita por
+máquina. **A origem do texto decide, não a forma da frase.**
+
+Uma regra ancorada na forma ("a frase mostra antes-e-depois?") proibiria o caso legítimo. É a
+§7.124 aparecendo do outro lado do sistema — lá um critério exigia a FORMA e reprovava um acerto;
+aqui uma regra por FORMA proibiria um acerto. **Mesma doença, superfícies opostas: confundir a
+aparência com a coisa.** Quando aparecer dúvida sobre uma regra, pergunte de que ela depende de
+verdade — quase nunca é do formato.
