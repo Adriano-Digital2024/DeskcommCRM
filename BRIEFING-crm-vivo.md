@@ -7875,3 +7875,25 @@ deploy, não detalhe da implementação.**
 **Medido, e é o que prova que o mecanismo está inerte:** 7 `followup_turn` vencidos, o mais antigo
 esperando **56 minutos**, `attempts = 0` em todos. Ninguém drena a fila neste ambiente — e nenhum
 sintoma aponta para isso.
+
+## §7.254-a — A medição é REVERSÍVEL e a mudança não; e o defeito que sobra é o último experimento sobre o que já foi consertado
+
+Duas formulações que melhoram a lei da ordem, ambas de quem teve a ordem invertida:
+
+> *"Eu estava pensando em 'consertar o que está errado primeiro'. **A pergunta certa não é o que
+> consertar antes — é o que MEDIR antes, porque a medição é reversível e a mudança não.**"*
+
+Essa é a razão profunda, e ela dispensa julgar importância: **entre duas ações, a que não pode ser
+desfeita vai por último**, sempre. Não é sobre qual defeito é mais grave — é sobre qual ordem
+preserva mais informação.
+
+> *"**Quando há duas coisas erradas e uma delas já foi consertada, a segunda vira o único experimento
+> disponível sobre a primeira.**"*
+
+Isto é mais forte do que parece. O defeito **remanescente** é o que ainda produz o estado em que a
+hipótese sobre o **já consertado** pode ser testada. Consertá-lo sem medir **não confunde a
+atribuição: destrói a possibilidade de atribuir**, porque nenhum dos dois estados anteriores volta.
+
+**Regra:** ao consertar em série, **cada conserto é a última chance de aprender sobre os anteriores**.
+A ordem dos consertos determina o que permanece cognoscível — e isso não aparece em nenhuma lista de
+prioridade, porque prioridade ordena por gravidade e esta pergunta é sobre **reversibilidade**.
