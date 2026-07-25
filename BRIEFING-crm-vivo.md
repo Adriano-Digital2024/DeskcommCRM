@@ -1470,3 +1470,47 @@ qualidade do argumento, é a **coincidência temporal** entre a necessidade e o 
 resposta é não, o argumento nasceu da necessidade e não da análise — e precisa passar por uma
 medição antes de valer. Neste caso a medição existia e era barata: `tsc` com e sem a interrogação,
 **0 erros contra TS2741**. Trinta segundos teriam desfeito a convicção.
+
+### §7.29-b — O furo da minha própria regra, e as camadas medidas
+
+O @QAVivo verificou a §7.29 e trouxe três coisas. A primeira **conserta a regra que eu ensinei ao
+time**, e por isso vem antes.
+
+**1. `+N −0` em `tests/invariants/` é necessário, não suficiente.**
+
+Eu escrevi que a exceção do freeze se cobra pelo número medido: `git diff --cached --numstat
+tests/invariants/` com `−0` prova que a mudança é aditiva. Prova que é aditiva **ali**. Não diz nada
+sobre o resto do commit — e foi *exatamente fora dali* que o afrouxamento aconteceu, no `?:` de um
+tipo em `lib/`. Uma regra que mede só onde o guard olha herda o ponto cego do guard.
+
+> **Corrigido:** o `−0` vale para o diretório congelado; a leitura do **commit inteiro** procurando
+> garantia removida (opcional, `not null` que sai, tipo que alarga, aviso silenciado) é obrigatória
+> e é humana. Ele fez: conferiu que o outro arquivo do commit mudava *apenas* a interrogação e o
+> comentário.
+
+**2. Uma mutação não basta quando há mais de um jeito de a garantia falhar.**
+
+*"Campo ausente quebra"* e *"campo `undefined` quebra"* **não são a mesma garantia**: um campo
+tipado `X | null | undefined` passa na primeira e dá falso conforto. Duas mutações, dois erros
+distintos:
+
+| mutação | erro |
+|---|---|
+| apagar a linha do fixture | `TS2741 — Property 'last_human_decision' is missing … but required` |
+| trocar o valor por `undefined` | `TS2322 — Type 'undefined' is not assignable to 'UltimaDecisaoHumana \| null'` |
+
+**3. A §7.29 deixou de ser argumento e virou medição — nas duas pontas.**
+
+Eu tinha provado que o **tipo** tem dentes. Faltava provar que o **teste do produtor** também tem —
+sem isso, *"são camadas diferentes"* era retórica confortável. Ele mutou o produtor para devolver
+`last_human_decision: null` sempre: mutação **válida no tipo**, então o compilador não salva.
+Reproduzido de forma independente por mim:
+
+| estado | `tsc` | `get-lead-context-decisao.test.ts` |
+|---|---|---|
+| base | 0 | **4/4** |
+| produtor sempre `null` | **0** — cego, como previsto | **1 reprovado** — *"a decisão mais recente chega com ação, sentido e quando"* |
+| restaurado | 0 | 4/4 |
+
+> Cada camada reprova o que a outra deixa passar. **Isso é a lei medida, não argumentada** — e é a
+> diferença entre uma doutrina que se sustenta e uma que só soa bem.
