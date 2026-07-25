@@ -168,6 +168,68 @@ async function tabelaVerdade(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const ORDEM: ScoreBand[] = ["frio", "morno", "quente"];
+
+interface Violacao {
+  anterior: ScoreBand;
+  score: number;
+  obtido: ScoreBand;
+  esperado: ScoreBand;
+}
+
+/**
+ * Comprime scores CONSECUTIVOS com o mesmo veredito numa faixa.
+ *
+ * Não é cosmética: "70-74 vindo de frio exibem frio" mostra a FORMA do defeito
+ * (a zona morta do limiar distante) — cinco linhas soltas mostram cinco casos e
+ * deixam a forma para quem ler adivinhar.
+ */
+function comprimir(vs: Violacao[]): string {
+  const grupos: string[] = [];
+  let atual: { v: Violacao; de: number; ate: number } | null = null;
+  const fechar = () => {
+    if (!atual) return;
+    const { v, de, ate } = atual;
+    const faixa = de === ate ? `${de}` : `${de}-${ate}`;
+    grupos.push(`vindo de "${v.anterior}", score ${faixa} exibe "${v.obtido}" (esperado "${v.esperado}")`);
+    atual = null;
+  };
+  for (const v of vs) {
+    if (
+      atual &&
+      atual.v.anterior === v.anterior &&
+      atual.v.obtido === v.obtido &&
+      atual.v.esperado === v.esperado &&
+      v.score === atual.ate + 1
+    ) {
+      atual.ate = v.score;
+      continue;
+    }
+    fechar();
+    atual = { v, de: v.score, ate: v.score };
+  }
+  fechar();
+  return grupos.join(" · ");
+}
+
+/**
+ * A régua escrita no próprio módulo, aplicada degrau a degrau: "para SUBIR de
+ * faixa o score precisa passar do limiar mais a banda; para DESCER, cair abaixo
+ * do limiar menos a banda". Não é um modelo meu — é o comentário virado código,
+ * que é o único jeito de confrontar os dois.
+ */
+function porDegrau(score: number, anterior: ScoreBand): ScoreBand {
+  let b = anterior;
+  for (let i = 0; i < ORDEM.length; i++) {
+    let n = b;
+    if (b === "frio" && score >= 45) n = "morno";
+    else if (b === "morno" && score >= 75) n = "quente";
+    else if (b === "quente" && score <= 65) n = "morno";
+    else if (b === "morno" && score <= 35) n = "frio";
+    if (n === b) break;
+    b = n;
+  }
+  return b;
+}
 /** A faixa que o número indicaria sem memória nenhuma — a régua crua. */
 function faixaCrua(score: number): ScoreBand {
   if (score >= 70) return "quente";
@@ -198,64 +260,43 @@ function histerese(): void {
     );
   }
 
-  // P2 — a que o caso limpo não enxerga: a faixa exibida pode ficar UM degrau
-  // atrás (é o preço da histerese); dois degraus não é histerese, é rótulo velho.
-  const saltos: { score: number; anterior: ScoreBand }[] = [
-    { score: 72, anterior: "frio" },
-    { score: 74, anterior: "frio" },
-    { score: 38, anterior: "quente" },
-    { score: 36, anterior: "quente" },
-    { score: 80, anterior: "frio" },
-    { score: 20, anterior: "quente" },
-  ];
-  const mentiras: string[] = [];
-  for (const s of saltos) {
-    const exibida = resolveBand(s.score, s.anterior);
-    const distancia = Math.abs(ORDEM.indexOf(exibida) - ORDEM.indexOf(faixaCrua(s.score)));
-    if (distancia >= 2) {
-      mentiras.push(
-        `score ${s.score} vindo de "${s.anterior}" exibe "${exibida}" (régua crua: "${faixaCrua(s.score)}")`,
-      );
+  // P2 e P3 por VARREDURA, não por exemplos. Exemplo escolhido a mão acha o que
+  // quem escreveu já suspeitava; a varredura acha o que ninguém suspeitou. Aqui o
+  // domínio inteiro cabe num laço: 101 scores × 3 faixas anteriores = 303 casos,
+  // e ainda sobra barato. Onde der para varrer o domínio, amostrar é escolha
+  // pior — e a saída ainda comprime as violações em FAIXAS, porque 300 linhas de
+  // falha escondem a forma do defeito tão bem quanto nenhuma linha.
+  const violaP2: Violacao[] = [];
+  const violaP3: Violacao[] = [];
+  for (const anterior of ORDEM) {
+    for (let score = 0; score <= 100; score++) {
+      const exibida = resolveBand(score, anterior);
+      const crua = faixaCrua(score);
+      if (Math.abs(ORDEM.indexOf(exibida) - ORDEM.indexOf(crua)) >= 2) {
+        violaP2.push({ anterior, score, obtido: exibida, esperado: crua });
+      }
+      const degrau = porDegrau(score, anterior);
+      if (exibida !== degrau) {
+        violaP3.push({ anterior, score, obtido: exibida, esperado: degrau });
+      }
     }
   }
+
   record(
     "16.c",
-    "NÃO-MENTIRA: a faixa nunca fica a duas faixas da régua crua",
-    mentiras.length === 0,
-    mentiras.length === 0
-      ? `${saltos.length} saltos conferidos, nenhum passou de um degrau de atraso`
-      : `${mentiras.length} caso(s): ${mentiras.join(" · ")}`,
+    "NÃO-MENTIRA em TODO o domínio: 303 casos, faixa nunca a duas da régua crua",
+    violaP2.length === 0,
+    violaP2.length === 0
+      ? "0..100 × 3 faixas anteriores — nenhum caso passou de um degrau de atraso"
+      : `${violaP2.length}/303 casos: ${comprimir(violaP2)}`,
   );
-
-  // A régua do módulo diz, palavra por palavra: "para SUBIR de faixa o score
-  // precisa passar do limiar mais a banda; para DESCER, precisa cair abaixo do
-  // limiar menos a banda". Aplicada degrau a degrau, ela dá outra resposta que a
-  // função nos mesmos casos — e quando o comentário e o código discordam, um dos
-  // dois está errado.
-  const porDegrau = (score: number, anterior: ScoreBand): ScoreBand => {
-    let b = anterior;
-    for (let i = 0; i < ORDEM.length; i++) {
-      let n = b;
-      if (b === "frio" && score >= 45) n = "morno";
-      else if (b === "morno" && score >= 75) n = "quente";
-      else if (b === "quente" && score <= 65) n = "morno";
-      else if (b === "morno" && score <= 35) n = "frio";
-      if (n === b) break;
-      b = n;
-    }
-    return b;
-  };
-  const divergem = saltos
-    .filter((s) => resolveBand(s.score, s.anterior) !== porDegrau(s.score, s.anterior))
-    .map(
-      (s) =>
-        `${s.score}/${s.anterior}: função="${resolveBand(s.score, s.anterior)}" regra escrita="${porDegrau(s.score, s.anterior)}"`,
-    );
   record(
     "16.d",
-    "a função concorda com a regra escrita no próprio módulo",
-    divergem.length === 0,
-    divergem.length === 0 ? "nenhuma divergência nos saltos" : divergem.join(" · "),
+    "a função concorda com a régua escrita no módulo — em TODO o domínio",
+    violaP3.length === 0,
+    violaP3.length === 0
+      ? "0..100 × 3 faixas anteriores — função e régua escrita coincidem"
+      : `${violaP3.length}/303 casos: ${comprimir(violaP3)}`,
   );
 }
 
