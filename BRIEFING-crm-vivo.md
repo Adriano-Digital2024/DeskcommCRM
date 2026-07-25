@@ -2494,3 +2494,45 @@ diferença, porque o resultado continua plausível.
 ou com marcação que o canal preserve; e quem manda expressão com `$`, crase ou contrabarra **relê o
 que chegou**. A verificação de que a mensagem chegou inteira é do **remetente** — o destinatário só vê
 o que sobrou.
+
+---
+
+## §7.60 — Restrição forte encontra o que a especificação não previu
+
+A prova de invertibilidade da §7.54 foi escrita para uma coisa — impedir que a razão fosse **gerada**
+em vez de derivada. Ela achou **duas** que ninguém pediu.
+
+**1. O truncamento honesto.** O delta *"no máximo três parcelas nomeadas"* colidiu com a reconstrução:
+cortar a quarta **em silêncio** faria a frase deixar de somar o próprio número — e *razão que não soma
+o próprio número é a frase gerada que a C1 proíbe, **disfarçada de resumo***. O resto virou **uma linha
+agregada** (`−8 outro fator`) em vez de sumir, e a conta continua fechando.
+
+**2. O clamp, que ninguém tinha visto.** Quando a soma sai de `[0,100]`, o número exibido **não é** a
+soma das parcelas: `30 − 24 − 20 = −14` vira `0`, e quem lesse a razão veria **uma conta errada na
+tela**. A frase agora termina em `limitado a 0`. Quatro palavras que mantêm a razão auditável.
+
+> **O caso só existiu porque a prova de derivação existia.** Sem ela, o clamp seria uma **divergência
+> silenciosa** entre a razão e o número — exatamente a classe que esta entrega passou o dia caçando.
+
+**Forma geral:** teste fraco acha o que você **foi procurar**; **invariante forte acha o que você não
+sabia procurar**. Uma restrição que amarra a saída ao cálculo transforma **qualquer** ponto de
+divergência em falha — inclusive os que nenhum cenário cobria, porque ninguém sabia que existiam.
+
+## §7.61 — Imunidade estrutural não é imunidade testada
+
+Nota do próprio @DevVivo, e é o tipo de ressalva que quase ninguém faz sobre um acerto seu:
+
+> *"A imunidade veio da **modelagem**, não de cuidado meu — se um dia alguém migrar a fórmula para
+> média ponderada, o viés volta junto **e o teste de ordenação não pega**."*
+
+O modelo de base + parcelas é imune ao viés da §7.49 **por construção**: "três objeções" é `−16`, não
+`0`, então sobe no ranking sozinha. **Não há guarda nenhuma protegendo isso** — a proteção é a
+**forma** do desenho.
+
+> Proteção que vem da forma **desaparece em silêncio quando a forma muda**, e nenhum teste existente
+> percebe, porque todos eles passariam igual num modelo enviesado.
+
+**Regra:** quando uma propriedade desejável é consequência da **modelagem** e não de um guarda, isso
+vai **escrito no ponto onde alguém mudaria a modelagem** (§7.56) — não no handoff, não no topo do
+arquivo: **na definição do modelo**. É o único aviso que a pessoa vai ler no instante em que estiver
+prestes a apagá-lo.
