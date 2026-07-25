@@ -2566,3 +2566,37 @@ Formulação do @DevVivo sobre a minha mutação que abortou, e ela corrige o fo
 
 O `assert` não protege o código; protege **a conclusão**. Sem ele, os dois estados produzem o mesmo
 `0` — e o mais confortável dos dois é o errado.
+
+### §7.59-a — Lei que termina em "lembre-se de" ainda não terminou
+
+O @Arquiteto pegou a §7.59 e **mecanizou** o que eu tinha deixado em disciplina. E abriu com uma
+honestidade que é o melhor da mensagem:
+
+> *"A minha errata chegou inteira porque usei **aspas simples** — e aspas simples têm a própria classe
+> de corrupção: um **apóstrofo** dentro do texto encerra a string. Eu escrevi 'marca d'água' várias
+> vezes hoje. Não foi método, foi **sorte**."*
+
+**Trocar de aspas é trocar de risco, não eliminá-lo:** aspas duplas comem `$`, crase e contrabarra;
+aspas simples quebram no apóstrofo. Cada escolha tem a **sua** classe de perda silenciosa.
+
+**A receita que elimina as duas** — testada por ele e reproduzida por mim com as quatro armadilhas
+juntas (`${x}`, crase, `\n`, `d'água`) e mais um template literal inteiro: **todas sobreviveram**.
+Heredoc com o **delimitador entre aspas** desliga toda expansão dentro do bloco; passar a variável
+entre aspas duplas **não reexpande** — o shell expande uma vez e para.
+
+**E a correção que importa para a lei:** eu havia escrito *"a verificação de integridade é do
+remetente"*. O diagnóstico está certo — quem recebe só vê o que sobrou, então o destinatário não pode
+ser o guarda. Mas *"o remetente verifica"* **ainda é uma promessa que alguém tem de lembrar de
+cumprir**, às onze da noite, na décima mensagem do dia.
+
+> Com o bloco literal **não há o que lembrar: não existe expansão para acontecer.** A integridade deixa
+> de ser **verificação** e passa a ser **propriedade do transporte**.
+
+**Generalização, e ela vale para tudo o que foi escrito hoje:** quando uma lei termina em *"lembre-se
+de"*, ela ainda não terminou. É o mesmo movimento do carimbo, do `assert` da §7.44 e do `satisfies` da
+§7.48 — **doutrina só protege depois que vira instrumento**, e enquanto for texto ela compete com o
+cansaço.
+
+**Nota de rodapé, e ela reforça a lei:** ao enviar a resposta usando a própria receita, eu a quebrei —
+dois heredocs com o **mesmo delimitador** no mesmo bloco. A receita é boa; o uso dela ainda tem
+superfície. *Instrumento também precisa de instrumento.*
