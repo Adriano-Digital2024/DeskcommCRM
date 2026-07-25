@@ -379,14 +379,32 @@ async function main(): Promise<void> {
   await armarContadorDePulsos(abaB, ALVO);
   const acaoAconteceu = await moverPorTeclado(abaA, ALVO);
   const colunaDepoisA = await colunaDe(abaA, ALVO);
+  // A TELA DA ABA QUE AGIU É O PRÓPRIO OTIMISMO. O card se move por atualização
+  // otimista ANTES de qualquer resposta; se a mutação falhar, a aba que agiu
+  // pode continuar mostrando o card no lugar novo. Ler só ela e chamar de "a
+  // ação aconteceu" é confundir intenção com efeito — e isso derrubaria toda a
+  // cadeia seguinte no lugar errado, mandando alguém caçar realtime quando a
+  // escrita nunca aconteceu.
+  const { data: linhaAlvo } = await admin
+    .from("crm_leads")
+    .select("stage_id")
+    .eq("organization_id", CREDS.org_id)
+    .ilike("title", `%${ALVO}%`)
+    .maybeSingle();
+  const estagioNoBanco = (linhaAlvo as { stage_id: string } | null)?.stage_id ?? null;
+  const persistiu = estagioNoBanco !== null && estagioNoBanco !== colunaAntesA;
   record(
     "12.a",
-    "a AÇÃO aconteceu na aba A (o arrasto por teclado engatou)",
-    acaoAconteceu,
-    acaoAconteceu
-      ? `card mudou de coluna na origem: "${colunaAntesA}" → "${colunaDepoisA}"`
-      : `o card NÃO saiu do lugar na aba A (segue em "${colunaAntesA}") — o arrasto não ` +
-        `engatou; nada do que vem depois é conclusivo`,
+    "a AÇÃO aconteceu — e PERSISTIU (a tela da aba que agiu é o próprio otimismo)",
+    acaoAconteceu && persistiu,
+    !acaoAconteceu
+      ? `o card NÃO saiu do lugar na aba A (segue em "${colunaAntesA}") — o arrasto não ` +
+        `engatou; nada do que vem depois é conclusivo`
+      : persistiu
+        ? `tela "${colunaAntesA}" → "${colunaDepoisA}" e o BANCO confirma "${estagioNoBanco}"`
+        : `a tela da aba A mostra "${colunaDepoisA}", mas o BANCO segue em "${estagioNoBanco}" — ` +
+          `a mutação não persistiu, então não há evento para entregar e nada depois disto ` +
+          `acusa o realtime`,
   );
 
   // A amostragem é o instrumento SUPERADO (ela lia a cada 150ms e não enxergava
