@@ -2656,3 +2656,48 @@ cobrir o que o título diz: quem lê o relatório lê o **rótulo**, não a asse
 
 **Regra:** o nome do critério é **contrato com quem lê o placar**. Se ele promete `N`, a asserção conta
 `N`. Renomear é tão legítimo quanto assertar — o que não pode é a distância entre os dois.
+
+---
+
+## §7.64 — Quando dois estados produzem a mesma observação, o sistema tem de expor a diferença
+
+Diagnóstico do @Arquiteto sobre a suspeita de regressão no realtime, e ele começou **eliminando o
+suspeito que era dele** — com leitura, não com medição:
+
+> A mudança do eco local foi recomendação dele, e a suspeita óbvia era que a marca viva estivesse
+> engolindo evento remoto. **Não é:** em `useBoard`, o `qc.invalidateQueries` roda **antes** da
+> checagem do eco (linha 75 contra 80). O `return` antecipado pula **só o pulso**, nunca a atualização
+> do dado. Hipótese riscada da lista sem gastar rodada.
+
+**O suspeito que sobra é o que produz intermitente por construção:** `useRealtimeChannel` **devolve**
+`{ status }` (linha 148), mapeando `SUBSCRIBED / CHANNEL_ERROR / TIMED_OUT / CLOSED`. E `useBoard` o
+chama (linha 113) **sem atribuir o retorno**. O hook também não religa.
+
+| estado real | o que se observa |
+|---|---|
+| a assinatura morreu | **silêncio** |
+| nada aconteceu | **silêncio** |
+
+> **O valor que separa duas famílias inteiras de causa existe — e é jogado fora na linha seguinte.**
+
+**E a cronologia fecha sem precisar de bug na Wave 3:** ela acrescentou `crm_lead_activities` à
+publicação, ou seja, **aumentou o tráfego de realtime do projeto inteiro**. Mais tráfego eleva a chance
+de erro transitório de canal. *A Wave 3 não precisa ter defeito para ter tornado isto mais provável* —
+e essa é uma direção de caça diferente de *"o que a gente quebrou"*.
+
+**Regra:** quando dois estados distintos produzem a **mesma observação**, o sistema **expõe a
+diferença** — senão toda investigação precisa **reproduzir**, e falha intermitente vira
+**infalsificável**. O discriminador mais barato quase sempre já existe: procure o valor que o código
+**calcula e descarta**.
+
+**E é dívida pela doutrina desta própria entrega:** assinatura que morre em silêncio é **peça sem sinal
+de vida** — o *"log morto"* do checklist, na versão mais cara, porque **a tela continua parecendo
+certa**.
+
+### Critério de aceite do quinto marcador (sem gosto envolvido)
+
+Do @Arquiteto, e ele tira o julgamento do terreno da opinião:
+
+> No tamanho **renderizado**, um observador tem de distinguir o marcador do **contato** do marcador do
+> **agente** **sem legenda**. Se precisar de legenda para distinguir, **a forma falhou** — e a saída
+> **não** é engrossar o tracejado, **é trocar a forma**.
