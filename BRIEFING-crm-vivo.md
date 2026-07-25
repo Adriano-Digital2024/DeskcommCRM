@@ -1808,3 +1808,42 @@ tudo.
 pessoa mais quer "simplificar" de volta para dentro do lead — e ao fazer isso reintroduz, **em
 silêncio**, o pulso que mente **e** o 409 fantasma. Sem a frase no arquivo, a simplificação **parece
 limpeza**.
+
+### §7.39-a — A regra virou consulta, e a consulta achou coisa
+
+O @Arquiteto afiou a §7.39 até ela poder ser **caçada**, em vez de depender de alguém lembrar de
+perguntar:
+
+> **O patológico é MÁQUINA escrevendo em linha que HUMANO segura sob trava otimista.** Se quem escreve
+> a coluna quente é outro **humano**, o 409 é **legível** — *"fulano editou este lead"* é verdade e a
+> pessoa entende. A rejeição só vira **invisível** quando o escritor é processo de fundo, porque aí
+> não existe fulano nenhum para nomear.
+
+**Os três canais desta casa, todos chaveados pela LINHA:** (1) `trg_*_updated_at` + a trava otimista da
+rota; (2) a publicação de realtime + os filtros do cliente; (3) gatilhos que rodam em **qualquer**
+update — `trg_emit_event_on_lead_change` é `AFTER INSERT OR UPDATE ... FOR EACH ROW` e só decide
+**depois** de comparar campo.
+
+**E o discriminador de quando pagar a tabela separada**, senão a regra vira desculpa para 1:1 em todo
+lugar: **frequência de escrita × número de canais de linha**. Valor escrito uma vez na vida do lead não
+paga tabela nem com três canais; valor escrito a cada mensagem paga com um só. O score é o segundo
+caso; **a maioria das colunas é o primeiro**.
+
+**Rodei a varredura em vez de só registrá-la.** Resultado:
+
+| pergunta | resposta medida |
+|---|---|
+| quais rotas usam trava otimista? | **uma** — `move/route.ts`, sobre `crm_leads` |
+| há escritor de máquina nessa linha hoje? | **sim, um** — a ação de automação `assign_owner` |
+| ele é patológico? | **não** — escreve `owner_user_id`, **mudança de estado real**; o 409 é legítimo |
+
+**Refinamento que a varredura obrigou:** o discriminador não é máquina-versus-humano, é **mudança de
+estado versus telemetria**. Máquina escrevendo estado real produz 409 **correto** (o lead mudou
+mesmo); máquina escrevendo telemetria produz 409 **falso**. O score é telemetria — por isso sai da
+linha.
+
+**Achado nomeado, pré-existente, pequeno e visível:** a mensagem do 409 é literalmente *"Lead foi
+modificado por **outro usuário**. Recarregue e tente novamente."* Quando o escritor é a automação, essa
+frase é **falsa** — a pessoa vai procurar um colega que não existe. O texto embute a premissa de que
+todo escritor concorrente é humano, e ela deixou de valer no dia em que automações passaram a escrever
+no lead.
