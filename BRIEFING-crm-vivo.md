@@ -5866,3 +5866,45 @@ passou de manhã com este mesmo código. Corrida é sensível a tempo, e algo mu
 consequência de escopo: `reactStrictMode` só duplica em DEV, então, se for isto, o vermelho é
 artefato de desenvolvimento — o que **não o torna barato**, porque inviabiliza toda medição de tempo
 real do time.
+
+## §7.170 — A mitigação criou a exposição: proteção desenhada de UM papel desloca risco para o outro
+
+A receita contra a corrida de índice (`git add -N` + `git commit --only`) protegia **quem commita** —
+garante que o commit leve só os próprios caminhos. **Não protegia quem TEM TRABALHO NO ÍNDICE.**
+
+E o pior: para arquivo **novo**, o `git add -N` é exatamente o que o torna **capturável**. Antes
+dele, o arquivo era untracked e **invisível** para o `git commit` de outra sessão. **A mitigação
+criou a exposição que a vítima não tinha** — e a vítima foi quem escreveu a receita.
+
+**Forma geral:** proteção desenhada da perspectiva de um papel tende a **deslocar** risco para outro
+papel em vez de removê-lo, e o autor não vê porque está no papel protegido. **Ao propor uma
+proteção, escreva quem fica protegido E quem passa a ficar exposto.** Se a segunda lista estiver
+vazia, provavelmente não foi procurada.
+
+**Receita corrigida (vale para os dois lados):** `git add -N` e `git commit --only` na **MESMA
+invocação**, sem nada entre eles — nem gate, nem teste, nem leitura. Enquanto houver segundos entre
+um e outro, existe janela. Para arquivo já rastreado, `git commit CAMINHO` continua bastando.
+
+**E o conserto de verdade é estrutural:** a corrida existe porque duas sessões compartilham UM
+índice. Worktrees separados a eliminam (§7.99: tirar a possibilidade). Não se faz agora por haver
+trabalho vivo dos dois lados — **gatilho declarado: ao fechar a wave 7**, antes de qualquer frente
+nova.
+
+## §7.171 — Congelamento protege o DELIBERADO; artefato capturado por corrida não herda autoridade
+
+Um teste entrou no HEAD **sem a migration que ele testa** — capturado do índice por um commit
+alheio. Duas consequências, e a segunda é a perversa:
+
+1. O `test:db` do HEAD reprovava **por construção**: o teste exige o filtro que a migration cria.
+2. E, uma vez dentro de `tests/invariants/**`, a versão **intermediária** passou a ser protegida pelo
+   hook — o autor precisa de autorização para substituir pela versão que ele **já havia escrito**.
+
+**O congelamento existe para impedir que um invariante DECIDIDO seja apagado ou afrouxado.** Este
+nunca foi decidido: foi **capturado**. Tratar artefato de corrida como invariante inverte o propósito
+da regra — protege exatamente o que ninguém escolheu proteger.
+
+**Regra:** quando o pedido de exceção for para **restaurar a versão pretendida** de algo que entrou
+por acidente de índice, o critério não é `+N −0` — é **provar que a substituição FORTALECE** (aqui:
+cada caso em transação revertida, em vez de org compartilhada com limpeza no fim) **e que a nova
+versão morde** (falha quando o filtro do trigger é removido). Autorização concedida sob essas duas
+provas, citadas no corpo do commit.
