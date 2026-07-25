@@ -11,6 +11,7 @@ import { midpoint } from "@/lib/kanban/fractional-indexing";
 import type { Lead } from "@/lib/types/leads";
 import type { Pipeline, Stage } from "@/lib/kanban/types";
 import { StageColumn } from "./StageColumn";
+import { LeadDossier } from "./LeadDossier";
 
 interface KanbanBoardProps {
   pipelineId: string;
@@ -99,6 +100,9 @@ export function KanbanBoard({
     return Array.isArray(raw) ? raw.filter((t): t is string => typeof t === "string") : [];
   }, [pipelineProp, queryResult.data?.pipeline]);
 
+  // O dossiê é do BOARD e não da página: ele precisa do lead inteiro e do nome
+  // do estágio, que só existem aqui depois do agrupamento.
+  const [dossieId, setDossieId] = useState<string | null>(null);
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const selectedLeadIds = useMemo(
     () => (selectedIds ? new Set(selectedIds) : internalSelected),
@@ -115,6 +119,10 @@ export function KanbanBoard({
   const isLoading = useExternal ? false : queryResult.isLoading;
   const isError = useExternal ? false : queryResult.isError;
   const error = useExternal ? null : queryResult.error;
+
+  const leadDoDossie = dossieId
+    ? (data?.leads.find((l) => l.id === dossieId) ?? null)
+    : null;
 
   const grouped = useMemo(() => {
     if (!data) return null;
@@ -226,9 +234,22 @@ export function KanbanBoard({
             canonicalTags={canonicalTags}
             selectedLeadIds={selectedLeadIds}
             onSelect={handleSelect}
+            onOpen={setDossieId}
           />
         ))}
       </div>
+      {leadDoDossie && (
+        <LeadDossier
+          open
+          onOpenChange={(v) => !v && setDossieId(null)}
+          lead={leadDoDossie}
+          pipelineId={pipelineId}
+          stageName={
+            data.stages.find((s) => s.id === leadDoDossie.stage_id)?.name ?? "—"
+          }
+          ownerNames={ownerNames}
+        />
+      )}
     </DragDropContext>
   );
 }

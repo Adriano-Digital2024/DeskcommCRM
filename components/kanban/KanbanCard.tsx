@@ -24,6 +24,8 @@ interface KanbanCardProps {
    */
   pulseCount?: number;
   onSelect?: (leadId: string, additive: boolean) => void;
+  /** Abrir o dossiê. Separado de `onSelect`: são gestos e intenções diferentes. */
+  onOpen?: (leadId: string) => void;
 }
 
 function formatBRL(cents: number | null, currency: string | null): string | null {
@@ -59,15 +61,22 @@ export function KanbanCard({
   isSelected,
   pulseCount = 0,
   onSelect,
+  onOpen,
 }: KanbanCardProps) {
   const value = formatBRL(card.valueCents, card.currency);
   const state = resolveCardState(card);
   const age = stageAgeLabel(card.hoursInStage);
 
+  // Clique ABRE o dossiê; ctrl/cmd+clique SELECIONA. "Clicar abre" é a
+  // convenção mais forte, e seleção múltipla é recurso de poder, que tolera
+  // modificador. O arrasto continua funcionando porque o dnd distingue clique
+  // de arrasto por movimento, não por handler.
   const handleClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (!onSelect) return;
-    const additive = e.metaKey || e.ctrlKey;
-    onSelect(card.id, additive);
+    if (e.metaKey || e.ctrlKey) {
+      onSelect?.(card.id, true);
+      return;
+    }
+    onOpen?.(card.id);
   };
 
   return (
@@ -131,8 +140,25 @@ export function KanbanCard({
                   aria-label={`Tag: ${card.canonicalTag}`}
                 />
               )}
+              {/* O TÍTULO é o elemento ativável, não o card inteiro.
+                  `role="group"` no card foi decisão da wave 2 (o dnd marca o
+                  handle como button, e com o menu de ações dentro isso vira
+                  nested-interactive no axe). Voltar o card para `button`
+                  reintroduziria aquele defeito com cara de melhoria de
+                  acessibilidade; deixar só onKeyDown daria uma ação que existe
+                  e NÃO É DESCOBERTA por leitor de tela. O título como button
+                  atende mouse, teclado e leitor sem desfazer a decisão antiga. */}
               <h3 className="line-clamp-2 h-10 text-sm font-medium leading-5 text-text">
-                {card.title}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen?.(card.id);
+                  }}
+                  className="text-left hover:underline"
+                >
+                  {card.title}
+                </button>
               </h3>
             </div>
             <KanbanCardActions lead={lead} pipelineId={pipelineId} />

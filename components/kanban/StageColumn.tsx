@@ -21,6 +21,8 @@ interface StageColumnProps {
   /** leadId → quantos eventos remotos já chegaram (muda = pulsa de novo). */
   pulses?: Map<string, number>;
   onSelect?: (leadId: string, additive: boolean) => void;
+  /** Abrir o dossiê — atravessa o board até o card, como `pulses`. */
+  onOpen?: (leadId: string) => void;
 }
 
 function formatBRL(cents: number): string {
@@ -45,6 +47,7 @@ export function StageColumn({
   selectedLeadIds,
   pulses,
   onSelect,
+  onOpen,
 }: StageColumnProps) {
   const totalCents = leads.reduce((sum, l) => sum + (l.value_cents ?? 0), 0);
   const accentStyle: CSSProperties | undefined = stage.color
@@ -101,6 +104,7 @@ export function StageColumn({
                 isSelected={selectedLeadIds?.has(lead.id)}
                 pulseCount={pulses?.get(lead.id) ?? 0}
                 onSelect={onSelect}
+                onOpen={onOpen}
               />
             ))}
             {provided.placeholder}
