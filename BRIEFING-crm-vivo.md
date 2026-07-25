@@ -6279,3 +6279,59 @@ para claims nulos devolve **NULL sem erro** — filtra tudo, não aborta lote.
 assinatura anônima e repetir a grade**. Se as linhas do CRM Vivo passarem a chegar ao assinante
 independente, a raiz é única e tudo fecha; se não passarem, restam dois defeitos e consertar um
 deixaria o outro vivo com aparência de resolvido.
+
+## §7.190 — Varredura por NOME DE TABELA falha justamente nos escritores CANÔNICOS
+
+A sabotagem pôs `performed_at: new Date()` num escritor de produção e o invariante **passou verde**.
+Motivo: a varredura procurava o nome da tabela, e o worker nunca o escreve — ele chama
+`emitLeadActivity`.
+
+**A cobertura do instrumento é INVERSAMENTE correlacionada com a qualidade do código.** Grep por
+nome de tabela acha os escritores ad-hoc (a minoria, nos lugares mal feitos) e **perde exatamente os
+que passam pelo helper canônico** — que é a maioria, e é o que se quer que exista. Quanto melhor a
+abstração, mais cego o instrumento.
+
+**Regra:** varredura que procura o RECURSO precisa procurar também os PORTÕES por onde se chega a
+ele. A lista de portões é conhecida — é a mesma que a doutrina manda usar.
+
+## §7.191 — A guarda pode falhar ANTES de si mesma, e o sintoma é erro de ferramenta
+
+Ao esvaziar a varredura para testar o caminho vazio, o teste **não passou por vacuidade: ele NÃO
+RODOU.** `grep` sai com 1 quando não acha nada, `execFileSync` lança, e o arquivo morria com
+*"Command failed"* **antes** da guarda de lista vazia.
+
+É uma terceira categoria, ao lado do falso verde e do falso vermelho: **a guarda que nunca executa**.
+E o disfarce é o pior de todos — o sintoma é **erro de ferramenta**, que é a classe de vermelho que
+mais gente ignora, re-roda ou atribui a ambiente.
+
+**Regra:** ao escrever a guarda do caso vazio, verifique que o caminho vazio **chega até ela**.
+Ferramenta de linha de comando que sinaliza "nada encontrado" com código de saída ≠ 0 mata o
+processo antes de qualquer verificação.
+
+### §7.191-a — Falso positivo não custa tempo: DESLIGA a guarda inteira
+
+A primeira mira acusava qualquer `performed_at:` e pegava três **leituras**. O diagnóstico é
+preciso: **invariante com falso positivo é pior que invariante nenhum de um jeito específico — ele é
+DESLIGADO, e leva junto a verificação que funcionava.**
+
+Ninguém remove metade de um guard: remove-se o guard. Por isso a limitação declarada
+(`performed_at: umaVariável` escapa, porque sem AST não se sabe a origem) é a decisão certa —
+**ampliar a mira traria os falsos positivos de volta e custaria o instrumento inteiro.**
+
+## §7.192 — Teste que falha por condição "irreal": a pergunta é se o código DEPENDE dela em silêncio
+
+O agrupamento inicial funcionava por **vizinhança**: correto enquanto a lista chega ordenada — e ela
+chega, a rota ordena. O teste falhou por gerar dados desordenados, e **a tentação era ajustar o
+teste**, porque "em produção sempre vem ordenado" é verdade.
+
+**Mas a dependência era INVISÍVEL:** quem reordenasse em memória faria o agrupamento voltar a 26
+blocos **sem erro nenhum** — apenas deixando de funcionar. Acoplamento silencioso sobrevive
+exatamente assim: pela frase verdadeira que dispensa investigar.
+
+**Regra:** quando um teste falha por condição que "não acontece em produção", a pergunta não é se a
+condição é realista — é **se o código depende dela sem dizer**. Se depende, o teste achou fragilidade
+real, e ajustar o teste esconde o achado. O sinal decisivo: **a violação não produz erro, só
+resultado errado**.
+
+Aqui a saída foi tirar a dependência (agrupar por chave, preservando a ordem de aparição) —
+resultado idêntico na lista ordenada, sem a armadilha.
