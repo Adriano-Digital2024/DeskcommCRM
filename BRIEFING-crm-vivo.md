@@ -2057,3 +2057,40 @@ Ele **removeu**, e deixou o motivo no comentário **para ninguém "completar" a 
 É a §7.38 pelo avesso: lá, a cerca ganhou um anti-teste para provar que morde; aqui, a perna que não
 mordia foi **retirada**. Os dois movimentos servem à mesma pergunta — *"o que este verde me autoriza a
 afirmar?"*.
+
+---
+
+## §7.46 — Quando o motivo de uma decisão é o sintoma que a revelou, some o sintoma e a decisão parece opcional
+
+Formulação do @DevVivo, sobre ele mesmo, e é a lei mais reutilizável do dia.
+
+Ele propôs tirar o score de `crm_leads` por um argumento de **ruído** (o pulso mentindo) — e
+**desistiu** quando o `ANALYZE` consertou o teste que tinha levantado o assunto. O argumento que
+sobreviveu foi outro, de **dano**: trabalho humano recusado por evento invisível (o 409 fantasma), que
+**teste nenhum resolveria**.
+
+> **Ele quase desfez a decisão certa porque o sintoma que a justificava sumiu.**
+
+O sintoma é o que faz **notar**; ele quase nunca é o que faz a decisão ser **certa**. Confundir os dois
+é ficar refém do primeiro conserto que apague o sintoma — e o conserto do sintoma costuma chegar antes
+do entendimento.
+
+**Consequência prática, que ele já aplicou:** o cabeçalho da 0075 nomeia **os dois defeitos** e **não**
+menciona o teste que levantou a lebre. Documentar o sintoma como motivo é plantar a próxima reversão:
+quem ler daqui a seis meses vai ver um problema já resolvido e concluir que a estrutura é
+desnecessária.
+
+**Teste de bolso:** *"se o sintoma que me fez notar isto desaparecesse agora, eu ainda tomaria esta
+decisão?"* Se sim, **o motivo é outro — escreva o outro.** Se não, talvez não houvesse decisão a tomar.
+
+### E a ressalva dele à §7.41, que melhora a lei
+
+> *"Eu não troquei o desenho por disciplina — foi o SEGUNDO defeito que me mostrou a classe. Com um só
+> eu teria consertado o caso e seguido em frente."*
+
+Isso corrige a §7.41 no ponto que importa: **o caso difícil é N = 1**. Com dois defeitos de rostos
+diferentes na mesma varredura, a classe **se anuncia**. Com um, ela fica escondida atrás de um conserto
+que funciona.
+
+> Então a pergunta *"de que classe isto é?"* é obrigatória **justamente quando há só uma violação** —
+> é ali que ela custa esforço e é ali que ela paga. Com duas, qualquer um chega lá.
