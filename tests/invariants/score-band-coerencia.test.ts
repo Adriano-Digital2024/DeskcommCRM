@@ -21,13 +21,13 @@ function defDaConstraint(nome: string): string {
     `select pg_get_constraintdef(k.oid)
        from pg_constraint k
        join pg_class c on c.oid = k.conrelid
-      where k.contype = 'c' and c.relname = 'crm_leads' and k.conname = '${nome}'`,
+      where k.contype = 'c' and c.relname = 'crm_lead_scores' and k.conname = '${nome}'`,
   ).trim();
 }
 
 describe("coerência faixa × score (migration 0074)", () => {
   it("o CHECK do banco usa exatamente os cortes de FAIXA_LIMITES", () => {
-    const def = defDaConstraint("crm_leads_score_band_coherence");
+    const def = defDaConstraint("crm_lead_scores_band_coherence");
     expect(def, "constraint de coerência não existe — a faixa poderia divergir do score").not.toBe(
       "",
     );
