@@ -9,8 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useTimeline } from "@/hooks/contacts/useTimeline";
-import type { TimelineItem } from "@/lib/types/contacts";
-import { activityLabel, actorLabel, actorShape } from "@/lib/leads/activity-vocabulary";
+import type { TimelineItemView as TimelineItem } from "@/lib/types/contacts";
+import { activityLabel, actorName, actorShape } from "@/lib/leads/activity-vocabulary";
 
 interface Props {
   contactId: string;
@@ -107,7 +107,10 @@ export function TimelineView({ contactId, types }: Props) {
                 const label = activityLabel(it.type);
                 const corpo = (it.reason ?? "").trim() || summarizePayload(it.payload);
                 const forma = actorShape(it.actor_kind ?? null);
-                const quem = actorLabel(it.actor_kind ?? null);
+                const quem = actorName(it.actor_kind ?? null, {
+                  agente: it.actor_agent_name,
+                  usuario: it.actor_user_name,
+                });
                 const time = format(new Date(it.performed_at), "HH:mm", { locale: ptBR });
                 return (
                   <li

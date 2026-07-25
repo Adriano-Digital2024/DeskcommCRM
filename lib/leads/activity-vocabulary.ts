@@ -68,6 +68,23 @@ export function actorShape(actorKind: string | null): ActivityActorShape {
 }
 
 /**
+ * QUEM agiu, com nome quando se sabe o nome.
+ *
+ * "Agente" e "Você/time" respondem o TIPO de ator; numa org com três agentes e
+ * cinco atendentes, isso não responde a pergunta que o humano faz olhando a
+ * timeline, que é "quem fez isso?". O genérico vira último recurso — e continua
+ * existindo porque nome pode faltar (agente apagado, usuário sem full_name).
+ */
+export function actorName(
+  actorKind: string | null,
+  nomes: { agente?: string | null; usuario?: string | null } = {},
+): string {
+  if (actorKind === "ai" && nomes.agente) return nomes.agente;
+  if ((actorKind === "user" || actorKind === "contact") && nomes.usuario) return nomes.usuario;
+  return actorLabel(actorKind);
+}
+
+/**
  * Quem agiu, em uma palavra — vai ao lado do rótulo na linha.
  *
  * SEMPRE devolve texto, porque `actorShape` sempre desenha: marcador sem

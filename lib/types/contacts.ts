@@ -54,3 +54,16 @@ export interface TimelineItem {
   reason?: string | null;
   evidence?: Record<string, unknown> | null;
 }
+
+/**
+ * A linha COM o ator resolvido para exibição.
+ *
+ * Tipo separado de propósito: `actor_agent_name` e `actor_user_name` NÃO são
+ * colunas — são join feito na rota. Se morassem em `TimelineItem`, o portão de
+ * exaustividade (TIMELINE_COL_LIST) exigiria pedi-los no SELECT e reprovaria
+ * com razão. Coluna e derivado são coisas diferentes e o tipo diz qual é qual.
+ */
+export interface TimelineItemView extends TimelineItem {
+  actor_agent_name?: string | null;
+  actor_user_name?: string | null;
+}

@@ -16,7 +16,9 @@ import { type NextRequest } from "next/server";
 
 import { ok, fail } from "@/lib/api/wrappers";
 import { createClient } from "@/lib/supabase/server";
-import type { TimelineItem } from "@/lib/types/contacts";
+import type { TimelineItem, TimelineItemView } from "@/lib/types/contacts";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isServiceRoleConfigured } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +90,41 @@ function decodeCursor(raw: string): Cursor | null {
   } catch {
     return null;
   }
+}
+
+/** Anexa o nome do agente e da pessoa que agiram, para a linha não dizer só "Agente". */
+async function comNomeDoAtor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: TimelineItem[],
+): Promise<TimelineItemView[]> {
+  const agentIds = [...new Set(rows.map((r) => r.actor_agent_id).filter((v): v is string => !!v))];
+  const userIds = [...new Set(rows.map((r) => r.performed_by_user_id).filter((v): v is string => !!v))];
+
+  const nomeAgente = new Map<string, string>();
+  if (agentIds.length > 0) {
+    const { data } = await supabase.from("ai_agents").select("id, name").in("id", agentIds);
+    for (const a of (data ?? []) as Array<{ id: string; name: string }>) nomeAgente.set(a.id, a.name);
+  }
+
+  const nomeUsuario = new Map<string, string>();
+  if (userIds.length > 0 && isServiceRoleConfigured()) {
+    const admin = createAdminClient();
+    await Promise.all(
+      userIds.map(async (id) => {
+        const { data } = await admin.auth.admin.getUserById(id);
+        const nome = data?.user?.user_metadata?.full_name;
+        if (typeof nome === "string" && nome.trim() !== "") nomeUsuario.set(id, nome);
+      }),
+    );
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    actor_agent_name: r.actor_agent_id ? (nomeAgente.get(r.actor_agent_id) ?? null) : null,
+    actor_user_name: r.performed_by_user_id
+      ? (nomeUsuario.get(r.performed_by_user_id) ?? null)
+      : null,
+  }));
 }
 
 export async function GET(
@@ -191,7 +228,14 @@ export async function GET(
   });
 
   const hasMore = sorted.length > limit;
-  const page = hasMore ? sorted.slice(0, limit) : sorted;
+  const pageRows = hasMore ? sorted.slice(0, limit) : sorted;
+
+  // Quem agiu, com NOME — resolvido aqui, na borda, e não na tela. É a mesma
+  // decisão do dono agente no board: o dado de exibição viaja com a linha, em
+  // vez de a tela ter de descobrir sozinha (e mostrar "Agente" genérico quando
+  // não descobre). Sem filtro de is_active/archived: quem AGIU agiu, mesmo que
+  // o agente tenha sido desligado depois.
+  const page = await comNomeDoAtor(supabase, pageRows);
   const last = page[page.length - 1];
   const nextCursor =
     hasMore && last
