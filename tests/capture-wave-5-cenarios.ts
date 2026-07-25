@@ -23,13 +23,31 @@
  *           régua crua. Segurar uma faixa por um degrau é histerese; parar dois
  *           degraus atrás é rótulo velho — o card diria "Frio" ao lado de 72%.
  *
+ * NUMERAÇÃO — e ela quase custou caro. Meus rótulos internos eram 15.a..15.j, e
+ * o BRIEFING numera os cenários da wave 5 como 15 (card mostra medidor, hover
+ * revela as evidências), 16 (banco rejeita score sem razão) e 17 (lead sem sinal
+ * não mostra score inventado). O que estes testes provam é o 16 — ler
+ * "15 verdes, cenários 15.a-15.j" levava direto a concluir que o cenário 15
+ * estava pronto. **Não está: não começou.**
+ *
+ *   C16.*  cenário 16 do briefing — a constraint
+ *   H.*    a histerese — condição acrescentada ao contrato, não cenário do briefing
+ *   S15/S17 os cenários que FALTAM, medidos para aparecerem no placar
+ *
+ * Placar que PARECE cobrir o que não cobre é pior que placar ausente: ninguém vai
+ * atrás do que já parece feito. Por isso o que falta não é omitido — é medido e
+ * reportado como BLOQUEADO.
+ *
  * Run: E2E_PORT=3020 npx tsx tests/capture-wave-5-cenarios.ts
  */
 
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
+
+import { chromium } from "@playwright/test";
 import pg from "pg";
 
-import { CREDS, carimbar } from "./qa-helpers";
+import { CREDS, cardLocator, carimbar, gotoBoard, login, shotCard } from "./qa-helpers";
 import { resolveBand, type ScoreBand } from "@/lib/kanban/score-band";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
@@ -65,49 +83,49 @@ const LASTRO = { activity_ids: ["11111111-1111-1111-1111-111111111111"] };
 
 const CASOS: Caso[] = [
   {
-    n: "15.a",
+    n: "C16.a",
     nome: "score COM razão e lastro é aceito",
     recusar: false,
     campos: { ai_probability: 72, ai_probability_reason: "dois compromissos e nenhuma objeção aberta", ai_probability_evidence: LASTRO },
   },
   {
-    n: "15.b",
+    n: "C16.b",
     nome: "score SEM razão é recusado",
     recusar: true,
     campos: { ai_probability: 72, ai_probability_reason: null, ai_probability_evidence: LASTRO },
   },
   {
-    n: "15.c",
+    n: "C16.c",
     nome: "razão só com espaços é recusada — string vazia não é razão",
     recusar: true,
     campos: { ai_probability: 72, ai_probability_reason: "   ", ai_probability_evidence: LASTRO },
   },
   {
-    n: "15.d",
+    n: "C16.d",
     nome: "razão sem lastro nenhum é recusada — razão sem referência é adjetivo",
     recusar: true,
     campos: { ai_probability: 72, ai_probability_reason: "parece quente", ai_probability_evidence: {} },
   },
   {
-    n: "15.e",
+    n: "C16.e",
     nome: "ARRAY VAZIO é recusado — lastro nenhum com cara de lastro",
     recusar: true,
     campos: { ai_probability: 72, ai_probability_reason: "parece quente", ai_probability_evidence: { activity_ids: [] } },
   },
   {
-    n: "15.f",
+    n: "C16.f",
     nome: "AUSÊNCIA de score é livre — sinal insuficiente é estado legítimo",
     recusar: false,
     campos: { ai_probability: null, ai_probability_reason: null, ai_probability_evidence: {} },
   },
   {
-    n: "15.g",
+    n: "C16.g",
     nome: "score fora de 0-100 é recusado",
     recusar: true,
     campos: { ai_probability: 101, ai_probability_reason: "acima do teto", ai_probability_evidence: LASTRO },
   },
   {
-    n: "15.h",
+    n: "C16.h",
     nome: "faixa fora do vocabulário é recusada",
     recusar: true,
     campos: { ai_probability: 72, ai_probability_reason: "ok", ai_probability_evidence: LASTRO, ai_probability_band: "morninho" },
@@ -234,7 +252,7 @@ async function coerenciaFaixaScore(): Promise<void> {
   );
   if (existe.rowCount === 0) {
     record(
-      "15.i",
+      "C16.i",
       "COERÊNCIA faixa × score: o banco recusa faixa que o score não sustenta",
       false,
       "nenhuma constraint em crm_lead_scores confronta ai_probability_band com ai_probability — a trava do §7.36 ainda não entrou",
@@ -292,7 +310,7 @@ async function coerenciaFaixaScore(): Promise<void> {
   }
 
   record(
-    "15.i",
+    "C16.i",
     "COERÊNCIA faixa × score: intervalo contíguo, miolo aceito, zona dos 9 recusada",
     problemas.length === 0,
     `intervalos aceitos — frio ${intervalo(aceitos.frio!)} · morno ${intervalo(aceitos.morno!)} · ` +
@@ -352,7 +370,7 @@ async function caminhadaContraATrava(): Promise<void> {
   }
 
   record(
-    "15.j",
+    "C16.j",
     "a faixa que a função PRODUZ é aceita pelo banco — worker não trava",
     rejeitados.length === 0,
     rejeitados.length === 0
@@ -486,7 +504,7 @@ function histerese(): void {
       banda = nova;
     }
     record(
-      `16.${nome.includes("morno") ? "a" : "b"}`,
+      `H.${nome.includes("morno") ? "a" : "b"}`,
       `ANTI-PISCA no ${nome}: série oscilante muda a faixa no máximo uma vez`,
       trocas.length <= 1,
       trocas.length === 0
@@ -518,7 +536,7 @@ function histerese(): void {
   }
 
   record(
-    "16.c",
+    "H.c",
     "NÃO-MENTIRA em TODO o domínio: 303 casos, faixa nunca a duas da régua crua",
     violaP2.length === 0,
     violaP2.length === 0
@@ -526,7 +544,7 @@ function histerese(): void {
       : `${violaP2.length}/303 casos: ${comprimir(violaP2)}`,
   );
   record(
-    "16.d",
+    "H.d",
     "a função concorda com a régua escrita no módulo — em TODO o domínio",
     violaP3.length === 0,
     violaP3.length === 0
@@ -539,7 +557,7 @@ function histerese(): void {
       `${a.score} de "${a.anterior ?? "(sem memória)"}" deu "${resolveBand(a.score, a.anterior)}", esperado "${a.esperado}" (${a.porque})`,
   );
   record(
-    "16.e",
+    "H.e",
     "ÂNCORAS: o que já funciona continua funcionando depois do conserto",
     quebradas.length === 0,
     quebradas.length === 0
@@ -584,7 +602,7 @@ function autoTesteDaCerca(): void {
   ).length;
 
   console.info("\n=== AUTO-TESTE: a cerca reprova o conserto que mata a histerese? ===");
-  console.info(`  a régua crua zera a NÃO-MENTIRA (16.c): ${violaP2} violações`);
+  console.info(`  a régua crua zera a NÃO-MENTIRA (H.c): ${violaP2} violações`);
   console.info(`  ...e o ANTI-PISCA a reprova: ${trocas} trocas na série oscilante (limite 1)`);
   console.info(`  ...e as ÂNCORAS a reprovam: ${ancorasQuebradas}/${ANCORAS_DA_REGRA.length} quebradas`);
   const cercaFunciona = violaP2 === 0 && (trocas > 1 || ancorasQuebradas > 0);
@@ -596,8 +614,107 @@ function autoTesteDaCerca(): void {
   if (!cercaFunciona) process.exitCode = 1;
 }
 
+
+// ---------------------------------------------------------------------------
+// C) o que a wave 5 AINDA NÃO tem — medido, não omitido
+// ---------------------------------------------------------------------------
+
+/**
+ * Cenários 15 e 17 do briefing, na tela.
+ *
+ * Existem aqui por uma razão de leitura, não de cobertura: um placar que lista
+ * só o que passou faz o leitor concluir que o resto passou junto. Então o que
+ * falta é EXERCITADO e reportado como BLOQUEADO — estado que acusa quem planejou,
+ * não quem construiu.
+ *
+ * O 17 merece atenção especial, porque é o verde vazio perfeito: "lead sem sinal
+ * não mostra score inventado" é trivialmente verdadeiro num produto que não
+ * mostra score NENHUM. Ele só passa a significar alguma coisa depois que o 15
+ * existir — e por isso fica preso ao 15.
+ */
+async function cenariosQueFaltam(sufixo: string): Promise<void> {
+  // Classificador (não é a prova): recurso que ninguém escreveu acusa quem
+  // planejou; recurso escrito e quebrado acusa quem construiu. A prova do
+  // comportamento é a tela, logo abaixo.
+  const referencias = execFileSync(
+    "bash",
+    ["-lc", "grep -rl crm_lead_scores lib workers app components hooks 2>/dev/null | wc -l"],
+    { encoding: "utf8" },
+  ).trim();
+  const ninguemLe = referencias === "0";
+
+  const { rows } = await pool.query<{ id: string; title: string }>(
+    `select l.id, l.title from crm_leads l
+      where l.organization_id = $1 and l.pipeline_id = $2 and l.status = 'open'
+      order by l.created_at limit 1`,
+    [ORG, (CREDS.crm_vivo as { pipeline_id: string }).pipeline_id],
+  );
+  const alvo = rows[0];
+  if (!alvo) throw new Error("board da demo sem lead aberto — os cenários 15/17 não se montam");
+
+  // Score PERSISTIDO de propósito: o cenário 15 é sobre o card LER o score. Um
+  // score dentro de transação desfeita não chegaria à tela nenhuma.
+  await pool.query(
+    `insert into crm_lead_scores (lead_id, organization_id, ai_probability, ai_probability_reason,
+                                  ai_probability_evidence, ai_probability_at, ai_probability_band)
+     values ($1, $2, 72, 'dois compromissos e nenhuma objeção aberta', $3::jsonb, now(), 'quente')
+       on conflict (lead_id) do update set ai_probability = excluded.ai_probability,
+            ai_probability_reason = excluded.ai_probability_reason,
+            ai_probability_evidence = excluded.ai_probability_evidence,
+            ai_probability_band = excluded.ai_probability_band`,
+    [alvo.id, ORG, JSON.stringify(LASTRO)],
+  );
+
+  const browser = await chromium.launch();
+  try {
+    const page = await browser
+      .newContext({ viewport: { width: 1440, height: 900 } })
+      .then((c) => c.newPage());
+    page.setDefaultTimeout(60_000);
+    await login(page, "manager");
+    await gotoBoard(page);
+
+    const { card } = await cardLocator(page, alvo.title);
+    const texto = ((await card.innerText()) ?? "").replace(/\s+/g, " ");
+    const mostraNumero = /\b72\s*%/.test(texto);
+    const mostraMedidor = (await card.locator("[class*='bg-accent'][style*='width']").count()) > 0;
+    await shotCard(page, alvo.title, `wave-5-cenario15-card-com-score-no-banco${sufixo}.png`);
+
+    record(
+      "S15",
+      "CENÁRIO 15 do briefing: card mostra medidor + número",
+      mostraNumero && mostraMedidor,
+      `lead com score 72 GRAVADO no banco → card diz "${texto.slice(0, 80)}" ` +
+        `(número=${mostraNumero} medidor=${mostraMedidor})` +
+        (ninguemLe ? " — nenhum arquivo de app lê crm_lead_scores: não começou" : ""),
+      mostraNumero && mostraMedidor ? "PASS" : ninguemLe ? "BLOQUEADO" : "FALHA",
+    );
+    record(
+      "S15.hover",
+      "CENÁRIO 15: hover revela as 3 evidências e leva ao momento da conversa",
+      false,
+      "sem medidor na tela não há o que revelar — preso ao S15",
+      "BLOQUEADO",
+    );
+    record(
+      "S17",
+      "CENÁRIO 17: lead sem sinal NÃO mostra score inventado",
+      false,
+      mostraNumero
+        ? "o S15 existe — este critério pode passar a valer"
+        : "VERDE VAZIO se medido agora: nenhum card mostra score algum, então 'não mostra score inventado' " +
+          "é verdade por ausência. Só significa alguma coisa depois do S15.",
+      "BLOQUEADO",
+    );
+  } finally {
+    await browser.close();
+    const r = await pool.query(`delete from crm_lead_scores where lead_id = $1`, [alvo.id]);
+    console.info(`[limpeza] linha de score de teste removida (${r.rowCount})`);
+  }
+}
+
 async function main(): Promise<void> {
-  carimbar([
+  const sufixo = carimbar([
     "supabase/migrations/20260725040000_0074_lead_score_com_evidencia.sql",
     "supabase/migrations/20260725050000_0075_score_sai_do_lead_para_tabela_propria.sql",
     "lib/kanban/score-band.ts",
@@ -615,6 +732,7 @@ async function main(): Promise<void> {
     await coerenciaFaixaScore();
     await caminhadaContraATrava();
     histerese();
+    await cenariosQueFaltam(sufixo);
   } finally {
     await pool.end().catch(() => null);
   }

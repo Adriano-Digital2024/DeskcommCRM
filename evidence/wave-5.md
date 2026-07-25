@@ -1,6 +1,26 @@
 # Wave 5 — CORE 3 · score com evidência, e a faixa que não pode piscar · 2026-07-25
 
-**Placar: 15 verdes · 0 vermelhos · 0 bloqueados.**
+**Placar: 15 verdes · 0 vermelhos · 3 BLOQUEADOS.**
+
+> ## A wave 5 NÃO está pronta — e este documento existe para dizer isso
+>
+> Dos três cenários do briefing, **um** está feito:
+>
+> | cenário do briefing | estado |
+> |---|---|
+> | **15** — card mostra medidor + número; hover revela as 3 evidências | **não começou** |
+> | **16** — gravar score sem `reason` é rejeitado pelo banco | **FEITO**, 10/10 |
+> | **17** — lead sem sinal não mostra score inventado | **não começou** |
+>
+> Falta a fórmula determinística (worker calculando score, razão e evidência) e
+> falta o card exibindo. **A fundação está pronta; a wave não.**
+>
+> Meus rótulos internos eram `15.a..15.j` e provavam o cenário **16** — ler
+> "15 verdes, cenários 15.a–15.j" levava direto a concluir que o cenário 15
+> estava pronto. Renumerados para `C16.*` (a constraint), `H.*` (a histerese, que
+> é condição acrescentada ao contrato e não cenário do briefing) e `S15`/`S17`
+> (o que falta). **Placar que parece cobrir o que não cobre é pior que placar
+> ausente: ninguém vai atrás do que já parece feito.**
 
 | | |
 |---|---|
@@ -26,7 +46,20 @@ A asserção agora exige o código **`23514`** — violação de CHECK. Qualquer
 código significa que o caso está mal montado, e isso é falha do instrumento, não
 do produto. **"Recusou" não é a pergunta; "recusou pelo motivo certo" é.**
 
-## Esta wave não tem imagem, e isso é um dado
+## O que falta está MEDIDO, não omitido
+
+Gravei um score de 72 num lead da demo, abri o board e olhei o card: nenhum
+número, nenhum medidor. O card continua dizendo apenas título, valor, dono e
+estágio. Nenhum arquivo de aplicação referencia `crm_lead_scores` — por isso os
+três entram como **BLOQUEADO**, que acusa quem planejou, e não como reprovação de
+quem construiu.
+
+O cenário **17** merece o destaque, porque é o verde vazio perfeito: *"lead sem
+sinal não mostra score inventado"* é trivialmente verdadeiro num produto que não
+mostra score **nenhum**. Medido hoje, ele passaria — e passaria pelo motivo
+errado. Fica preso ao 15.
+
+## O resto desta wave não tem imagem, e isso é um dado
 
 Não há captura porque **não há tela**: a faixa (`frio`/`morno`/`quente`) ainda não
 chega ao card — o slot mostra o medidor e o número, não o rótulo. Fabricar um
