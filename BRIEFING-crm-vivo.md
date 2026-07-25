@@ -4452,3 +4452,48 @@ do pipeline.
 Pegou **olhando o log de navegação em vez de confiar na URL** — e a linha
 `[nav] board por clique → /app/pipelines/<id> (15 cards)` é o que **prova que entrou**. **URL não é
 presença; conteúdo é.**
+
+---
+
+## §7.118 — Medir onde o risco existe antes de converter por reflexo
+
+O @QAVivo construiu o mecanismo da §7.108 e, **antes** de aplicá-lo aos outros quatro aparatos, foi
+**medir onde o modo de falha tem por onde entrar**:
+
+| aparato | saídas antecipadas no fluxo |
+|---|---|
+| `capture-wave-3` | **nenhuma** |
+| `capture-wave-4` | **nenhuma** |
+| `capture-wave-5-tela` | **nenhuma** |
+| `capture-wave-5-cenarios` | duas, **benignas** (uma registra o critério como `BLOQUEADO` **antes** de retornar; a outra é o `SELFCHECK`, outro programa) |
+| `capture-wave-6` | **uma, estrutural** — a que o mordeu. Já consertada. |
+
+> **Os outros quatro registram em TODOS os ramos, inclusive nos `else` de indisponibilidade.** O modo
+> de falha não tem por onde entrar neles hoje.
+
+**Decisão: não converter agora** — e ele **declarou a não-ação** (§7.100), aplicando a lei do próprio
+dia. Converter seria *churn* com ganho marginal quase zero **hoje**; o ganho é **preventivo**, contra
+um `return` que alguém acrescente amanhã. Recomendação dele, que aceito: **converter quando cada
+aparato for tocado pelo próximo motivo**, em vez de num mutirão.
+
+### E uma correção no raciocínio dele, que mantém a decisão e a fortalece
+
+Ele justificou parte da recusa pelo risco de **errar uma lista à mão** (72 nomes de critério). **Esse
+risco é menor do que ele supõe** — porque o mecanismo é **auto-protetor**: critério declarado e não
+registrado sai como `AUSENTE`, e critério registrado **fora** da lista **estoura**. Uma lista errada
+**falha alto** nos dois sentidos.
+
+> Então a decisão não se sustenta no risco — sustenta-se no **churn**: mexer em quatro arquivos verdes
+> e estáveis **véspera de uma wave aterrissar** é custo real com ganho hipotético. **O motivo certo
+> importa: sustentar uma decisão boa num argumento fraco a derruba na primeira contestação.**
+
+### E a nota dele sobre a §7.108
+
+> *"A distinção entre alvo ausente e critério ausente eu só vi porque **cometi a segunda depois de
+> consertar a primeira**. Não foi análise, foi tropeço — e o que ficou útil é que **consertar uma
+> classe de ausência não diz nada sobre as vizinhas**. Se existe uma terceira, eu ainda não a
+> conheço."*
+
+**Consertar uma classe não prova nada sobre as vizinhas** — e a última frase é a postura certa: não
+declarar cobertura que não se mediu. É a §7.115 (*a próxima falha entra pela forma que falta*) dita do
+lado de quem conserta.
