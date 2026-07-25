@@ -192,12 +192,29 @@ function dossie(page: Page): Locator {
   return page.locator('[role="dialog"], [data-dossie], aside[aria-label*="lead" i]').first();
 }
 
-/** Posição vertical de um trecho de texto dentro do dossiê — a ORDEM se mede. */
+/**
+ * Posição vertical de um trecho dentro do dossiê — a ORDEM se mede.
+ *
+ * Procura no texto E no VALOR dos campos. O ensaio contra o diálogo de hoje
+ * devolveu `null` para o título: ele não é texto, é `value` de um input — e o
+ * meu localizador só olhava texto. Um critério de ORDEM que não acha a âncora do
+ * cabeçalho falharia no dia da entrega por defeito meu.
+ */
 async function topoDe(painel: Locator, padrao: RegExp): Promise<number | null> {
-  const alvo = painel.locator(`text=${padrao}`).first();
-  if ((await alvo.count()) === 0) return null;
-  const box = await alvo.boundingBox();
-  return box?.y ?? null;
+  const porTexto = painel.locator(`text=${padrao}`).first();
+  if ((await porTexto.count()) > 0) {
+    const box = await porTexto.boundingBox();
+    if (box) return box.y;
+  }
+  const campos = painel.locator("input, textarea");
+  for (let i = 0; i < (await campos.count()); i++) {
+    const v = await campos.nth(i).inputValue().catch(() => "");
+    if (padrao.test(v)) {
+      const box = await campos.nth(i).boundingBox();
+      if (box) return box.y;
+    }
+  }
+  return null;
 }
 
 async function main(): Promise<void> {
@@ -264,8 +281,71 @@ async function main(): Promise<void> {
       await browser.newContext({ viewport: { width: 1440, height: 900 } })
     ).newPage();
     page.setDefaultTimeout(60_000);
+
+    // O CONTADOR DE ASSINATURA É ARMADO AQUI, antes do login.
+    // `page.on("websocket")` só enxerga sockets abertos DEPOIS de anexado — no
+    // ensaio ele registrou 0 entradas e 0 saídas porque eu o anexava lá embaixo,
+    // com o socket já aberto. Um contador cego reportaria "nenhum canal do
+    // dossiê observado", que é um BLOQUEADO falso: o instrumento acusaria
+    // ausência de recurso onde havia ausência de escuta.
+    const assinatura = { joins: 0, leaves: 0 };
+    page.on("websocket", (ws) => {
+      if (!ws.url().includes("supabase")) return;
+      ws.on("framesent", (f) => {
+        const t = String(f.payload);
+        if (/phx_join/.test(t)) assinatura.joins++;
+        if (/phx_leave/.test(t)) assinatura.leaves++;
+      });
+    });
+
     await login(page, "manager");
     await gotoBoard(page);
+
+    // ---- ENSAIO=1: exercita a maquinaria contra a superfície que JÁ EXISTE ---
+    //
+    // Sete critérios deste aparato nunca rodaram: eles destravam todos de uma vez
+    // no dia em que o dossiê nascer, que é o dia em que não há tempo de descobrir
+    // que o locator não resolve. Então antes disso a máquina é exercitada contra
+    // o `EditLeadDialog`, que é o diálogo com campos que existe hoje.
+    //
+    // O resultado NÃO entra no placar da wave: o dossiê continua não existindo, e
+    // misturar as duas coisas transformaria "o instrumento funciona" em "o
+    // cenário passa". É ensaio de instrumento, não veredito de produto.
+    if (process.env.ENSAIO === "1") {
+      const { card: cardEnsaio } = await cardLocator(page, caso.titulo);
+      await cardEnsaio.getByRole("button", { name: "Ações do lead" }).click();
+      await page.getByRole("menuitem", { name: /editar/i }).click();
+      await page.waitForTimeout(1200);
+      const painelEnsaio = dossie(page);
+      const abriuEnsaio = (await painelEnsaio.count()) > 0;
+      console.info(`\n[ensaio] diálogo abriu: ${abriuEnsaio}`);
+      if (abriuEnsaio) {
+        const yTitulo = await topoDe(painelEnsaio, new RegExp(RUN));
+        const yCampos = await topoDe(painelEnsaio, /valor|t[íi]tulo/i);
+        console.info(`[ensaio] medição de ORDEM funciona: topo=${yTitulo} campos=${yCampos}`);
+        const campo = painelEnsaio.locator('input[name="title"], #title').first();
+        console.info(`[ensaio] localizador de campo editável resolve: ${(await campo.count()) > 0}`);
+        const texto0 = ((await painelEnsaio.innerText()) ?? "").replace(/\s+/g, " ");
+        console.info(`[ensaio] leitura de texto do painel: ${texto0.length} caracteres`);
+      }
+      // O contador de assinatura, exercitado com abre/fecha REAIS.
+      const jEnsaio0 = assinatura.joins;
+      const lEnsaio0 = assinatura.leaves;
+      for (let i = 0; i < 3; i++) {
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(500);
+        const { card: c } = await cardLocator(page, caso.titulo);
+        await c.getByRole("button", { name: "Ações do lead" }).click();
+        await page.getByRole("menuitem", { name: /editar/i }).click();
+        await page.waitForTimeout(700);
+      }
+      await page.keyboard.press("Escape");
+      console.info(
+        `[ensaio] contador de assinatura opera: ${assinatura.joins - jEnsaio0} entradas / ` +
+          `${assinatura.leaves - lEnsaio0} saídas em 3 ciclos (total na página: ${assinatura.joins}/${assinatura.leaves})`,
+      );
+      console.info("[ensaio] — nada disto entra no placar: o dossiê continua não existindo\n");
+    }
 
     // ---- 18: clicar no card abre o dossiê, na ORDEM certa -------------------
     const { card } = await cardLocator(page, caso.titulo);
@@ -429,16 +509,8 @@ async function main(): Promise<void> {
     // A contagem é de `phx_join` contra `phx_leave` no socket: se o Sheet
     // desassina, cada abertura tem a sua saída. Se não desassina, as entradas
     // crescem e as saídas não — e o número da diferença É o vazamento.
-    let joins = 0;
-    let leaves = 0;
-    page.on("websocket", (ws) => {
-      if (!ws.url().includes("supabase")) return;
-      ws.on("framesent", (f) => {
-        const t = String(f.payload);
-        if (/phx_join/.test(t) && /timeline|lead|dossie/i.test(t)) joins++;
-        if (/phx_leave/.test(t) && /timeline|lead|dossie/i.test(t)) leaves++;
-      });
-    });
+    const antesJ = assinatura.joins;
+    const antesL = assinatura.leaves;
     const CICLOS = 4;
     for (let i = 0; i < CICLOS; i++) {
       await page.keyboard.press("Escape");
@@ -449,6 +521,8 @@ async function main(): Promise<void> {
     }
     await page.keyboard.press("Escape");
     await page.waitForTimeout(900);
+    const joins = assinatura.joins - antesJ;
+    const leaves = assinatura.leaves - antesL;
     record(
       "D23",
       "o Sheet DESASSINA ao fechar — abrir e fechar N vezes não acumula canal",
