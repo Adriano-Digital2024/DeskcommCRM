@@ -40,6 +40,7 @@
 import { chromium, type Locator, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
 import * as fs from "node:fs";
 
 import { ACTIVITY_LABELS, actorShape, type ActivityType } from "@/lib/leads/activity-vocabulary";
@@ -428,6 +429,28 @@ async function main(): Promise<void> {
     // não o servidor calado. Já me pegou hoje com o contador de assinatura.
     let quadrosDeAtividade = 0;
     const respostasTimeline: string[] = [];
+    /**
+     * TODO quadro de `postgres_changes` recebido, com o TÓPICO que o entregou.
+     *
+     * O contador anterior somava quadros da PÁGINA. Ele responde "chegou algum
+     * quadro?", e a pergunta é "chegou por QUAL canal?". Sem o eixo do tópico,
+     * dois laudos diferentes colapsam no mesmo zero: "nenhum canal entrega nada"
+     * (socket morto, autenticação, conexão) e "todos entregam menos este"
+     * (configuração do canal do dossiê). O primeiro absolve o dossiê; o segundo
+     * o acusa sozinho. É o mesmo defeito das três máscaras noutra dimensão:
+     * medir o AGREGADO quando a pergunta é sobre uma PARTE.
+     */
+    const entregas: { topico: string; tabela: string; ms: number }[] = [];
+    /**
+     * A ORDEM dos quadros de ciclo de vida do canal da timeline, não a contagem.
+     * O contador diz 1 entrada e 2 saídas por abertura; `leave-join-leave` é o
+     * padrão do supabase-js (derruba a instância anterior, entra, sai na
+     * desmontagem) e é INOCENTE. `join-leave` seria a assinatura viva sendo
+     * derrubada logo após ser confirmada — que casa com "confirmado e mudo".
+     * Contagem igual, veredito oposto: só a sequência separa os dois.
+     */
+    const ciclo: string[] = [];
+    const t0 = Date.now();
     // O JOIN do canal da timeline leva IDENTIDADE? Um assinante privilegiado
     // recebe o mesmo evento (medido em tests/prova-canal-timeline.ts), então a
     // publicação e o filtro estão inocentes e sobra o assinante. Restam duas:
@@ -436,6 +459,15 @@ async function main(): Promise<void> {
     let joinDaTimeline = "";
     page.on("websocket", (ws) => {
       if (!ws.url().includes("supabase")) return;
+      // Um socket que MORRE no meio explica "entregou e parou" sem culpar canal
+      // nenhum — e sem este registro a reconexão silenciosa é invisível.
+      // O HOST DO SOCKET, não só o fato de ele existir. Um canal que confirma e
+      // nunca entrega tem uma explicação embaraçosa que eu ainda não descartei:
+      // o navegador estar assinando OUTRA instância — as confirmações viriam
+      // certinhas de lá, e as escritas nunca chegariam porque acontecem aqui.
+      // Tudo o que eu medi até agora é compatível com isso.
+      ciclo.push(`+${Date.now() - t0}ms SOCKET aberto em ${new URL(ws.url()).host}`);
+      ws.on("close", () => ciclo.push(`+${Date.now() - t0}ms SOCKET fechado`));
       ws.on("framesent", (f) => {
         const t = String(f.payload);
         const topico = (t.match(/realtime:([^"]+)/) ?? [])[1] ?? "?";
@@ -443,17 +475,39 @@ async function main(): Promise<void> {
         if (/phx_join/.test(t)) {
           assinatura.joins++;
           reg.j++;
-          if (/timeline-/.test(t) && !joinDaTimeline) joinDaTimeline = t;
+          // O ÚLTIMO join, não o primeiro. O canal que está vivo durante a ação
+          // é o da última abertura do dossiê; guardar o primeiro fazia eu
+          // verificar identidade e validade de um canal já desfeito — medir um
+          // objeto e concluir sobre outro.
+          if (/timeline-/.test(t)) joinDaTimeline = t;
+          if (/timeline-/.test(topico)) ciclo.push(`+${Date.now() - t0}ms JOIN  ${topico}`);
         }
         if (/phx_leave/.test(t)) {
           assinatura.leaves++;
           reg.l++;
+          if (/timeline-/.test(topico)) ciclo.push(`+${Date.now() - t0}ms LEAVE ${topico}`);
         }
         assinatura.porTopico.set(topico, reg);
       });
       ws.on("framereceived", (f) => {
         const t = String(f.payload);
-        if (/"postgres_changes"/.test(t) && /crm_lead_activities/.test(t)) quadrosDeAtividade++;
+        // CORREÇÃO DE INSTRUMENTO: este contador exigia só a PALAVRA
+        // "postgres_changes" e o nome da tabela — e o `phx_reply` que CONFIRMA a
+        // assinatura contém as duas, porque ecoa a configuração pedida. Ele
+        // contava confirmações como se fossem entregas: os "7 quadros desde o
+        // carregamento" que eu quase reportei como "os quadros chegam" eram
+        // sete recibos de inscrição. Entrega é `"event":"postgres_changes"`.
+        if (/"event":"postgres_changes"/.test(t) && /crm_lead_activities/.test(t)) quadrosDeAtividade++;
+        // O tópico vem no MESMO quadro que traz a linha — é o servidor dizendo
+        // por qual canal aquilo entrou. Registrar os dois juntos é o que
+        // transforma "chegou" em "chegou por onde".
+        if (/"event":"postgres_changes"/.test(t)) {
+          entregas.push({
+            topico: (t.match(/"topic":"realtime:([^"]+)"/) ?? [])[1] ?? "?",
+            tabela: (t.match(/"table":"([^"]+)"/) ?? [])[1] ?? "?",
+            ms: Date.now() - t0,
+          });
+        }
         if (/timeline-/.test(t) && /(phx_reply|system|error)/.test(t)) {
           respostasTimeline.push(t.slice(0, 200));
         }
@@ -971,6 +1025,7 @@ async function main(): Promise<void> {
       // da página inclui os quadros do próprio seed, e reportar esse número
       // responderia "chegam quadros nesta página", não "chegou ESTE".
       const quadrosAntes = quadrosDeAtividade;
+      const entregasAntes = entregas.length;
       // QUANTAS ATIVIDADES EXISTEM ANTES da ação. A pré-condição procurava
       // QUALQUER `lead_edited` — e o critério anterior já tinha criado um. Ela
       // era satisfeita por linha VELHA, então "a ação persistiu" podia ser
@@ -1016,18 +1071,52 @@ async function main(): Promise<void> {
       const leadBate = linhaNova?.lead_id === caso.leadComContato;
       const tokenNoJoin = /"access_token":"([^"]+)"/.exec(joinDaTimeline);
       let papel = "(sem join capturado)";
+      let subDoCanal = "";
+      let validade = "";
       if (joinDaTimeline) {
         papel = tokenNoJoin ? "(jwt ilegível)" : "SEM access_token — canal ANÔNIMO";
         if (tokenNoJoin) {
           try {
             const corpo = JSON.parse(Buffer.from(tokenNoJoin[1]!.split(".")[1]!, "base64").toString());
-            papel = `role=${corpo.role} sub=${String(corpo.sub ?? "-").slice(0, 8)}`;
+            subDoCanal = String(corpo.sub ?? "");
+            papel = `role=${corpo.role} sub=${subDoCanal.slice(0, 8)}`;
+            // O REALTIME PARA DE ENTREGAR COM O TOKEN VENCIDO E NÃO DESFAZ O
+            // CANAL — o join continua confirmado e a entrega some. "Confirmado e
+            // mudo" é exatamente o que eu estou vendo, então a validade não é
+            // detalhe: é uma das poucas causas que produzem esse par.
+            const agora = Math.floor(Date.now() / 1000);
+            validade =
+              typeof corpo.exp === "number"
+                ? corpo.exp < agora
+                  ? `VENCIDO há ${agora - corpo.exp}s`
+                  : `válido por mais ${corpo.exp - agora}s`
+                : "(sem exp no token)";
           } catch {
             /* mantém ilegível */
           }
         }
       }
+      // O `sub` do canal é O MESMO usuário que a RLS aprovaria? Um token de
+      // OUTRO usuário (sessão velha, outra org) daria exatamente este quadro:
+      // join aceito, binding confirmado, entrega negada em silêncio — e o
+      // "defeito" seria a RLS fazendo o trabalho dela, certo.
+      const { data: usuarios } = await admin.auth.admin.listUsers();
+      const manager = (usuarios?.users ?? []).find((u) => u.email === "e2e-manager@deskcomm.test");
+      const mesmoUsuario = manager?.id === subDoCanal;
+      console.info(
+        `[D21 diag] token do canal: ${validade} · sub=${subDoCanal.slice(0, 8)} · ` +
+          `usuário logado=${manager?.id?.slice(0, 8) ?? "?"} · mesmo usuário=${mesmoUsuario}`,
+      );
       console.info(`[D21 diag] identidade do canal da timeline: ${papel}`);
+      // O QUADRO DE JOIN INTEIRO, com o token elidido. Node e navegador mandam a
+      // mesma coisa? Eu venho comparando as duas pontas por RESULTADO ("um
+      // recebe, o outro não") sem nunca ter olhado o que cada um PEDE. Se o
+      // pedido do navegador diferir — outra configuração, outro binding, canal
+      // privado —, a diferença está aqui e é de graça.
+      console.info(
+        `[D21 diag] join do navegador (token elidido):\n  ` +
+          joinDaTimeline.replace(/"access_token":"[^"]+"/, '"access_token":"<jwt>"').slice(0, 700),
+      );
       console.info(
         `[D21 diag] atividade mais recente: type=${linhaNova?.type} lead_id=${linhaNova?.lead_id?.slice(0, 8)} ` +
           `contact_id=${linhaNova?.contact_id?.slice(0, 8) ?? "null"} · canal filtra ` +
@@ -1036,6 +1125,87 @@ async function main(): Promise<void> {
 
       // (c) A ABA A recebeu, SEM F5?
       await page.waitForTimeout(6000);
+
+      // ---- O SEGUNDO NÚMERO: de que LADO caiu -------------------------------
+      //
+      // A janela é a mesma da ação (`entregasAntes`), pelo motivo de sempre: o
+      // total desde o carregamento inclui o seed e responderia a outra pergunta.
+      const janela = entregas.slice(entregasAntes);
+      const porCanal = new Map<string, string[]>();
+      for (const e of janela) {
+        const k = `${e.topico} :: ${e.tabela}`;
+        porCanal.set(k, [...(porCanal.get(k) ?? []), `+${e.ms}ms`]);
+      }
+      console.info(
+        `[D21 diag] quadros de postgres_changes na janela da ação, POR CANAL: ` +
+          (porCanal.size === 0
+            ? "NENHUM canal recebeu nada — o silêncio não é do dossiê, é do socket inteiro"
+            : [...porCanal.entries()].map(([k, v]) => `${k} ×${v.length}`).join(" | ")),
+      );
+      // O MESMO EIXO APLICADO AO PASSADO. "Zero na janela" tem dois pais muito
+      // diferentes: um socket que nunca entregou nada (conexão/autenticação) e
+      // um que entregou e PAROU (canal derrubado, sessão expirada, reconexão sem
+      // re-assinar). O primeiro é veredito; o segundo é sintoma de outra coisa.
+      // A janela sozinha não separa os dois — só o contraste com o antes.
+      const antesDaJanela = new Map<string, number>();
+      for (const e of entregas.slice(0, entregasAntes)) {
+        const k = `${e.topico} :: ${e.tabela}`;
+        antesDaJanela.set(k, (antesDaJanela.get(k) ?? 0) + 1);
+      }
+      console.info(
+        `[D21 diag] quadros ANTES da janela (mesma página, mesmo socket): ` +
+          (antesDaJanela.size === 0
+            ? "NENHUM — este socket nunca entregou nada"
+            : [...antesDaJanela.entries()].map(([k, n]) => `${k} ×${n}`).join(" | ")),
+      );
+      console.info(
+        `[D21 diag] ciclo de vida do canal da timeline, em ORDEM:\n  ` +
+          (ciclo.length === 0 ? "(nenhum quadro de join/leave observado)" : ciclo.join("\n  ")),
+      );
+      // ---- A ÚLTIMA VARIÁVEL: o MESMO token, fora do navegador ---------------
+      //
+      // O join do navegador é idêntico ao do node — mesma configuração, mesmo
+      // binding, `private:false`, mesmo host, mesmo usuário, token válido. Se
+      // sobrou uma diferença, ela está no TOKEN ou não existe. Este assinante usa
+      // o token QUE O NAVEGADOR MANDOU, na MESMA janela e com o MESMO gatilho:
+      //   recebe    → o token está bom e a diferença é do cliente do navegador
+      //   não recebe → o token do navegador é diferente do token do login direto,
+      //                apesar de mesmo `sub`, e a raiz é de emissão de sessão
+      // Duas leituras na mesma foto: o único jeito de não estar comparando com
+      // uma condição que mudou entre execuções.
+      // O ENSAIO ANTERIOR ERA CONFUNDIDO e por pouco eu não reportava: ele
+      // comparava o token do navegador (neste lead, construído) com o token de
+      // login direto (noutro lead, de outra execução). Duas variáveis, uma
+      // conclusão. Aqui os assinantes escutam o MESMO lead e o MESMO INSERT:
+      //   serviço      — CONTROLE. Ignora RLS. Zero aqui significa que o evento
+      //                  não foi publicado, e nenhum dos outros zeros diz nada.
+      //   token do navegador
+      //   token de login direto, recém-emitido
+      // Sem o controle, "ninguém recebeu" tem dois pais — nada publicado, ou
+      // todo mundo barrado — e eu escolheria o que combina com a minha hipótese.
+      // O CONTROLE SAI DESTE PROCESSO. Um controle limpo, criado aqui dentro,
+      // deu zero — e a MESMA sonda, sozinha noutro processo, deu 12/12 com
+      // 123–587ms de atraso. Enquanto eu não souber o que este processo faz com
+      // o realtime, tudo que ele mede sobre entrega está contaminado, inclusive
+      // a leitura do navegador. Então o controle vira um PROCESSO IRMÃO: mesma
+      // janela de tempo, mesmo lead, ambiente independente. Se ele receber e o
+      // navegador não, a comparação vale; se ele não receber, o silêncio é do
+      // ambiente e o navegador segue sem julgamento — que é o resultado honesto
+      // e o que eu ia perder tratando o meu próprio zero como veredito.
+      const quadrosNavegadorAntes = quadrosDeAtividade;
+      const controleExterno = await new Promise<string>((resolve) => {
+        execFile(
+          "npx",
+          ["tsx", "tests/prova-taxa-de-entrega.ts"],
+          { env: { ...process.env, LEAD_ID: caso.leadComContato, N: "3", ESPERA_MS: "6000" } },
+          (_e, saida) => resolve((saida.match(/TAXA DE ENTREGA: (\d+\/\d+)/) ?? [])[1] ?? "(não mediu)"),
+        );
+      });
+      const placarDoEspiao =
+        `MESMO lead, MESMA janela · controle em processo IRMÃO=${controleExterno} · ` +
+        `navegador=${quadrosDeAtividade - quadrosNavegadorAntes} quadro(s) das 3 atividades do controle`;
+      console.info(`[D21 diag] ${placarDoEspiao}`);
+
       const depoisA = await contarLinhas(page);
       const mudou = depoisA > antesA;
 
@@ -1055,7 +1225,12 @@ async function main(): Promise<void> {
               (quadrosDeAtividade - quadrosAntes > 0
                 ? "o quadro CHEGOU e a tela não aplicou"
                 : "o quadro NÃO chegou: o defeito é a montante da tela. Respostas do servidor ao " +
-                  `canal da timeline: ${respostasTimeline.slice(0, 2).join(" | ") || "(NENHUMA — o canal não foi confirmado)"}`),
+                  `canal da timeline: ${respostasTimeline.slice(0, 2).join(" | ") || "(NENHUMA — o canal não foi confirmado)"}. ` +
+                  `Entregas na MESMA janela, por canal: ` +
+                  (porCanal.size === 0
+                    ? "NENHUMA em canal nenhum — o silêncio é do socket, não do dossiê"
+                    : [...porCanal.keys()].join(" | ") +
+                      " — outro canal entrega e o do dossiê não, o que isola na configuração dele")),
         acaoPersistiu ? undefined : "BLOQUEADO",
       );
     } finally {
