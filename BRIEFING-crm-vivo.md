@@ -3220,3 +3220,52 @@ que funcionava.*
 enquanto forem texto** — protegem quando viram `assert`, `CHECK`, `satisfies`, carimbo, `SELFCHECK`,
 bloco literal, ponteiro para arquivo. **A doutrina é o rascunho do instrumento**, e o instrumento é a
 única parte que sobrevive ao cansaço.
+
+---
+
+## §7.79 — Toda ponte tem duas direções, e o contrato costuma descrever uma
+
+Achado do @Arquiteto no contrato da Wave 8, e é o de maior dano dos oito porque **o briefing não faz a
+pergunta**.
+
+O §4 descreve a ponte num sentido só: **agente avança, card anda**. Falta o inverso: **e quando o
+humano move o card?**
+
+**Verificado:** `LEAD_STAGE_TRANSITIONS` é estritamente para a frente
+(`new→contacted→qualifying→qualified→negotiating→won`, mais `lost`) — **não existe retrocesso**. Logo,
+depois de um movimento manual para trás, os dois funis divergem, e **no próximo avanço do agente o
+espelho desfaz a colocação do humano sem aviso nenhum**.
+
+> O vendedor arrasta para *"Proposta enviada"*, volta dez minutos depois e **o card está em outro
+> lugar**. Ninguém errou e ninguém consegue explicar — a assinatura do defeito que **ensina
+> desconfiança**, a mesma família do 409 fantasma (§7.39).
+
+**Regra:** **quando há conflito, o espelho PROPÕE — não sobrescreve.** É a lei que já governa a
+entrega inteira: quando o alvo é ambíguo, não adivinha (§3.2); nada é feito em nome do humano sem ele
+(Wave 4).
+
+> **Sobrescrever é adivinhar que o agente sabe mais do que quem arrastou o card.**
+
+**E a detecção não precisa de coluna nova** — é uma pergunta ao barramento da Wave 3: *existe atividade
+`stage_changed` com `actor_kind='user'` mais recente que a última com `actor_kind='ai'`?* Se sim,
+conflito, e o espelho escreve no **slot da Wave 4** (*"Agente sugere mover para Negociação"*) em vez de
+mover. **Terceira wave seguida em que o barramento paga o que custou.**
+
+**Generalização:** todo mecanismo que sincroniza dois sistemas precisa responder **"e quando o outro
+lado muda?"**. Contrato que descreve a sincronia num sentido só não está incompleto — está **errado**,
+porque o sentido omitido vai acontecer de qualquer jeito, só que **sem regra**.
+
+### E a mesma FK, decisão oposta, pelo motivo certo
+
+Ele contrariou **a própria decisão da Wave 1**, de propósito: aqui é `ON DELETE SET NULL`, não
+`RESTRICT`.
+
+| Wave 1 — `owner_agent_id` | Wave 8 — `crm_lead_id` |
+|---|---|
+| o dono é **identidade**: não pode sumir | é **atalho** (§3.2), não identidade |
+| `RESTRICT` | `SET NULL` — o estado cognitivo do contato continua válido, e o ponteiro é **recalculável** por `resolveActiveLeadForContact` |
+
+> Impedir o delete seria **dar ao atalho o peso de dono** — e o §3.2 diz exatamente o contrário.
+
+**Mesmo mecanismo, decisão oposta, porque o significado difere.** Consistência de mecanismo entre
+coisas que significam coisas diferentes é a mesma **semelhança acidental** da §7.68.
