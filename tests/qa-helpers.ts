@@ -393,6 +393,26 @@ export function criarPlacar(nome: string, esperados: string[]) {
     // o CÓDIGO DE SAÍDA, não uma linha de aviso. Se a ação necessária depende de
     // alguém ler, o veredito tem de ser vermelho: verde com instrução é
     // instrução perdida.
+    // A SEGUNDA LEITURA DO CARIMBO — a lei do dia aplicada ao próprio carimbo.
+    //
+    // Ele lia `git status` UMA vez, no início. Isso é medição de NASCIMENTO: uma
+    // execução de três minutos, numa árvore que duas sessões dividem, pode ter o
+    // código trocado NO MEIO — e o veredito sairia limpo sobre um código que não
+    // é mais o medido. É o "alvo em movimento" acontecendo dentro da janela em
+    // vez de entre janelas, e o estado mais perigoso dos três porque não deixa
+    // rastro nenhum: começou limpo e terminou limpo.
+    const agora = dependenciasDoCarimbo.length > 0 ? sujidadeAtual(dependenciasDoCarimbo) : "";
+    if (agora !== arvoreSuja) {
+      console.info(
+        `  MUDOU DURANTE A EXECUÇÃO: as dependências declaradas estavam "${arvoreSuja || "limpas"}" ` +
+          `no início e "${agora || "limpas"}" no fim. O código medido não é um código só — este ` +
+          `resultado não descreve nenhuma versão.`,
+      );
+    }
+    // E A MENSAGEM DE "SUJA NO INÍCIO" SÓ SAI QUANDO É ESSE O CASO. Na primeira
+    // versão as duas condições dividiam um texto só, e a mudança-no-meio
+    // imprimia "a árvore estava suja (…)" com a lista VAZIA — afirmação falsa
+    // gerada pela cerca que eu acabei de escrever para impedir afirmação falsa.
     if (arvoreSuja !== "") {
       console.info(
         `  SEM VEREDITO: a árvore estava suja nas dependências declaradas (${arvoreSuja}). ` +
@@ -403,7 +423,7 @@ export function criarPlacar(nome: string, esperados: string[]) {
     // INCONCLUSIVO conta como falha: ele está mais perto de vermelho que de
     // verde, e o único jeito de o "não deu para saber" não ser engolido pelo
     // verde é ele custar o mesmo que um vermelho.
-    return conta("FALHA") + ausentes + inconclusivos + (arvoreSuja === "" ? 0 : 1);
+    return conta("FALHA") + ausentes + inconclusivos + (arvoreSuja === "" && agora === arvoreSuja ? 0 : 1);
   }
 
   return { record, fechar };
@@ -440,9 +460,25 @@ export function criarPlacar(nome: string, esperados: string[]) {
  * especificamente, REMOVE o motivo de ler.
  */
 let arvoreSuja = "";
+/** As dependências declaradas, guardadas para a RELEITURA no fim da execução. */
+let dependenciasDoCarimbo: string[] = [];
 
 /** O conjunto fixo, enumerável à mão enquanto couber numa linha. */
 const INFRAESTRUTURA_COMPARTILHADA = ["tests/qa-helpers.ts"];
+
+/** `git status` das dependências, para comparar início e fim. */
+function sujidadeAtual(deps: string[]): string {
+  try {
+    const out = execFileSync("git", ["status", "--porcelain", "--", ...deps], {
+      encoding: "utf8",
+    })
+      .split("\n")
+      .filter(Boolean);
+    return out.join(" · ");
+  } catch {
+    return "";
+  }
+}
 
 /** Sondas que inserem em `crm_lead_activities` sem passar pelo desfazer. */
 function sondasQueSujamORelogio(): string[] {
@@ -585,6 +621,7 @@ export function carimbar(dependencias: string[]): string {
   console.info(`[carimbo] HEAD=${head}`);
   console.info(`[carimbo] dependências declaradas: ${todas.join(", ")}`);
   arvoreSuja = sujos.length > 0 ? sujos.join(" · ") : "";
+  dependenciasDoCarimbo = todas;
   if (sujos.length === 0) {
     console.info("[carimbo] todas limpas — o veredito vale para este commit");
     return "";
