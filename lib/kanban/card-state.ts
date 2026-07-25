@@ -54,6 +54,7 @@ export function buildCardInput(
     | "owner_user_id"
     | "owner_agent_id"
     | "owner_agent"
+    | "next_action"
   >,
   opts: {
     stageName: string;
@@ -83,6 +84,10 @@ export function buildCardInput(
     stageName: opts.stageName,
     hoursInStage,
     isCooling: opts.coolingIds?.has(lead.id) ?? false,
+    // Sem proposta o campo fica NULO, não vazio: `resolveCardState` já trata
+    // "não tem" como estado normal, e um label em branco produziria o slot vazio
+    // que o §5 proíbe (dado sem propósito ocupando linha).
+    nextAction: lead.next_action ? { label: lead.next_action.label } : null,
     canonicalTag: (opts.canonicalTags ?? []).find((t) => lead.tags.includes(t)) ?? null,
     tags: lead.tags,
   };

@@ -49,6 +49,12 @@ export interface Lead {
   owner_agent_id: string | null;
   /** Derivado (não é coluna): quem é o agente dono — ver LeadOwnerAgent. */
   owner_agent?: LeadOwnerAgent | null;
+  /**
+   * Derivado (não é coluna): a próxima ação que o agente propôs para o CONTATO,
+   * já roteada para o negócio ativo dele. Ver lib/leads/next-action.ts — só
+   * aparece quando o roteamento é inequívoco.
+   */
+  next_action?: { label: string; approved_text: string; proposed_at: string } | null;
   assigned_at: string | null;
   last_activity_at: string | null;
   expected_close_date: string | null;

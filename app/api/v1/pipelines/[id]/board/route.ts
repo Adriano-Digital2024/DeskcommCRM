@@ -16,6 +16,8 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
 import { fail, ok } from "@/lib/api/wrappers";
+import { roteiaProximasAcoes, type EstadoDoContato } from "@/lib/leads/next-action";
+import type { LeadCandidate } from "@/lib/leads/active-lead";
 import { createClient } from "@/lib/supabase/server";
 import type { BoardData, Pipeline, Stage } from "@/lib/kanban/types";
 import type { Lead } from "@/lib/types/leads";
@@ -103,6 +105,63 @@ async function withOwnerAgents(
   };
 }
 
+/**
+ * Anexa a próxima ação proposta pelo agente aos leads que a receberam.
+ *
+ * Os candidatos são buscados por CONTATO na org inteira, e não só neste
+ * pipeline: `resolveActiveLeadForContact` precisa enxergar todos os negócios
+ * abertos da pessoa para poder chamar de ambíguo o que é ambíguo. Recortando a
+ * lista por pipeline, dois negócios ambíguos em boards diferentes apareceriam
+ * como um único negócio em cada board, e os dois exibiriam a mesma proposta.
+ */
+async function withNextActions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  leads: Lead[],
+  defaultPipelineId: string | null,
+): Promise<{ leads: Lead[]; error: string | null }> {
+  const contactIds = [
+    ...new Set(leads.map((l) => l.contact_id).filter((c): c is string => !!c)),
+  ];
+  if (contactIds.length === 0) return { leads, error: null };
+
+  const [{ data: estados, error: estadosErr }, { data: candidatos, error: candErr }] =
+    await Promise.all([
+      supabase
+        .from("lead_state")
+        .select("contact_id, next_action, updated_at")
+        .eq("organization_id", organizationId)
+        .in("contact_id", contactIds)
+        .not("next_action", "is", null),
+      supabase
+        .from("crm_leads")
+        .select(
+          "id, organization_id, pipeline_id, status, last_activity_at, created_at, contact_id",
+        )
+        .eq("organization_id", organizationId)
+        .eq("status", "open")
+        .in("contact_id", contactIds),
+    ]);
+  if (estadosErr) return { leads, error: estadosErr.message };
+  if (candErr) return { leads, error: candErr.message };
+  if (!estados || estados.length === 0) return { leads, error: null };
+
+  const porLead = roteiaProximasAcoes(
+    estados as EstadoDoContato[],
+    (candidatos ?? []) as Array<LeadCandidate & { contact_id: string | null }>,
+    { defaultPipelineId },
+  );
+  if (porLead.size === 0) return { leads, error: null };
+
+  return {
+    leads: leads.map((lead) => {
+      const acao = porLead.get(lead.id);
+      return acao ? { ...lead, next_action: acao } : lead;
+    }),
+    error: null,
+  };
+}
+
 export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
   const requestId = randomUUID();
   const { id: pipelineId } = await ctx.params;
@@ -150,10 +209,27 @@ export async function GET(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
     return fail("internal_error", leadsWithOwner.error, 500, { requestId });
   }
 
+  const { data: pipelinePadrao } = await supabase
+    .from("crm_pipelines")
+    .select("id")
+    .eq("organization_id", (pipeline as Pipeline).organization_id)
+    .eq("is_default", true)
+    .maybeSingle();
+
+  const leadsComAcao = await withNextActions(
+    supabase,
+    (pipeline as Pipeline).organization_id,
+    leadsWithOwner.leads,
+    (pipelinePadrao as { id: string } | null)?.id ?? null,
+  );
+  if (leadsComAcao.error) {
+    return fail("internal_error", leadsComAcao.error, 500, { requestId });
+  }
+
   const board: BoardData = {
     pipeline: pipeline as Pipeline,
     stages: (stages ?? []) as Stage[],
-    leads: leadsWithOwner.leads,
+    leads: leadsComAcao.leads,
   };
 
   return ok(board, { requestId });
