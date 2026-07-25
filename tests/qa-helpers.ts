@@ -142,46 +142,81 @@ export async function cardLocator(
 }
 
 /**
- * EVIDÊNCIA HISTÓRICA — artefatos que **não dá para regenerar**, porque o código
- * que produziu aquele estado não existe mais (o "antes" de uma wave passa a ser
- * histórico no instante em que a wave é commitada).
+ * EVIDÊNCIA HISTÓRICA — o que NÃO regenera.
  *
- * A distinção que importa:
  *   REPRODUZÍVEL — basta rodar o script de novo. Sobrescrever é inofensivo.
- *   HISTÓRICA    — não regenera. Sobrescrever DESTRÓI a única cópia, e sem rastro
- *                  do que havia ali. É imutável por natureza; tratá-la como saída
- *                  de script é erro de categoria.
+ *   HISTÓRICA    — não regenera. Sobrescrever DESTRÓI a única cópia, sem rastro
+ *                  do que havia ali; tratá-la como saída de script é erro de
+ *
+ * A lista é curta de propósito, e o critério não é o sufixo
+ * "-antes" do nome: `prova-canal-agent-runs-antes.png` e `wave-3-aba-b-antes.png`
+ * são o lado "antes" de um gatilho DENTRO da mesma execução — a sonda refaz os
+ * dois. O que entra aqui é o estado ANTERIOR A UMA WAVE: o código que o produzia
+ * foi substituído, então o arquivo é a única cópia que existirá.
  */
+const EVIDENCIA_HISTORICA = new Set([
+  "wave-0-board-antes.png",
+  "wave-0-board-antes-full.png",
+  "wave-0-card-antes.png",
+  "wave-0-card-titulo-longo-antes.png",
+  "wave-0-navegacao.png",
+  "wave-2-antes-depois.png",
+  "wave4-13-antes.png",
+]);
+
 /**
- * Recusa sobrescrever evidência que o REPOSITÓRIO já entrega — e diz qual e por quê.
+ * Protege a evidência na medida da IRREVERSIBILIDADE — não na medida do incômodo.
  *
- * O discriminador não é uma lista mantida à mão: é **estar versionada**. Só se
- * versiona evidência CITADA (a que sustenta afirmação escrita em documento), e
- * regenerá-la em silêncio troca a prova por baixo de um texto já publicado.
- * Captura nova, ainda não rastreada, é livre para ser refeita à vontade.
+ * A versão anterior recusava TODA evidência versionada, e o preço apareceu na
+ * sonda do ambíguo: ela fez a medição, limpou o que tinha criado e morreu antes
+ * de imprimir o veredito, porque o PNG dela já estava no git. **Sonda que não
+ * consegue reportar é pior que sonda nenhuma** — e o bloco de doc logo acima já
+ * dizia o contrário do que o código fazia ("REPRODUZÍVEL — sobrescrever é
+ * inofensivo"). Quando o comentário e o código discordam, um dos dois está
+ * errado; aqui era o código.
  *
- * A versão anterior era uma lista com quatro nomes da wave 0 — e não cobriu o par
- * `prova-canal-agent-runs-*`, que era a única cópia do "antes" do canal morto.
- * Rodar a sonda de novo apagou o lado que dava sentido ao par: exatamente a linha
- * *"evidência histórica destruível sem aviso"* da tabela da doença.
+ * A regra, em uma linha: **o que não regenera é intocável; o que regenera é
+ * sobrescrevível, mas nunca em silêncio.**
  *
- * Recusar em silêncio seria a mesma falha silenciosa que este projeto caça.
+ *   HISTÓRICA (lista explícita) → RECUSA. O código que produziu aquele estado não
+ *     existe mais, então o arquivo é a única cópia e sobrescrever é destruir.
+ *   VERSIONADA e reproduzível  → escreve, e ANUNCIA com as duas impressões
+ *     digitais. O objetivo do guarda sempre foi impedir a troca SILENCIOSA; o git
+ *     é quem torna a troca revisável, e o log é quem a torna visível na hora.
+ *   NÃO versionada             → livre.
+ *
+ * O modo de falha de uma lista incompleta deixa de ser destruição calada e passa
+ * a ser um aviso impresso mais um arquivo modificado no `git status`.
  */
 function guardaEvidencia(file: string): void {
+  const alvo = path.join(EVIDENCE, file);
+
+  if (EVIDENCIA_HISTORICA.has(file) && fs.existsSync(alvo)) {
+    if (process.env.FORCE === "1") {
+      console.info(`[evidencia] FORCE=1 — sobrescrevendo evidência HISTÓRICA ${file}`);
+      return;
+    }
+    throw new Error(
+      `[evidencia] RECUSADO sobrescrever "${file}": é evidência HISTÓRICA — o código que ` +
+        `produziu aquele estado não existe mais, então este arquivo é a única cópia e não ` +
+        `pode ser regenerado.\n` +
+        `Se você realmente quer perder o "antes", rode com FORCE=1.`,
+    );
+  }
+
+  if (!fs.existsSync(alvo)) return;
   const rel = path.posix.join("evidence", file);
   const rastreada =
     execFileSync("git", ["ls-files", rel], { cwd: process.cwd(), encoding: "utf8" }).trim()
       .length > 0;
   if (!rastreada) return;
-  if (process.env.FORCE === "1") {
-    console.info(`[evidencia] FORCE=1 — sobrescrevendo evidência versionada ${file}`);
-    return;
-  }
-  throw new Error(
-    `[evidencia] RECUSADO sobrescrever "${file}": está VERSIONADA, então algum documento a ` +
-      `cita como prova — trocá-la em silêncio muda o lastro de uma afirmação já escrita.\n` +
-      `Se a intenção é atualizar a prova, rode com FORCE=1; se é capturar um estado NOVO, ` +
-      `use um nome novo.`,
+
+  // Versionada e reproduzível: passa, mas o log nomeia a troca. Sem isto, a
+  // prova que sustenta um documento mudaria sem ninguém ler uma linha a respeito.
+  const antes = crypto.createHash("sha1").update(fs.readFileSync(alvo)).digest("hex").slice(0, 12);
+  console.info(
+    `[evidencia] ⚠ "${file}" está VERSIONADA e vai ser regenerada. sha1 anterior=${antes}. ` +
+      `Se a troca não era intencional: git checkout -- ${rel}`,
   );
 }
 
