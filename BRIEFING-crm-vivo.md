@@ -3695,3 +3695,59 @@ No `D25` (âncora sem alvo vira texto, não link nem exceção) ele escreveu o *
 
 É a §7.56 aplicada ao **teste**: o aviso tem de estar onde a pessoa vai estar olhando — e quem for
 "melhorar" um caso que parece defeito estará olhando **o critério**, não o handoff.
+
+---
+
+## §7.93 — Mesmo mecanismo, polaridade oposta: a semelhança é que convida ao erro
+
+Aviso do @DevVivo sobre a minha decisão 7 da Wave 6, e ele evita um defeito que **só apareceria depois
+de pronto**:
+
+| superfície | o que fazer com a PRÓPRIA ação | por quê |
+|---|---|---|
+| card (board) | **suprimir** o pulso | quem moveu **já teve o feedback**; repetir é ruído |
+| timeline (dossiê) | **mostrar** | a própria ação é **justamente o que se quer ver registrado** |
+
+> Se alguém transplantar `marcarEcoLocal`/`ehEcoLocal` para a timeline **por parecer a mesma coisa**, a
+> prova do cenário 20 **some exatamente para quem a produziu** — e some **em silêncio**, porque a
+> atividade **foi** gravada.
+
+**A semelhança é a armadilha.** Dois usos do mesmo mecanismo com polaridades opostas parecem
+duplicação a quem lê rápido — e "remover duplicação" é o refactor mais aplaudido que existe. **O motivo
+tem de estar escrito no código do dossiê**, não no contrato: quem for unificar estará olhando o
+componente (§7.56).
+
+## §7.94 — Herdar por cópia é criar duas listas
+
+Eu decidi que *"superfície nova herda as decisões da superfície antiga"* (§ regra 4 da Wave 6). Ele
+apontou o buraco:
+
+> **Herdar por CÓPIA é como as duas listas: funciona no dia e diverge no mês.**
+
+Verificado: o rótulo honesto da âncora está **inline** hoje (`ScoreSlot.tsx:107`, um ternário dentro do
+JSX). "Herdar" por cópia significaria **duplicar o ternário** no dossiê — e no dia em que um dos dois
+mudar, as duas telas passam a dizer coisas diferentes sobre o mesmo dado, sem nada acusar.
+
+> **Conserto: extrair o rótulo para uma função única que as duas telas chamam. Assim "herda" vira
+> MECANISMO em vez de INTENÇÃO.**
+
+**Terceira vez hoje que uma decisão minha é convertida em instrumento por quem a recebeu** — e as três
+seguem o mesmo padrão: eu digo o que tem de acontecer, e alguém pergunta *"o que garante que continue
+acontecendo?"*.
+
+## §7.95 — A armadilha mora no encontro do contrato com o código
+
+Observação de método dele, e é a explicação do porquê a lista de oito existiu:
+
+> *"Eu não as achei **lendo o contrato duas vezes**; achei **lendo o CÓDIGO com o contrato na
+> cabeça**."*
+
+A colisão clique-×-seleção só apareceu ao abrir o `KanbanCard` e ver o `onClick` chamando `onSelect`. A
+do colapso-×-realtime só apareceu ao procurar assinante de `crm_lead_activities` e não achar nenhum.
+
+> **Contrato descreve o que DEVE existir. Código mostra o que JÁ existe. A armadilha mora no encontro
+> dos dois** — e por isso releitura atenta do contrato **não** as encontra, por mais cuidadosa que seja.
+
+**Corolário operacional:** a leitura que antecede a implementação não é *"reler o contrato"*, é
+**percorrer o código que o contrato vai tocar, com o contrato na cabeça**. Custa mais e é a única que
+produz a lista.
