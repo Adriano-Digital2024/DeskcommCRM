@@ -1370,3 +1370,32 @@ barra nenhuma`.
 
 **Nenhum dos dois critérios sozinho cobria os dois estilos de escrita do time.** Cada um enxergava
 os documentos que costumava ler.
+
+## §7.28 — O guarda só tem poder sobre documento versionado
+
+Observação do `@QAVivo` ao fechar a wave, e ela inverte a intuição de quem vai usar o check:
+
+> *"Com `wave-3.md` solto no disco ele passava 17/17 e não cobrava nada — verde vazio clássico. Foi
+> por isso que o documento entrou antes de eu perguntar qualquer coisa a ele."*
+
+A cobertura é **consequência** do versionamento, não pré-requisito dele. Documento fora do `git` é
+invisível ao guarda, então perguntar antes de versionar devolve um verde que não significa nada.
+
+> **Ordem correta:** versione o documento **primeiro**, rode, e deixe o guarda **nomear** o que
+> falta. Não decida o que versionar e confira depois — a decisão é dele, e ele decide melhor.
+
+Funcionou literalmente: narrativa no índice → reprovou nomeando **12 capturas** citadas e fora do
+`git` → adicionadas exatamente essas → **18/18**.
+
+### E o que ficou de fora, nomeado com motivo
+
+Três exclusões deliberadas, e a segunda é a mais fina:
+
+| fora | por quê |
+|---|---|
+| capturas de LGPD | a narrativa **não as cita** — entram no mesmo commit de quem citar |
+| sondas `-ARVORE-SUJA` | **existem para se acusarem, não para servirem de prova** — são o guarda se demonstrando, não evidência |
+| capturas de outro autor | não são suas para versionar (`§7.3`: commita-se o que se escreveu) |
+
+**Exclusão com motivo escrito é decisão; exclusão silenciosa é esquecimento.** As três continuam
+cobráveis pelo guarda no instante em que alguém as citar.
