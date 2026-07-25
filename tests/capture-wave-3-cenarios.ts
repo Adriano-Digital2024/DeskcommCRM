@@ -305,6 +305,57 @@ async function main(): Promise<void> {
   const abaB = await ctxB.newPage();
 
   /**
+   * DIAGNÓSTICO QUE NASCE JUNTO COM A FALHA.
+   *
+   * A entrega falhou duas vezes de forma determinística e depois voltou sozinha,
+   * sem causa. Uma falha transitória que só deixa "o evento não chegou" obriga a
+   * próxima pessoa a reabrir a caça inteira — e o estado que explicaria já não
+   * existe mais quando ela chega.
+   *
+   * Então o estado do canal da aba B é coletado SEMPRE (custa dois listeners) e
+   * impresso SÓ quando a entrega falha. É a diferença entre um registro que diz
+   * "não chegou" e um que diz QUAL ELO caiu.
+   */
+  const canalB = { joins: 0, comToken: 0, papel: "(nenhum join)", quadros: 0, replies: 0 };
+  abaB.on("websocket", (ws) => {
+    if (!ws.url().includes("supabase")) return;
+    ws.on("framesent", (f) => {
+      const t = String(f.payload);
+      if (!/phx_join/.test(t) || !/kanban/i.test(t)) return;
+      canalB.joins++;
+      const tok = (t.match(/"access_token":"([^"]+)"/) ?? [])[1];
+      if (tok) {
+        canalB.comToken++;
+        try {
+          const corpo = JSON.parse(Buffer.from(tok.split(".")[1]!, "base64").toString());
+          canalB.papel = `role=${corpo.role} sub=${String(corpo.sub ?? "-").slice(0, 8)}`;
+        } catch {
+          canalB.papel = "(jwt ilegível)";
+        }
+      } else {
+        canalB.papel = "SEM access_token — canal anônimo";
+      }
+    });
+    ws.on("framereceived", (f) => {
+      const t = String(f.payload);
+      if (/"postgres_changes"/.test(t) && /"type"\s*:\s*"(INSERT|UPDATE|DELETE)"/.test(t)) canalB.quadros++;
+      if (/phx_reply/.test(t) && /kanban/i.test(t)) canalB.replies++;
+    });
+  });
+  const diagnosticoDoCanal = async (): Promise<string> => {
+    const status = await abaB
+      .locator("[data-realtime-status]")
+      .first()
+      .getAttribute("data-realtime-status")
+      .catch(() => null);
+    return (
+      `[diagnóstico da aba B] status=${status ?? "(ausente)"} · joins=${canalB.joins} ` +
+      `(com token: ${canalB.comToken}, ${canalB.papel}) · respostas=${canalB.replies} · ` +
+      `quadros de mudança recebidos=${canalB.quadros}`
+    );
+  };
+
+  /**
    * O token do canal não pode ser cacheável: um proxy que guardasse a resposta
    * serviria o token de um usuário para outro. Isso NÃO é provável por fora —
    * sem sessão o middleware devolve o 401 dele, e todo teste externo mede o
@@ -434,13 +485,19 @@ async function main(): Promise<void> {
     { attr: CARD_ATTR, alvo: ALVO },
   );
   const eventoChegou = !!colunaDepoisB && colunaDepoisB !== colunaAntesB;
+  // `DIAG=1` imprime o diagnóstico mesmo no caminho feliz. Diagnóstico que nunca
+  // rodou é diagnóstico não testado: no dia em que a falha voltar, descobrir que
+  // o coletor estava quebrado custaria a única janela em que o estado existia.
+  const diag =
+    eventoChegou && process.env.DIAG !== "1" ? "" : ` | ${await diagnosticoDoCanal()}`;
   record(
     "12.0",
     "pré-condição: o evento CHEGOU na aba B sem reload",
     eventoChegou,
-    eventoChegou
+    (eventoChegou
       ? `card mudou de coluna na aba B (${colunaAntesB?.slice(0, 8)} → ${colunaDepoisB?.slice(0, 8)})`
-      : `o card NÃO mudou de coluna na aba B — sem gatilho, o cenário 12 é INCONCLUSIVO, não reprovado`,
+      : `o card NÃO mudou de coluna na aba B — sem gatilho, o cenário 12 é INCONCLUSIVO, ` +
+        `não reprovado.`) + diag,
   );
 
   // INSTRUMENTO TROCADO: amostrar a cada 150ms NÃO enxerga uma animação de 320ms
