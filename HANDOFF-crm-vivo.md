@@ -2954,3 +2954,40 @@ de propósito.
 Viável — os 21 têm `contact_id`, e `resolveActiveLeadForContact` faz o roteamento (recusando
 quando ambíguo, que é o comportamento certo). Riscos a tratar se for aprovado: `performed_at` no
 passado com `created_at` agora, e vetos que não roteiam viram `agent.activity_unrouted`.
+
+### Por que esta entrega existiu — com dado real, não com exemplo
+
+Formulação do `@MaestroConexoes`, e ela fica como está:
+
+> **O agente escolheu ficar calado 21 vezes em cinco dias, por quatro motivos distintos — 16 delas
+> porque a promessa semântica barrou — e nenhum humano viu uma única vez.**
+
+| | |
+|---|---|
+| janela | 19/07 a 24/07 · 1 organização · 4 contatos |
+| decisões rastreadas | 141 (120 passaram, **21 barradas** — taxa de veto ~15%) |
+| por portão | `semantic_promise` 16 · `pacing/warmup_cap` 3 · `pacing/outside_window` 1 · `stop` 1 |
+| exibidas na timeline | **0** |
+
+**As duas contagens estão certas porque medem coisas diferentes: 21 decisões tomadas, 0 decisões
+exibidas.** Isso é literalmente o **achado 3 do `§2`** do briefing — *"o raciocínio da IA é gravado
+e descartado"* — **ainda vivo depois do CORE 2**, num banco real, nesta semana.
+
+> O emissor construído nesta wave funciona **daqui para frente** (provado em tela). O que não
+> existe é **caminho para o passado**.
+>
+> Nas palavras dele: *"se um dia precisarem justificar por que esta entrega existiu, é esta
+> linha."*
+
+**Decisão mantida:** não implementar agora — é backfill, o escopo está fechado (`§3.4`), e publicar
+histórico retroativo em trilha auditável é decisão de produto. Fica nomeado, com número e query.
+
+#### Correção de um erro do regente, mais feio do que o registrado antes
+
+Foi escrito que *"nenhuma tabela de guardrail existe"*. **Existem duas** — `before_send_traces` e
+`pacing_ledger`. E `before_send_traces` **está nomeada duas vezes no próprio BRIEFING**, no achado 3
+do `§2` e no CORE 2, com a frase literal *"(inclusive as decisões de NÃO enviar)"*.
+
+> Não foi só busca exata onde precisava ser aproximada: foi **procurar no banco o que estava no
+> documento que eu mesmo curei**. Quando alguém já escreveu onde a coisa mora, buscar por padrão é
+> o caminho mais longo **e** o menos confiável.
