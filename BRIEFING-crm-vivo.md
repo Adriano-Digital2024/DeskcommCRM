@@ -6785,3 +6785,49 @@ uma falha anterior a qualquer linha. **Sobra a ALTERAÇÃO DA PUBLICAÇÃO em si
 **local**. 16:13 UTC é 13:13 local. Comparar as duas séries sem converter teria posto as escritas
 *antes* da falha e invertido a conclusão — duas réguas no mesmo raciocínio, exatamente o que já
 custou uma investigação hoje.
+
+## §7.212 — Duas medições discordantes com aparatos diferentes: não escolha — rode JUNTAS, nos MESMOS eventos
+
+Dois resultados incompatíveis sobre a mesma pergunta:
+
+| aparato | papel | CRM Vivo | Pedidos |
+|---|---|---|---|
+| A (grade, alternada no tempo) | **service role** | 0/2, 0/2 | 2/2, 2/2 |
+| B (dois INSERTs simultâneos) | **autenticado** | chegou 3× | chegou 3× |
+
+**Nenhum dos dois é obviamente errado**, e as diferenças candidatas são pelo menos quatro: papel,
+simultaneidade (mesmo lote × lotes separados), filtro do canal e o instante da medição.
+
+**Escolher um vencedor aqui é apostar.** A saída é a mesma de sempre e é barata: **os dois aparatos
+assinando ao mesmo tempo, julgando OS MESMOS eventos.** Se discordarem sobre o mesmo evento, a
+diferença é do aparato e fica isolada num passo. Se concordarem, a divergência anterior era
+**temporal** — e aí a pergunta muda para *"o que mudou entre 14:21 e agora?"*, que é outra
+investigação e tem outros suspeitos (o conserto da memo entrando, a assinatura anônima apagada, o
+`FULL` aplicado e revertido).
+
+**Regra:** discordância entre aparatos não se resolve por argumento sobre qual é mais confiável —
+resolve-se **colocando os dois no mesmo evento**. Enquanto isso não for feito, nenhum dos dois
+vereditos é reportável.
+
+## §7.213 — Defeito achado no INSTRUMENTO é hipótese sobre o PRODUTO quando os dois fazem a mesma coisa
+
+A sonda ficou **anônima nas três primeiras rodadas apesar de login e `setAuth` ANTES do `subscribe`** —
+e só passou a autenticar com `connect()` explícito, espera do handshake e `setAuth` de novo.
+
+**O produto faz exatamente a sequência que falhou na sonda:** `setAuth` e depois `subscribe`, sem
+garantir que o socket já esteja conectado. **Então o conserto da memoização herda a dúvida** — ele
+garante que `setAuth` seja CHAMADO, e não que ele tenha EFEITO sobre uma conexão que ainda não
+existe.
+
+**Regra:** quando um defeito é encontrado no instrumento, a pergunta seguinte não é *"como conserto a
+sonda?"* — é ***"o produto faz a mesma coisa?"***. Instrumento e produto compartilham bibliotecas,
+idioma e mal-entendidos; um defeito no primeiro é uma hipótese barata e específica sobre o segundo.
+
+**Verificação decisiva, e ela já estava pedida por outro motivo:** ler o **papel** da assinatura do
+board em `realtime.subscription` **depois** do conserto. Se nascer `authenticated`, o conserto basta.
+Se nascer `anon`, o conserto está incompleto e o board segue mudo por um motivo diferente do que se
+consertou.
+
+**E o mesmo vale na outra direção:** o aparato que reportou `0/2` precisa ter o papel conferido antes
+de o veredito valer. Um assinante `anon` receberia zero de TUDO (a RLS filtra tudo) — o que é
+incompatível com `2/2` em Pedidos —, mas *verificar* custa uma linha e **presumir já custou caro hoje**.
