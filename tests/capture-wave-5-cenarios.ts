@@ -212,6 +212,42 @@ function comprimir(vs: Violacao[]): string {
 }
 
 /**
+ * ÂNCORAS — a cerca de regressão, escrita À MÃO a partir da regra declarada.
+ *
+ * Conserto que zera as violações quebrando os acertos é TROCA de defeito, não
+ * correção — e a varredura sozinha não pega isso: devolver sempre a régua crua
+ * zeraria a não-mentira e mataria a histerese inteira.
+ *
+ * Escritas a mão de propósito. Derivá-las de `porDegrau` ou de `faixaCrua` faria
+ * a cerca concordar com o instrumento que ela deveria vigiar; cada linha aqui é
+ * a régua do módulo lida por um humano e fixada como número.
+ *
+ * São as BORDAS — onde um conserto de um-a-mais/um-a-menos quebra: o primeiro
+ * valor que confirma a mudança e o último que não confirma.
+ */
+const ANCORAS_DA_REGRA: {
+  score: number;
+  anterior: ScoreBand | null;
+  esperado: ScoreBand;
+  porque: string;
+}[] = [
+    { score: 72, anterior: null, esperado: "quente", porque: "sem memória, vale a régua crua" },
+    { score: 50, anterior: null, esperado: "morno", porque: "sem memória, vale a régua crua" },
+    { score: 10, anterior: null, esperado: "frio", porque: "sem memória, vale a régua crua" },
+    { score: 45, anterior: "frio", esperado: "morno", porque: "primeiro valor que CONFIRMA a subida (40+5)" },
+    { score: 44, anterior: "frio", esperado: "frio", porque: "último que NÃO confirma — a zona morta segura" },
+    { score: 75, anterior: "morno", esperado: "quente", porque: "primeiro valor que CONFIRMA a subida (70+5)" },
+    { score: 74, anterior: "morno", esperado: "morno", porque: "último que NÃO confirma" },
+    { score: 65, anterior: "quente", esperado: "morno", porque: "primeiro valor que CONFIRMA a descida (70-5)" },
+    { score: 66, anterior: "quente", esperado: "quente", porque: "último que NÃO confirma" },
+    { score: 35, anterior: "morno", esperado: "frio", porque: "primeiro valor que CONFIRMA a descida (40-5)" },
+    { score: 36, anterior: "morno", esperado: "morno", porque: "último que NÃO confirma" },
+    { score: 50, anterior: "morno", esperado: "morno", porque: "no meio da faixa nada se mexe" },
+    { score: 80, anterior: "frio", esperado: "quente", porque: "salto real atravessa duas faixas de uma vez" },
+    { score: 20, anterior: "quente", esperado: "frio", porque: "tombo real atravessa duas faixas de uma vez" },
+];
+
+/**
  * A régua escrita no próprio módulo, aplicada degrau a degrau: "para SUBIR de
  * faixa o score precisa passar do limiar mais a banda; para DESCER, cair abaixo
  * do limiar menos a banda". Não é um modelo meu — é o comentário virado código,
@@ -298,6 +334,67 @@ function histerese(): void {
       ? "0..100 × 3 faixas anteriores — função e régua escrita coincidem"
       : `${violaP3.length}/303 casos: ${comprimir(violaP3)}`,
   );
+
+  const quebradas = ANCORAS_DA_REGRA.filter((a) => resolveBand(a.score, a.anterior) !== a.esperado).map(
+    (a) =>
+      `${a.score} de "${a.anterior ?? "(sem memória)"}" deu "${resolveBand(a.score, a.anterior)}", esperado "${a.esperado}" (${a.porque})`,
+  );
+  record(
+    "16.e",
+    "ÂNCORAS: o que já funciona continua funcionando depois do conserto",
+    quebradas.length === 0,
+    quebradas.length === 0
+      ? `${ANCORAS_DA_REGRA.length} bordas fixadas à mão, todas de pé`
+      : `${quebradas.length}/${ANCORAS_DA_REGRA.length} quebrada(s): ${quebradas.join(" · ")}`,
+  );
+}
+
+
+/**
+ * AUTO-TESTE DA CERCA — `SELFCHECK=1`.
+ *
+ * A 16.e passa hoje, antes de qualquer conserto. Isso é o que se pede dela, e é
+ * também o que a torna suspeita: cerca que nunca reprovou pode ser decoração.
+ * Então aqui ela é submetida ao conserto ERRADO que o regente nomeou — o que
+ * zera as violações matando a histerese: devolver sempre a régua crua.
+ *
+ * Não mexo em `lib/kanban/score-band.ts` para fazer isto. O arquivo está sendo
+ * escrito pelo @DevVivo agora, e mutilar arquivo de colega vivo é a receita de
+ * dois trabalhos se destruírem. A regra alternativa é local a esta função.
+ */
+function autoTesteDaCerca(): void {
+  const ingenua = (score: number, _anterior: ScoreBand | null): ScoreBand => faixaCrua(score);
+
+  const violaP2 = ORDEM.flatMap((anterior) =>
+    Array.from({ length: 101 }, (_, score) => score).filter(
+      (score) =>
+        Math.abs(ORDEM.indexOf(ingenua(score, anterior)) - ORDEM.indexOf(faixaCrua(score))) >= 2,
+    ),
+  ).length;
+
+  let banda: ScoreBand | null = null;
+  let trocas = 0;
+  for (const s of [68, 72, 69, 71, 68, 73, 70, 67]) {
+    const nova = ingenua(s, banda);
+    if (banda !== null && nova !== banda) trocas++;
+    banda = nova;
+  }
+
+  const ancorasQuebradas = ANCORAS_DA_REGRA.filter(
+    (a) => ingenua(a.score, a.anterior) !== a.esperado,
+  ).length;
+
+  console.info("\n=== AUTO-TESTE: a cerca reprova o conserto que mata a histerese? ===");
+  console.info(`  a régua crua zera a NÃO-MENTIRA (16.c): ${violaP2} violações`);
+  console.info(`  ...e o ANTI-PISCA a reprova: ${trocas} trocas na série oscilante (limite 1)`);
+  console.info(`  ...e as ÂNCORAS a reprovam: ${ancorasQuebradas}/${ANCORAS_DA_REGRA.length} quebradas`);
+  const cercaFunciona = violaP2 === 0 && (trocas > 1 || ancorasQuebradas > 0);
+  console.info(
+    cercaFunciona
+      ? "  ==> CERCA DE PÉ: o atalho passaria na varredura e é barrado pelas outras duas."
+      : "  ==> CERCA FURADA: o atalho passaria — a 16.e não distingue conserto de troca de defeito.",
+  );
+  if (!cercaFunciona) process.exitCode = 1;
 }
 
 async function main(): Promise<void> {
@@ -307,6 +404,11 @@ async function main(): Promise<void> {
     "lib/kanban/card-state.ts",
     "components/kanban/KanbanCard.tsx",
   ]);
+
+  if (process.env.SELFCHECK === "1") {
+    autoTesteDaCerca();
+    return;
+  }
 
   try {
     await tabelaVerdade();
