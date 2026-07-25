@@ -2931,6 +2931,26 @@ select organization_id, contact_id, vetoed_gate, vetoed_code, created_at
  where vetoed_gate is not null;
 ```
 
+#### ⚠️ ANTES QUE ALGUÉM REPORTE ISSO COMO BUG
+
+As três contagens que discriminam (método do `@Arquiteto`), medidas:
+
+| linhas totais | linhas com `vetoed_gate` | entradas `verdict='veto'` no jsonb |
+|---|---|---|
+| 141 | **21** | **21** |
+
+Os dois últimos **coincidem**, então não é confusão de unidade: são **21 tentativas de envio
+realmente bloqueadas**, e `crm_lead_activities` tem **0** correspondentes.
+
+**Isso é esperado, não defeito.** São vetos **anteriores à fiação do emissor** —
+`before-send.ts` importa `emitVetoActivity` hoje; não importava quando eles aconteceram. O emissor
+processa **evento novo**; pela marca d'água fixada no B4, veto histórico **nunca** vira atividade,
+de propósito.
+
+> Registrado aqui porque é exatamente o que alguém reporta como bug daqui a duas semanas: *"tem
+> veto no banco e não aparece na timeline"*. **A resposta já está decidida:** trazer histórico é
+> decisão de produto, não efeito colateral de worker.
+
 Viável — os 21 têm `contact_id`, e `resolveActiveLeadForContact` faz o roteamento (recusando
 quando ambíguo, que é o comportamento certo). Riscos a tratar se for aprovado: `performed_at` no
 passado com `created_at` agora, e vetos que não roteiam viram `agent.activity_unrouted`.

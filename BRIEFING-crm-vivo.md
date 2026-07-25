@@ -1157,3 +1157,22 @@ repositório e reprova sozinho.
 > *"quem tem razão?"* — é ***"que medição separaria as duas hipóteses?"***. Se nenhuma separa, a
 > discordância é sobre gosto, e aí decide quem tem a palavra final. Se alguma separa, argumentar
 > mais é desperdício.
+
+## §7.20 — Com árvore em movimento: invariante sim, veredito não
+
+Formulação do `@Arquiteto` ao fechar, e ela resolve a tensão que apareceu quatro vezes na wave:
+
+> **Com árvore em movimento eu não emito VEREDITO, mas emito INVARIANTE. As duas coisas não
+> competem, e a segunda é justamente a que cabe antes do commit.**
+
+O alerta prévio das duas armadilhas do eco local **só pagou porque foi escrito com o disco sujo**.
+Se ele tivesse esperado o commit "para revisar direito", a segunda teria entrado — e teria virado
+um intermitente, que foi o que custou duas rodadas de diagnóstico neste mesmo dia.
+
+| | quando cabe | por quê |
+|---|---|---|
+| **Veredito** | só com árvore limpa e `HEAD` carimbado | é afirmação sobre um estado; estado em movimento não se afirma |
+| **Invariante** | a qualquer momento, inclusive no meio da edição | é afirmação sobre o desenho; não depende do rascunho no disco |
+
+**Recusar-se a revisar não é o mesmo que não contribuir.** Esperar o commit para dizer tudo é
+guardar para depois o que só tem valor antes.
