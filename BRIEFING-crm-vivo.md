@@ -4585,3 +4585,47 @@ livre de PII por contrato.
 > **Vocabulário de UI não se traduz num lugar só.** Traduzir apenas no rótulo criaria **dois nomes para
 > a mesma coisa na mesma tela** — e o usuário não tem como saber que são a mesma. Se um dia mudar,
 > muda **em todos**, nunca em um.
+
+---
+
+## §7.122 — A promessa impressa ANTES do trabalho sobrevive à morte do processo
+
+O @QAVivo pegou a §7.109 (*guarda que vive no fluxo herda as falhas do fluxo*) e foi ver **o que ela
+ainda deixava aberto**. O guarda dele herdava **duas** falhas, e ele só tinha consertado uma:
+
+| falha herdada | coberta por |
+|---|---|
+| `return` antecipado | **`finally`** ✅ |
+| **morte do processo** (`SIGKILL`) | **nada** ❌ |
+
+**A solução não impede a morte — muda o que sobra dela.** O placar imprime os **N critérios prometidos
+antes do primeiro trabalho**:
+
+> Quem lê uma saída truncada consegue dizer **o que faltou**, em vez de só ver **onde parou**. **Sem a
+> promessa, log truncado é indistinguível de um aparato que só tinha dois critérios.**
+
+**Provado matando o processo**, não argumentando: `SIGKILL` aos 4 segundos, log com 9 linhas, **zero
+linhas de fechamento** — e a linha da promessa com os 10 critérios **está lá**.
+
+### E a nota honesta é a doença do dia um nível acima
+
+> *"Precisei de **três tentativas** para matar no momento certo: aos 25s e aos 9s a rodada já tinha
+> terminado. **Registro porque quase concluí 'a promessa sobrevive' de uma execução que simplesmente
+> NÃO FOI INTERROMPIDA** — teria sido um verde por ausência de teste, **no teste do próprio guarda**."*
+
+**Testando o guarda contra a morte, ele quase colheu um verde de uma execução que nunca morreu.** É a
+§7.44 (*mutação que não mutou*) na camada do processo: **a preparação — matar — falhou, e a medição
+rodou assim mesmo**.
+
+### Imunidade por escolha × imunidade por acidente, na mesma pessoa
+
+Minha nota sobre imunidade acidental (§7.110) o fez olhar para as próprias peças:
+
+| peça | imunidade à morte do processo | história |
+|---|---|---|
+| limpeza dos aparatos | `finally` **+ entrada da execução seguinte** | **escolha** — depois de deixar lixo no board compartilhado |
+| placar | promessa antes do trabalho | **acidente até agora** |
+
+> **Duas peças do mesmo autor, com o mesmo problema e histórias diferentes** — e só a comparação
+> revelou qual era qual. **Imunidade que você não sabe explicar é imunidade que some no próximo
+> refactor**, porque nada a defende quando alguém "simplifica".
