@@ -433,6 +433,56 @@ async function upsertLead(
   return id;
 }
 
+
+/**
+ * Garante que o board da demo TENHA o que a Wave 4 mostra.
+ *
+ * O `@QAVivo` mediu a interseção "contato com `next_action`" × "negócio aberto" e
+ * ela oscilou 0 → 1 → 1 → 0 entre rodadas: os testes movem e fecham leads, e o
+ * caso da demo evaporava. **Feature que passa no teste e some do board não está
+ * entregue** — quem abrir o Kanban precisa ver a próxima ação, não só o CI.
+ *
+ * REGRA: só preenche quando está VAZIO. Nunca sobrescreve o que o agente
+ * realmente decidiu — o Carlos tem 33 turnos e 87 decisões de envio reais, e
+ * apagar a proposta dele para pôr uma de semente seria trocar dado por cenário,
+ * que é o oposto do que esta entrega defende.
+ */
+async function garantirProximaAcao(
+  orgId: string,
+  contactIds: Map<string, string>,
+): Promise<void> {
+  const PROPOSTAS: Record<string, string> = {
+    "Carlos — Clínica Vida Odonto":
+      "Confirmar a data da manutenção do protocolo e enviar o orçamento revisado",
+    "Sônia Vasconcelos": "Retomar contato — sem resposta desde a última proposta",
+  };
+
+  let postos = 0;
+  for (const [nome, acao] of Object.entries(PROPOSTAS)) {
+    const contactId = contactIds.get(nome);
+    if (!contactId) continue;
+
+    const { data: atual } = await admin
+      .from("lead_state")
+      .select("id,next_action")
+      .eq("organization_id", orgId)
+      .eq("contact_id", contactId)
+      .maybeSingle();
+
+    const jaTem = typeof atual?.next_action === "string" && atual.next_action.trim() !== "";
+    if (jaTem) continue;
+
+    const { error } = atual
+      ? await admin.from("lead_state").update({ next_action: acao }).eq("id", atual.id)
+      : await admin
+          .from("lead_state")
+          .insert({ organization_id: orgId, contact_id: contactId, next_action: acao });
+    if (error) throw new Error(`próxima ação de ${nome}: ${error.message}`);
+    postos += 1;
+  }
+  if (postos > 0) console.log(`   próxima ação semeada em ${postos} contato(s) que estavam sem`);
+}
+
 async function main(): Promise<void> {
   const creds = JSON.parse(fs.readFileSync(CREDS_PATH, "utf8")) as Creds;
   const orgId = creds.org_id;
@@ -474,6 +524,8 @@ async function main(): Promise<void> {
     );
     position += 1000;
   }
+
+  await garantirProximaAcao(orgId, contactIds);
 
   creds.crm_vivo = {
     pipeline_id: pipelineId,
