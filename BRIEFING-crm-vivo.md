@@ -1279,3 +1279,38 @@ referência morta. Duas saídas ruins e uma boa:
 
 Provado por mutação: um documento limpo colocado na quarentena faz o teste acusar
 (*"está em LEGADO e já não tem referência morta — REMOVA-O da lista"*).
+
+## §7.25 — Instrumento que casa por substring não separa USAR de MENCIONAR
+
+Quinto buraco do check de evidência, achado pelo `@MaestroConexoes`, e o mais fundo: o extrator
+casava **qualquer token** terminado em extensão de imagem — pedaço de URL, rota em exemplo de
+código, chave de storage, e até **elisão** (os três pontos do texto virando caminho).
+
+> É a mesma família do guard que travou o time pela manhã, lendo a palavra proibida **dentro do
+> texto** de uma mensagem. **Casar por substring não distingue *usar* de *mencionar*** — e quanto
+> mais preciso o documento, mais exemplos ele contém, e mais o instrumento se engana.
+
+**Ler SINTAXE, não texto:** `![alt](caminho)`, `[texto](caminho)`, caminho entre crases — e
+descartar blocos de código cercados, URLs e, um nível mais fundo, **templates e globs**
+(`wave-<n>-<cenario>.png`, `onda1-*.png` nomeiam **padrão**, não arquivo).
+
+### E o efeito colateral que quase congelou a quarentena
+
+A quarentena exige que o item **ainda** esteja quebrado, para não virar permissão permanente. Mas
+se o que segura o documento é **artefato do extrator**, a condição é **permanentemente verdadeira**
+— o documento nunca sai da lista, mesmo pagando a dívida real inteira.
+
+> **Um instrumento impreciso não só mede errado: ele pode tornar a própria correção impossível.**
+> Sete documentos estavam nesse estado. O número real caiu de 15 para **9**.
+
+### O anti-apodrecimento tem DOIS lados
+
+O primeiro só dispara para item que o teste **alcança**. Ao corrigir o extrator, seis itens saíram
+da cobertura e viraram **peso morto invisível**.
+
+| lado | pergunta | reprova quando |
+|---|---|---|
+| direto | o item ainda está quebrado? | consertou e não removeu |
+| **reverso** | o item ainda é alcançado? | saiu da cobertura e ficou na lista |
+
+**Toda lista de exceção precisa dos dois.** Com um só, ela apodrece pelo lado que ninguém olha.
