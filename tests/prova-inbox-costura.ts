@@ -164,6 +164,24 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
     );
   }
 
+  // ⚠️ ESTE CRITÉRIO NÃO COMPARA CARIMBO DE BANCO, E ISSO É DELIBERADO.
+  //
+  // Os dois números abaixo são deslocamentos do MEU relógio (`Date.now()`), lidos
+  // do DOM pelos dois painéis com a mesma régua. `last_message_at` só aparece
+  // neste arquivo no backup/restauração das colunas derivadas — nunca numa
+  // comparação.
+  //
+  // Por que isso importa: `sent_at` vem do relógio do APARELHO (o timestamp que o
+  // WhatsApp manda) e o carimbo da conversa vem do relógio do SERVIDOR, e a
+  // migration 0027 recalcula pelo do aparelho. A MESMA COLUNA CARREGA RELÓGIOS
+  // DIFERENTES conforme quem escreveu por último — há conversa no banco com 3,3s
+  // de diferença por isso. Um critério que comparasse essas colunas precisaria de
+  // tolerância declarada; este não precisa, porque não as compara.
+  //
+  // SE ALGUÉM TROCAR O OBSERVÁVEL pelo rótulo de tempo que a linha exibe
+  // ("há 20 horas"), a deriva dos dois relógios ENTRA — e aí a tolerância passa a
+  // ser obrigatória, com o motivo escrito, senão vira falso vermelho com a
+  // autoridade de um critério feito para pegar regressão.
   let naConversa: number | null = null;
   let naLista: number | null = null;
   for (let t = 0; t < 15 && (naConversa === null || naLista === null); t++) {
