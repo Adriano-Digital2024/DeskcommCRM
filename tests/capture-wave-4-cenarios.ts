@@ -30,6 +30,8 @@ import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import pg from "pg";
 
+import { applyLeadStateUpdate } from "@/lib/agent-engine/agent/lead-state";
+
 import {
   BASE,
   CREDS,
@@ -146,12 +148,12 @@ async function montarCasos(): Promise<Record<string, Caso>> {
       // O caso N tem `lead_state` COM a linha e SEM ação: é a diferença entre
       // "o agente não conhece este lead" e "o agente conhece e não propôs nada".
       // Só o segundo prova o cenário 14.
-      await pool.query(
-        `insert into lead_state (organization_id, contact_id, stage, next_action)
-         values ($1, $2, 'qualifying', $3)
-         on conflict (organization_id, contact_id) do update set next_action = excluded.next_action`,
-        [ORG, contato, s.acao],
-      );
+      //
+      // Escrito pelo ESCRITOR REAL, não por SQL cru. Motivo caro: `next_action_seq`
+      // — a identidade da proposta — só avança neste caminho. Semear por fora
+      // produziria um estado que o sistema nunca cria (texto presente com seq
+      // zerada) e mediria o produto contra uma premissa falsa.
+      await escreverProximaAcao(contato, s.acao);
     }
 
     casos[s.chave] = { contactId: contato, leadIds, titulos, acao: s.acao };
@@ -160,6 +162,20 @@ async function montarCasos(): Promise<Record<string, Caso>> {
     );
   }
   return casos;
+}
+
+/**
+ * Troca a próxima ação pelo ÚNICO caminho de escrita que existe.
+ *
+ * Custou um vermelho falso: a primeira versão do 13.e trocava o texto por
+ * `update lead_state set next_action = ...`, e a seq não se movia. Como a
+ * autorização compara a SEQ, o servidor aprovava — corretamente, porque para
+ * ele nada tinha mudado. Eu tinha fabricado um estado que o produto não produz
+ * e reprovado o produto por não se defender dele.
+ */
+async function escreverProximaAcao(contactId: string, acao: string | null): Promise<void> {
+  const r = await applyLeadStateUpdate(pool, { tenantId: ORG, leadId: contactId }, { next_action: acao });
+  if (r.ok !== true) throw new Error(`escrever next_action: ${JSON.stringify(r).slice(0, 200)}`);
 }
 
 async function inserir(tabela: string, linha: Record<string, unknown>): Promise<string> {
@@ -593,11 +609,7 @@ async function main(): Promise<void> {
     // A tela já renderizou a versão UM. A partir daqui, o que o usuário vê e o
     // que o banco diz DIVERGEM — é exatamente a janela em que o sistema agiria
     // em nome de quem autorizou outra coisa.
-    await pool.query(`update lead_state set next_action = $1 where organization_id = $2 and contact_id = $3`, [
-      acaoNova,
-      ORG,
-      casos.E!.contactId,
-    ]);
+    await escreverProximaAcao(casos.E!.contactId, acaoNova);
     const marcaE = respostas.length;
     const cliquei = (await clicarBotao(cardE, APROVAR)) !== null;
     await page.waitForTimeout(3000);
