@@ -98,3 +98,57 @@ seguia oferecendo o botão**. O hook invalidava só `["board", pipelineId]`, e a
 lista de propostas vive em `["reactivations"]` — um lado mudou, o outro não
 acompanhou, e ninguém reclamou. Clicar de novo daria 409, e o usuário concluiria
 que o sistema não obedeceu.
+
+---
+
+# Fechamento da wave 7
+
+## O que entrou
+
+| Peça | O que virou |
+|---|---|
+| 1 · tabela | `crm_lead_risk_states` — "esfriando" deixa de ser adjetivo calculado |
+| 2 · relógio | a lista positiva da 0079: constatar o silêncio não o quebra |
+| 4 · acervo | 38 negócios já frios entram sem mentir, com **um** item de caixa |
+| 5 · observador | o cron que faz o estado acontecer sem ninguém olhar |
+| 23 · ciclo | proposta com prazo → decisão humana ou vencimento → envio real |
+| — | timeline longa agrupa por dia (o muro de 22 blocos virou 2 linhas) |
+
+## O que ficou BLOQUEADO — e por quê
+
+Os dois estão presos ao **mesmo** veredito, e nenhum deles é trabalho pendente
+por falta de tempo:
+
+- **peça 3** — o board assinando `crm_lead_risk_states`;
+- **cenário 22 na tela** — o card mudando para "esfriando" sem reload.
+
+Ambos exigem entrega em tempo real, e a entrega está em disputa entre dois
+aparatos: às 14:26 o CRM Vivo dava 0/2 com controle vivo; às 14:50 passou a dar
+2/2, e a varredura completa das 55 linhas deu 55/55. **Construir em cima disso
+produziria trabalho que não pode ser provado.**
+
+O que se sabe: houve três defeitos de realtime no dia (memo de falha, assinatura
+anônima, `setAuth` sem `await`), todos consertados e provados por par. O que
+resta não é explicado por nenhum deles — a assinatura anônima já não existia
+quando o 0/2 foi medido.
+
+## Os defeitos que a wave achou (e que ninguém tinha pedido)
+
+O padrão se repetiu seis vezes, em seis camadas: **um lado do contrato mudou e o
+outro não acompanhou, sem nada reclamar.**
+
+| Onde | O que era |
+|---|---|
+| trigger × radar | a atividade que registrava o silêncio zerava o relógio do silêncio |
+| relógio × relógio | `since` do banco contra `detected_at` do processo, 2s de deriva |
+| upsert × default | o default só vale no INSERT; no UPDATE a coluna guardava o valor antigo |
+| formulário × handler | o form manda tudo, o handler lia envio como alteração |
+| rota × contato | `cron_jobs` é por contato, e 26 de 68 negócios não têm contato |
+| cache × cache | o board invalidava, a lista de propostas não |
+
+## O que a wave deixou visível e não resolveu
+
+**Um quarto dos negócios abertos não tem caminho automático de retomada** (26 de
+68, sem contato). Eles continuam esfriando e aparecendo no radar; a saída deles
+é humana. Isso não é regressão — é uma lacuna que só apareceu porque a proposta
+passou a existir para revelá-la.
