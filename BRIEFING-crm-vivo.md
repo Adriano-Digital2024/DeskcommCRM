@@ -1762,3 +1762,49 @@ está sendo escrito **neste minuto**. A régua alternativa ficou **local ao auto
 > Mutação vale contra código commitado ou seu; **nunca contra arquivo que outra sessão tem aberto**.
 > Duas mãos no mesmo arquivo é a receita de dois trabalhos se destruírem — e o dano não aparece como
 > erro, aparece como resultado que ninguém consegue reproduzir.
+
+---
+
+## §7.39 — Onde um valor mora não é detalhe: pergunte quem mais lê o *mtime* da linha
+
+Achado do @Arquiteto sobre a decisão C, e é um **segundo** motivo — mais grave que o meu — que
+sozinho já justificaria a tabela separada. Verificado nas três pernas:
+
+| peça | evidência |
+|---|---|
+| `trg_crm_leads_updated_at` | `BEFORE UPDATE ON crm_leads FOR EACH ROW` — bump em **qualquer** escrita |
+| `app/api/v1/leads/[id]/move/route.ts:94` | `.eq("updated_at", input.expected_updated_at)` → 409 *"Concurrent edit"* |
+| `trg_update_last_activity_at` | `AFTER INSERT ON crm_lead_activities` → toca o lead |
+
+Com o score dentro de `crm_leads`, **um recálculo em segundo plano invalida o arrasto em voo de um
+usuário**: ele solta o card e recebe *"alguém editou este lead"* — e ninguém editou.
+
+> Pulso mentindo é **ruído visual**. Isto é **trabalho humano recusado por um evento invisível**, sem
+> pista de causa — e o usuário não conclui "o sistema recalculou"; conclui "o sistema é instável".
+
+**A regra generalizável:** ao decidir onde um valor de escrita frequente mora, a pergunta não é só
+"quem lê esta coluna?", é **"quem mais lê o *mtime* da linha?"**. Trava otimista e realtime chaveiam
+pela **linha**, não pela coluna — então uma coluna quente dentro de uma linha com trava otimista é
+**rejeição invisível de trabalho humano concorrente**.
+
+**E a composição fica correta pelo caminho que já existe, sem regra nova:** recálculo comum não toca
+`crm_leads` → não pulsa e não invalida trava (telemetria, §C9). Travessia de faixa **emite atividade**
+→ o trigger toca o lead → **aí** o board pulsa, pelo motivo certo. *Silêncio para telemetria, pulso
+para mudança de estado.* A decisão C não contradiz a C9: **ela a completa**.
+
+### O único risco real: os seis campos migram EM BLOCO
+
+O CHECK de coerência amarra `ai_probability_band` a `ai_probability` **na mesma linha** — e **CHECK
+não atravessa tabela**. Se por conveniência de renderização a faixa ficar em `crm_leads` e o score for
+para a tabela nova, a garantia morre, e o substituto seria um trigger de validação cruzada — pior em
+tudo.
+
+> `score, reason, evidence, at, band, band_since` vão **juntos, ou não vai nenhum**. Quando alguém
+> propuser *"só a faixa fica no lead, para o card não precisar do join"*, a resposta já está decidida:
+> aí a divergência volta a ser **improvável** em vez de **impossível**, que foi exatamente o que se
+> comprou com o CHECK.
+
+**E o motivo entra no comentário da migration, não só no handoff.** Tabela 1:1 é a coisa que a próxima
+pessoa mais quer "simplificar" de volta para dentro do lead — e ao fazer isso reintroduz, **em
+silêncio**, o pulso que mente **e** o 409 fantasma. Sem a frase no arquivo, a simplificação **parece
+limpeza**.
