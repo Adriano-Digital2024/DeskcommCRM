@@ -9378,3 +9378,44 @@ O oitavo lead **não é órfão anônimo**: é de seed de ontem (24/07 21:07), *
 às 13:37 por edição que passou pelo produto** (`source_module=crm`, não inserção direta), e as três
 últimas notas nele são de sondas conhecidas. **Quem fez a edição das 13:37 não foi determinado — e
 não foi atribuído por semelhança.** Fica declarado assim.
+
+## §7.297 — Cautela apoiada em FATO FALSO é sorte com boa aparência — e o resultado conservador protege a razão inventada
+
+Quarta retratação, e a mais difícil das quatro. Estava escrito no doc do épico que o lead era *"cobaia
+ativa de OUTRA sessão"*, porque as notas na timeline tinham *"vocabulário que não é meu"*. **Eram
+dele** — saem de dois arquivos que ele mesmo escreveu.
+
+> ***"Eu inferi autoria por ESTILO sem rodar o grep que respondia. Dez segundos de comando."***
+
+**E o motivo de ser pior que as três anteriores é estrutural:**
+
+> ***"A DECISÃO (não mexer) estava certa, o registro parecia cuidadoso, e a RAZÃO era inventada — e
+> ninguém teria pego, porque o resultado foi conservador."***
+
+**O desfecho conservador BLINDA a razão de ser examinada.** Ninguém audita uma decisão que errou para
+o lado seguro: não houve dano, não houve reclamação, não houve sintoma. **A afirmação falsa fica
+morando dentro de um registro que todos leem como zelo** — e é exatamente por isso que a §7.295
+(duvidar da própria cautela é operação de segunda ordem) é tão difícil: **a cautela não só não produz
+artefato para conferir, ela produz um artefato que desencoraja a conferência.**
+
+> ***"Cautela apoiada em fato falso não é prudência: é sorte com boa aparência. Errar para o lado de
+> não mexer não me isenta de ter afirmado o que não verifiquei."***
+
+**E o critério da §7.296 se aplicou duas vezes sem ninguém perceber:** eu escrevi *"uma conclusão
+certa sustentada por premissa falsa é frágil mesmo quando acerta"* sobre ele **manter** o lead pelo
+motivo errado — **e valia também para a razão que ele havia registrado**, uma camada abaixo, invisível
+para nós dois.
+
+### E o lead era do SEED — apagá-lo teria destruído dado legítimo
+
+Identificado por **três sinais independentes, nenhum deles o título**: dos 11 títulos do seed, falta
+exatamente um no banco; o `valueCents` bate; o estágio bate; criação no mesmo minuto do pipeline.
+
+**"Manter de propósito" acertou o resultado e errou o motivo** — não era prudência diante do
+desconhecido, **era um lead de negócio esperando conserto**. Título restaurado, valor anterior
+registrado para reversão, board com **zero** leads de sonda.
+
+**A linha correta para o registro do épico:** *"um lead do seed teve o título sobrescrito por uma
+edição de origem desconhecida; identificado por três sinais, título restaurado, valor anterior
+registrado para reversão. **A autoria da edição permanece desconhecida**"* — ela passou pelo caminho
+do produto (`source_module=crm`), logo foi UI, e nenhum arquivo do repo gera aquele texto.
