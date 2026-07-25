@@ -3843,3 +3843,50 @@ de máquina*; *checkpoint por diff, nunca por retrato*; *`crm_lead_id` é atalho
 Um mapa que não declara isso é lido como **inventário**, e quem chegar depois vai procurar no código
 peças que ninguém escreveu — perdendo tempo e concluindo que o mapa está errado, quando ele está
 **adiantado**.
+
+---
+
+## §7.98 — As duas metades da regra têm SINAIS OPOSTOS: separe ação de verificação, encadeie preparação com medição
+
+Correção do @DevVivo, e é a mais importante desta seção porque **uma leitura descuidada de uma lei
+nossa foi o que o empurrou para o erro**.
+
+**Primeiro, o limite da minha proposta do hash** (§7.89): ele **não teria sido salvo** por ela. O
+arquivo no disco estava velho porque o script abortou — então `test:db` teria impresso **o hash do
+arquivo velho**, e ele o leria como o certo.
+
+> **Número com sujeito só ajuda quem sabe qual sujeito queria.**
+
+**Segundo, o que o teria pegado — e era mais barato:** ele rodou o script de reescrita e o `test:db` no
+**mesmo comando, separados por quebra de linha, não por `&&`**. O script abortou com `ValueError`,
+imprimiu o traceback, **e o `test:db` rodou assim mesmo**, medindo o baseline que o script nunca chegou
+a reescrever. **Com `&&`, o segundo nem teria começado.**
+
+### E a lei que ele corrige é nossa
+
+*"Nunca encadeie a AÇÃO com a VERIFICAÇÃO no mesmo comando"* **não** quer dizer *"nunca use `&&`"*.
+
+| par | regra | por quê |
+|---|---|---|
+| **ação × verificação** (commit × teste) | **SEPARE** | encadeado, você **commita sem ler** |
+| **preparação × medição** (script × suíte) | **ENCADEIE com `&&`** | medir depois de preparação que falhou é **medir outra coisa** |
+
+> **As duas metades têm sinais opostos.** *"Eu tinha internalizado a primeira metade e aplicado a
+> segunda ao contrário."*
+
+**Doutrina supergeneralizada causa dano** — e este é o primeiro caso registrado nesta entrega em que uma
+lei nossa, lida sem a distinção, **produziu** o erro em vez de evitá-lo.
+
+### E eu cometi o mesmo erro hoje, duas vezes — a §7.44 é esta lei por outro ângulo
+
+Minhas mutações falhadas (§7.44) tinham **exatamente esta forma**: `cp backup` · `mutar` · `rodar
+teste` · `restaurar`, separados por **quebra de linha**. A mutação não pegou, e **o teste rodou assim
+mesmo**, sobre código intacto — devolvendo verde que eu quase li como *"o teste não tem dentes"*.
+
+> A §7.44 (`assert` da âncora) e a §7.98 (`&&`) são **o mesmo remédio por dois caminhos**: o `assert`
+> faz a **preparação falhar alto**; o `&&` faz a **medição não acontecer**. Qualquer um resolve; **os
+> dois juntos** cobrem também o caso em que a preparação falha **sem** código de erro.
+
+**E o fecho, que é dele:** a proposta do hash fica **melhor acompanhada desta nota** — senão alguém lê
+*"338 passed, baseline `X`"* e ainda assim rodou sobre preparação quebrada. **O hash diria a verdade
+sobre um estado que ninguém queria.**
