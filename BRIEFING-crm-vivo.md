@@ -6226,3 +6226,56 @@ declarou em vez de escondê-lo atrás de forma aditiva — **também certo**.
 A regra não é "sempre alcançar `−0`". É: **remoção incidental se evita; remoção substantiva se
 declara.** Disfarçar a segunda de primeira é o que a exigência de `−0` existe para impedir, e quem
 persegue o número em vez do sentido acaba fazendo exatamente isso.
+
+## §7.188 — A recuperação foi escrita só para a falha que GRITA
+
+`authenticateRealtime` memoiza a promessa de autenticação do socket. Três saídas, e só uma limpa a
+memo:
+
+```
+catch { realtimeAuth = null; }   // exceção → memo LIMPA, próxima tentativa refaz
+if (!res.ok) return;             // 401/500 → memo FICA, setAuth NUNCA chamado
+if (token) setAuth(token);       // corpo sem token → memo FICA, idem
+```
+
+**Um único 401 transitório** — sessão ainda estabelecendo, cookie em renovação — **deixa TODOS os
+canais criados depois anônimos, para o resto daquele carregamento de página.** E anônimo com RLS por
+`auth.uid()` devolve zero linhas: o canal responde `SUBSCRIBED` e nunca entrega nada.
+
+**O padrão é o eixo do dia na sua forma mais pura:** a falha que lança exceção **se cura sozinha**; as
+que retornam quietas **persistem para sempre**. A recuperação foi escrita para o caminho barulhento,
+que é justamente o que menos precisava dela. E o comentário do arquivo confirma a intenção —
+*"sem token o canal segue anônimo, a UI continua funcionando por refetch"* — uma degradação
+deliberada que se tornou permanente por causa da memo.
+
+**Regra:** ao memoizar, o critério não é *"deu erro?"* — é ***"o resultado memoizado é o resultado
+DESEJADO?"***. Sucesso parcial memoizado é pior que erro memoizado, porque erro alguém repete.
+
+**Medido:** a assinatura de `crm_leads` com filtro no pipeline nasceu **anon, `claims.sub = NULL`**,
+às 15:06; duas de `conversations`, no MESMO socket e navegador, nasceram **authenticated** às 16:46.
+Carregamentos diferentes, resultados diferentes — exatamente o que a memo por página prevê.
+
+## §7.189 — Experimento VÁLIDO pode ser irrelevante para a hipótese vizinha
+
+Matar oito abas de uma vez provou que **acúmulo de assinaturas órfãs não quebra** — e não podia
+provar nada sobre **com que PAPEL a próxima assinatura nasce**. Remover assinaturas não muda a
+autenticação da seguinte.
+
+O experimento estava certo, foi bem construído, e respondeu **a pergunta vizinha**. É a §7.181 pelo
+outro lado: lá, um resultado nulo não refuta a classe; aqui, **um resultado nulo bem medido não
+refuta a hipótese ao lado, mesmo parecendo cobri-la** — "assinatura órfã" e "assinatura anônima"
+soam como a mesma família e são mecanismos distintos.
+
+**Ao arquivar uma hipótese, escreva qual pergunta o experimento respondeu — não qual hipótese ele
+matou.** As duas frases divergem exatamente onde mora o próximo defeito.
+
+### O que ainda NÃO está explicado (e por que não se declara vitória)
+
+A assinatura anônima explica **completamente** o board mudo. Ela **não** explica, ainda, a morte da
+janela para um assinante independente com service role: `fn_user_org_ids()` usa `auth.uid()`, que
+para claims nulos devolve **NULL sem erro** — filtra tudo, não aborta lote.
+
+**São dois fatos, e um pode não explicar o outro.** O teste que decide é uma linha: **apagar aquela
+assinatura anônima e repetir a grade**. Se as linhas do CRM Vivo passarem a chegar ao assinante
+independente, a raiz é única e tudo fecha; se não passarem, restam dois defeitos e consertar um
+deixaria o outro vivo com aparência de resolvido.
