@@ -5028,3 +5028,41 @@ e conhecimento real ficam **indistinguíveis** depois, inclusive para quem recon
 decisão se apoia nela como se tivesse sido medida.
 
 E o inverso, para quem envia: identificador técnico vai no heredoc, ou não vai.
+
+## §7.136 — O veredito verde ANESTESIA a auditoria do instrumento
+
+Ao explicar a assimetria (4 entradas, 9 saídas — quatro tópicos a 1 entrada e 2 saídas cada, mais
+uma saída solta), apareceu um defeito que não estava sendo procurado: **a lista acumulava desde o
+início da página enquanto os totais eram do intervalo dos ciclos.** Duas réguas no mesmo relatório.
+
+E veio a frase que importa: *"eu ia deixar passar porque o veredito estava verde"*.
+
+**O verde não estava errado — e é exatamente por isso que ele protege.** Ninguém audita medição que
+passou. A consequência é perversa e contra-intuitiva: **defeito de instrumento acumula
+preferencialmente nos critérios que PASSAM**, que é o oposto de onde a atenção vai. E cobra-se
+depois, no dia em que um deles finalmente fica vermelho: a investigação começa pelo produto,
+porque "esse critério sempre funcionou".
+
+Junta com a §7.133 e fecha o par: **verde de estreia** não prova que o instrumento mira; **verde de
+maturidade** impede que alguém vá conferir se ele mirava.
+
+### §7.136-a — Exigir a explicação de um número verde é barato e desproporcional
+
+A pergunta que achou isto não era sobre isto. Era "por que 4 entradas para 5 aberturas?". **Exigir a
+explicação de QUALQUER número força a decomposição, e é a decomposição que expõe réguas
+diferentes** — nenhuma asserção acha isso, porque as duas réguas concordam com o veredito.
+
+**Regra:** número que sustenta veredito e não tem explicação declarada não é resultado, é
+coincidência ainda não investigada. Vale principalmente para os verdes — os vermelhos já são
+explicados por obrigação.
+
+### §7.136-b — A previsão registrada ANTES do conserto é cerca, e custa uma linha
+
+Ficou escrito no próprio critério, antes de o eixo ser consertado: hoje são **4 entradas para 5
+aberturas** porque um dos leads não tem contato e o canal é indexado por contato. **Consertado o
+eixo, a contagem TEM de virar 5; se continuar 4, o conserto está incompleto.**
+
+Sem isso, um conserto pela metade passaria numa superfície que ninguém planejou olhar, e o critério
+continuaria verde afirmando que está tudo bem. **A assimetria dentro de um número verde era a
+impressão digital do vermelho de outro critério** — e uma previsão é a única forma de fazer essa
+digital cobrar quem a produziu.
