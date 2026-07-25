@@ -1514,3 +1514,65 @@ Reproduzido de forma independente por mim:
 
 > Cada camada reprova o que a outra deixa passar. **Isso é a lei medida, não argumentada** — e é a
 > diferença entre uma doutrina que se sustenta e uma que só soa bem.
+
+---
+
+## §7.30 — Sem o antes, todo depois é compatível com o acaso
+
+Formulação do @DevVivo, e é melhor que a minha ("procedência"), porque diz **por que** a leitura
+prévia é obrigatória em vez de recomendável.
+
+Dois instrumentos caíram nisto no mesmo dia, por caminhos diferentes:
+
+| instrumento | o que mediu | o que afirmava medir |
+|---|---|---|
+| sonda dele | mutou um lead por **UUID** e fotografou um card achado por **texto** | que aquele card refletia aquela mutação |
+| sonda minha | contou avisos **só depois** de abrir o board | que o board **criou** o aviso |
+
+> Nos dois casos o instrumento mediu **uma coisa parecida com a certa** — e verde de coisa parecida
+> é indistinguível de verde da coisa certa.
+
+**Regra:** todo instrumento que afirma *"X causou Y"* lê o estado **antes**, e o veredito é a
+**diferença**. Sem a leitura prévia, o verde não distingue "aconteceu agora" de "já estava lá".
+
+## §7.31 — Alvo sorteado: `limit 1` sem `order by` é premissa escondida
+
+Apareceu em **três instrumentos diferentes no mesmo dia** — já é padrão, não coincidência. Uma sonda
+que mede um alvo diferente a cada execução não produz veredito comparável: **o verde de hoje não
+fala do vermelho de ontem**, e a instabilidade se disfarça de flakiness.
+
+**Regra:** `limit 1` sempre com `order by` explícito e determinístico, e o critério de ordenação é
+parte do que a sonda declara medir.
+
+## §7.32 — Casei por substring de novo, no instrumento que eu tinha acabado de escrever
+
+A §7.25 diz: *"instrumento que casa por substring não separa USAR de MENCIONAR"*. Eu a escrevi. E o
+extrator do invariante de vocabulário seleciona a constraint com
+`pg_get_constraintdef(...) like '%= ANY (ARRAY[%'` — **substring** —, o que casa com **qualquer**
+constraint que *mencione* valores daquela coluna, não só a que **define** o vocabulário.
+
+**Não é hipotético.** Medido no banco, três colunas já têm **duas** constraints que casam:
+
+| coluna | constraints que casam |
+|---|---|
+| `crm_leads.status` | 2 |
+| `followup_enrollments.status` | 2 |
+| `job_queue.kind` | 2 |
+
+E o mecanismo, em `crm_leads.status`, é exemplar:
+
+```
+crm_leads_status_enum            CHECK (status = ANY (ARRAY['open','won','lost']))          ← DEFINE
+crm_leads_closed_at_consistency  CHECK (... status = ANY (ARRAY['won','lost']) AND ...)     ← MENCIONA
+```
+
+Combinado com o `limit 1` sem `order by` (§7.31), o instrumento escolhe **uma das duas ao acaso**.
+Hoje passa por **sorte**: as duas contêm o mesmo conjunto de literais. Noutra tabela, a regra de
+negócio injeta valores que não são vocabulário e o invariante aprova ou reprova por motivo falso —
+e um invariante que erra por motivo falso é pior que invariante nenhum, porque é obedecido.
+
+**Regra:** o extrator seleciona a constraint **cujo predicado É o enum** (a definição inteira, não
+um pedaço dela), e **se mais de uma casar, reprova em vez de escolher** — o mesmo princípio de
+`resolveActiveLeadForContact`, que se recusa a adivinhar em empate. Adivinhar num instrumento de
+medição é pior que adivinhar num roteador: o roteador erra um card, o instrumento erra o veredito
+sobre todos.
