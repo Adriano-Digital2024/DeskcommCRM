@@ -346,6 +346,17 @@ async function topoDe(painel: Locator, padrao: RegExp): Promise<number | null> {
   return null;
 }
 
+/** Entrega de verdade num quadro do Phoenix: `[join_ref, ref, topic, event, payload]`.
+ *  O recibo de inscrição carrega as mesmas palavras no corpo — só a POSIÇÃO separa. */
+function ehEntrega(bruto: string): boolean {
+  try {
+    const q: unknown = JSON.parse(bruto);
+    return Array.isArray(q) && q[3] === "postgres_changes";
+  } catch {
+    return false;
+  }
+}
+
 async function main(): Promise<void> {
   fs.mkdirSync(EVIDENCE, { recursive: true });
   const sufixo = carimbar([
@@ -491,19 +502,24 @@ async function main(): Promise<void> {
       });
       ws.on("framereceived", (f) => {
         const t = String(f.payload);
-        // CORREÇÃO DE INSTRUMENTO: este contador exigia só a PALAVRA
-        // "postgres_changes" e o nome da tabela — e o `phx_reply` que CONFIRMA a
-        // assinatura contém as duas, porque ecoa a configuração pedida. Ele
-        // contava confirmações como se fossem entregas: os "7 quadros desde o
-        // carregamento" que eu quase reportei como "os quadros chegam" eram
-        // sete recibos de inscrição. Entrega é `"event":"postgres_changes"`.
-        if (/"event":"postgres_changes"/.test(t) && /crm_lead_activities/.test(t)) quadrosDeAtividade++;
+        // SEGUNDA CORREÇÃO DO MESMO CONTADOR, e a primeira estava errada também.
+        // Ele exigia só a PALAVRA "postgres_changes" e o nome da tabela — e o
+        // `phx_reply` que CONFIRMA a assinatura contém as duas, porque ecoa a
+        // configuração pedida: contava recibo como entrega. Eu "consertei"
+        // exigindo `"event":"postgres_changes"` e troquei falso positivo por
+        // falso NEGATIVO, porque o quadro do Phoenix é um ARRAY —
+        // `[join_ref, ref, topic, event, payload]` — e não existe chave
+        // `"event":` nenhuma. O contador passou a marcar zero sempre, inclusive
+        // onde a entrega funciona. Agora ele lê a POSIÇÃO, que é onde a
+        // informação mora, e o zero volta a significar alguma coisa.
+        if (ehEntrega(t) && /crm_lead_activities/.test(t)) quadrosDeAtividade++;
         // O tópico vem no MESMO quadro que traz a linha — é o servidor dizendo
         // por qual canal aquilo entrou. Registrar os dois juntos é o que
         // transforma "chegou" em "chegou por onde".
-        if (/"event":"postgres_changes"/.test(t)) {
+        if (ehEntrega(t)) {
+          const q = JSON.parse(t) as unknown[];
           entregas.push({
-            topico: (t.match(/"topic":"realtime:([^"]+)"/) ?? [])[1] ?? "?",
+            topico: String(q[2] ?? "?").replace(/^realtime:/, ""),
             tabela: (t.match(/"table":"([^"]+)"/) ?? [])[1] ?? "?",
             ms: Date.now() - t0,
           });
