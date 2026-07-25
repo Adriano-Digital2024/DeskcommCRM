@@ -8213,3 +8213,40 @@ que faz HTTP, não trigger que mantém consistência local.**
 **Regra:** ao criar trigger que escreve numa tabela, pergunte **quem mais é acordado pela escrita** —
 publicação de realtime, travas otimistas, `updated_at` observado, cascatas. **A escrita nova é
 barata; os despertares dela não.**
+
+## §7.268 — Dependência COMPARTILHADA é a menos declarada, porque cada um declara o que é SEU
+
+O carimbo imprimia *"⚠ ÁRVORE SUJA — este resultado NÃO é veredito"* e o placar, **duas linhas
+abaixo**, anunciava *"13 verdes · 0 vermelhos"* **saindo com código 0**. Veredito e mensagem
+discordando **na mesma saída** — e pela §7.265 o veredito ganha, então o canal dizia *"confie"*
+enquanto o texto dizia *"não confie"*.
+
+**E faltava um arquivo na conta de dependências, que é o mais importante de todos:**
+`tests/qa-helpers.ts` **nunca era declarado por ninguém** — e dele dependem placar, carimbo, seleção
+de alvo e guarda de evidência. **Uma mudança ali muda o que TODOS medem.**
+
+**A razão de ninguém declarar é estrutural, não descuido:** cada sonda declara **as suas**
+dependências, e o que é de todos **não é de ninguém**. Infraestrutura compartilhada é, por
+construção, a menos declarada — cada autor assume que quem a mantém cuida disso, e *"minhas
+dependências"* exclui *"as de todo mundo"*.
+
+**Versão contável:** para cada aparato, conte os módulos que ele importa (transitivamente) e que
+**não estão na lista declarada**. Os compartilhados estarão todos lá.
+
+**E o mecanismo se acusou na primeira rodada** — que é a prova mais barata que uma cerca pode dar de
+si mesma. Verificado nos dois lados: maquinaria suja ⇒ *"SEM VEREDITO"* e `exit=1`; árvore limpa ⇒
+nenhuma linha extra e `exit=0`.
+
+### §7.268-a — Veredito binário exige que a LISTA que o desambigua esteja sempre visível
+
+Consequência declarada em vez de descoberta: **durante o desenvolvimento de um aparato a árvore fica
+suja por construção**, então toda rodada de desenvolvimento sai vermelha. **É o preço certo** — mas
+o vermelho passa a ter **duas causas** (estou mexendo no aparato × o produto invalidou a medição).
+
+**O que as distingue é a lista de arquivos sujos que o carimbo imprime.** Logo, essa lista **nunca
+pode ser truncada, resumida ou omitida por brevidade** — no dia em que for, o veredito binário fica
+sem o que o desambigua, e as duas causas viram uma só.
+
+**E o que a lei compra não é para quem escreveu o aparato** — esse lê a própria saída e já compensava
+à mão. É para **quem não está olhando**: outra sessão roda a suíte, vê "13 verdes", e **não repara no
+aviso três linhas acima**.
