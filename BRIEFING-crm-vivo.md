@@ -1082,3 +1082,28 @@ E as duas armadilhas que ele mandou eram **invariantes**, por isso valiam sem ca
 
 > Alerta prévio **não substitui revisão** — é anterior ao commit por construção. O carimbo que
 > acompanha um alerta serve para dizer *"isto é aviso, não parecer"*.
+
+## §7.17 — Simulação mental herda as premissas de quem simula
+
+O `@Arquiteto` alertou que **mutações sobrepostas no mesmo card** precisavam de contador. O regente
+**simulou a linha do tempo, concluiu que a sobrescrita bastava e dispensou o contador** — pedindo
+só um comentário. O `@DevVivo` foi verificar e a armadilha **era real**; corrigiu com o contador.
+
+**Onde a simulação falhou:** ela usou `A` assentando em 300 ms e `B` em 500 ms. Com esses números a
+sobrescrita realmente basta. Ela deixa de bastar **quando o handler demora** — `A` em 300, `B` em
+2600, e um evento de `B` em 2000 já encontra a marca vencida.
+
+> As premissas de tempo confortáveis foram usadas na análise **imediatamente seguinte** àquela em
+> que se aceitou, do próprio `@Arquiteto`, que o handler pode ser lento numa VPS modesta.
+
+**É o erro do "medido no meu laptop" (`§7.14`) aplicado a uma simulação mental — onde é mais fácil
+de cometer, porque não se percebe que se escolheu um número.** Numa medição real o ambiente é
+visível; numa simulação, ele é implícito e otimista por padrão.
+
+> **Ao simular, declare os tempos como parâmetro e rode o caso lento.** Se a conclusão muda entre
+> o caso rápido e o lento, a simulação não decidiu nada — apenas descreveu o caso confortável.
+
+E a mesma família apareceu no instrumento do `@DevVivo`: a sonda sorteava o alvo com `limit(1)` sem
+`order`, e quando calhava a coluna à direita o card nascia **fora da viewport** — o arrasto por
+teclado não acontecia e ela morria no `waitForResponse`. Duas execuções perdidas. É o `position`
+empatado que derrubou a sonda do regente, em outra roupa: **alvo sorteado é premissa escondida.**

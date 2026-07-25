@@ -2843,3 +2843,43 @@ marca para sempre e faria o lead **parar de pulsar de vez**.
 > o arrasto por teclado não acontecia e a sonda estourava no `waitForResponse` — duas execuções
 > seguidas morreram assim, por motivo que não é o dela. Agora o alvo é o lead do estágio mais à
 > esquerda que tenha algum. É a mesma família do `position` empatado entre pipelines.
+
+### Onde a sobrescrita basta sozinha — e onde não (`0ec130b`)
+
+O `@Assistente` simulou a armadilha 2 e concluiu que o desenho já se mitigava, porque
+`marcarEcoLocal` zera `assentada` e a sobrescrita **reabre** a janela em vez de encurtá-la. Está
+certo — para a linha do tempo que ele escolheu. Rodei as duas versões lado a lado:
+
+| linha do tempo | sem contador | com contador |
+|---|---|---|
+| A assenta 300, B assenta 500 (a dele) | suprime | suprime |
+| A assenta 300, **B assenta 2600** (handler lento) | **pulsa** | suprime |
+| A assenta 300, **B pendura** (o residual que ele apontou) | **pulsa** | suprime |
+
+A sobrescrita deixa de bastar quando **B demora**: o `onSettled` de A carimba `assentada` e a
+folga corre com B ainda em voo. É o caso do handler lento — exatamente o que motivou abandonar a
+janela constante. O terceiro caso é o residual que ele mesmo classificou como raro, e o contador
+fecha de graça.
+
+Ficaram no módulo as três linhas do tempo escritas, para a próxima pessoa não fazer nenhuma das
+duas coisas erradas: **remover** um contador que parece redundante, ou **tropeçar** no caso raro
+sem entender. E dois testes que tornam a discordância verificável em vez de argumentável — a
+linha do tempo comum (passa nos dois desenhos) e o A-assenta-B-pendura (só passa com contador).
+
+`typecheck` 0 · `lint` 0 · `test:unit` **894/894** · sonda PASS com carimbo limpo em `0ec130b`.
+
+#### Precisão do mecanismo das duas escritas (corrige a minha própria frase)
+
+Eu disse *"não é trigger, é a própria rota"*. Errado no mecanismo, certo na consequência — e é o
+mecanismo que a próxima pessoa vai usar para diagnosticar. A cadeia medida:
+
+1. a rota faz o `UPDATE` de `stage_id`/`position_in_stage` → **evento 1**;
+2. ~112 ms depois, em chamada SEPARADA, ela insere a atividade `stage_changed`;
+3. o `INSERT` dispara `trg_update_last_activity_at` (AFTER em `crm_lead_activities`), cuja função
+   faz `update crm_leads set last_activity_at = …` → **evento 2**.
+
+Então o segundo `UPDATE` **nasce de trigger**, como o `@Assistente` disse. O que ele não era é
+*mesma transação do primeiro*: entre um e outro cabe a rota inteira — três consultas e uma ida ao
+banco para o `INSERT`. Os 112 ms são da rota, não do trigger (esse é instantâneo dentro do
+`INSERT`). É por isso que a janela precisa cobrir a duração do handler, não a latência de um
+evento — e por isso ela é o `onSettled`, não um número.
