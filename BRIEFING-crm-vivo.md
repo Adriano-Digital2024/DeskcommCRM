@@ -7511,3 +7511,51 @@ seguiu adiante.
 **O teste que eu deveria ter aplicado:** *se a legenda tivesse deixado de valer, eu reverteria?* Se
 sim, então o que decide não é o conteúdo da foto nova — é **de quem é a foto**. E a de uma wave
 fechada é do veredito, não do dia de hoje.
+
+## §7.243 — Sabotagem precisa atingir a CONJUNÇÃO INTEIRA
+
+Ao testar o novo ramo, foi forçado **só o controle** a zero e o critério **continuou passando**. A
+conclusão natural — *"a cerca não morde"* — estaria errada: **o ramo só vale quando a tela também não
+mudou**, e a sabotagem tinha atingido metade da condição.
+
+> *"Sabotar uma condição de um `&&` e ler o resultado como 'não morde' é o mesmo erro de ler `&&`
+> como `||`."*
+
+**E o desfecho seria caro:** teria "provado" um defeito inexistente **no próprio instrumento**, depois
+de um dia inteiro defendendo que sabotagem que não avermelha não prova nada. **Ela não avermelhou
+porque sabotou a coisa errada.**
+
+**Num ramo com N condições, sabotar uma testa 1/N** — e *"não mordeu"* fica ambíguo entre *"a cerca
+está furada"* e *"eu sabotei o pedaço errado"*, que exigem ações opostas.
+
+**Versão contável:** **quantas condições o ramo tem, e quantas a sabotagem atingiu.** Se os dois
+números não forem iguais, o teste da cerca está incompleto e o resultado não decide nada.
+
+Fecha a tríade das asserções compostas: **§7.133** (conjunção esconde qual metade PASSOU),
+**§7.144-a** (o relatório nomeia qual cláusula DISPAROU) e esta (a sabotagem tem de atingir TODAS
+para provar o ramo).
+
+## §7.244 — O ramo que só roda DURANTE o incidente tem de ser exercitado FORA dele
+
+O autoteste fica no aparato pelo motivo que o autor deu, e ele generaliza:
+
+> *"Esse ramo só roda naturalmente quando a entrega está morta — que é exatamente o dia em que
+> ninguém tem tempo de descobrir que ele não funcionava."*
+
+**É o pior tipo de código não testado:** tratamento de erro, caminho de degradação, fallback,
+reconexão, mensagem de indisponibilidade. Nunca executa em condições normais, então parece de baixo
+risco — e executa **pela primeira vez** no momento de maior pressão, quando descobrir que ele está
+quebrado custa o dobro e ninguém pode parar para consertar.
+
+**Regra:** todo ramo cuja condição natural de execução é um incidente **nasce com um gatilho
+artificial** (`SELFCHECK_*`, injeção, proxy) e é exercitado **em dia de paz**. E a §7.240 explica por
+que isso importa mais aqui: no dia do incidente, um vermelho desse ramo seria lido como parte do
+incidente, e ninguém distinguiria defeito do produto de defeito da rede de proteção.
+
+### E a wave 6 fecha 13/0/0 — o vermelho era ambiental
+
+Com a entrega de volta, o D21 passa sozinho (timeline 10 → 12, controle irmão 1/1). **O dossiê estava
+inocente, como o texto do vermelho já dizia — mas *"o texto dizia"* não é *"o placar sabia"*.** O
+critério agora decide sozinho: controle recebeu e a tela não aplicou ⇒ **FALHA** (acusação da tela);
+nem o controle recebeu ⇒ **BLOQUEADO**. A diferença muda **quem é chamado para consertar**, que é a
+única coisa que um vermelho realmente faz.
