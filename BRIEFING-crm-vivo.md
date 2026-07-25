@@ -8359,3 +8359,52 @@ fixo, cobre quase tudo em dez minutos** em vez de uma tarde.
 **E o gatilho para a versão completa fica declarado:** quando o conjunto compartilhado deixar de ser
 enumerável à mão — mais de meia dúzia de módulos, ou alguém acrescentar um sem ninguém notar. Aí a
 contagem transitiva deixa de ser luxo e vira a única forma.
+
+## §7.271 — "Mediana zero, máxima enorme" é a assinatura de DUAS RÉGUAS, não de um mecanismo que falha às vezes
+
+**O defeito do preview não existe.** Foi construído medindo com a régua errada — **e a régua errada
+foi minha**: rodei a comparação usando `messages.created_at` (quando a LINHA entrou no banco) contra
+`conversations.last_message_at`, que a migration 0027 mantém por
+`max(coalesce(sent_at, created_at))` — **quando a mensagem FOI ENVIADA**.
+
+Para mensagem repontada pela unificação, `created_at` é a hora da **importação** e `sent_at` é a hora
+**real**. A conversa carimba pelo envio, **que é o correto**: a caixa de entrada ordena por quando o
+cliente falou, não por quando o banco soube.
+
+**Remedido com as duas réguas, mesmo instante, mesmo banco:**
+
+| régua | defasadas |
+|---|---|
+| **envio** (`sent_at`) | **1** de 28 |
+| inserção (`created_at`) | 27 de 28 |
+
+**E a que sobra é de TRÊS SEGUNDOS** — ordenação de escrita dentro de uma rajada, não defeito. **Zero
+defeitos reais.**
+
+**A lei diagnóstica, e ela é a mais útil desta rodada:**
+
+> ***"Mediana 0h, máxima 69 dias" não é a assinatura de um mecanismo que falha às vezes — é a
+> assinatura de DOIS RELÓGIOS.*** Mecanismo quebrado erra **em toda parte**; régua trocada erra **só
+> onde os dois relógios divergem.**
+
+**O sinal estava na cara e passou por mim, por ele e pela §7.262 que eu mesmo tinha acabado de
+escrever** — eu corrigi a leitura binária para a distribuição, e **a distribuição já continha a
+resposta**: aquela forma (quase tudo zero, um punhado enorme) só é produzida por duas medidas
+diferentes, nunca por um mecanismo intermitente.
+
+**E a formulação que fecha:** *não existe "a medida" de uma grandeza — existe a medida **segundo uma
+régua**, e escolher a régua já é escolher a pergunta.* `created_at` e `sent_at` **não discordavam**:
+mediam coisas diferentes.
+
+### §7.271-a — A observação de tela era real; a causa é o INSTRUMENTO escrevendo direto
+
+O *"Sem mensagens"* visto na tela **aconteceu** — e a causa não é o produto: as sondas inserem
+direto em `messages`, **contornando os dois caminhos que mantêm as colunas derivadas** (o `update` do
+handler e a RPC do ingest).
+
+**Então toda sonda que insere mensagem deixa a conversa inconsistente** — e continuará deixando,
+produzindo achados falsos de produto a cada rodada. **O conserto é no instrumento:** a sonda usa um
+dos dois caminhos reais, ou chama a RPC depois de inserir.
+
+**E é a §7.248 outra vez:** o instrumento alterou o estado que ele mesmo mediria — só que aqui a
+alteração não invalidou a medição, **inventou um defeito**.
