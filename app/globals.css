@@ -333,13 +333,21 @@
   }
 }
 
+/* Overlay próprio, e não uma classe no card: o elemento é REMONTADO a cada
+   evento (key = contador de pulsos), e é a remontagem que faz a animação
+   recomeçar. Alternar classe no mesmo nó não reinicia animação em CSS. */
 .card-pulse {
   animation: deskcomm-card-pulse var(--duration-slow) var(--ease-out) 1;
+  border-radius: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .card-pulse {
     animation: none;
+    /* O aviso continua existindo, por fundo em vez de movimento. Ele dura os
+       PULSE_MS inteiros (useBoard.ts), NÃO os 320ms da animação — a diferença
+       entre os dois números é deliberada e está explicada lá. */
     background-color: var(--color-accent-soft);
+    opacity: 0.55;
   }
 }

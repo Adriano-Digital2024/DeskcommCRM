@@ -18,8 +18,8 @@ interface StageColumnProps {
   /** `settings.canonical_tags` do pipeline — a única tag que fica no card. */
   canonicalTags?: string[];
   selectedLeadIds?: Set<string>;
-  /** Ids que acabaram de chegar por evento remoto. */
-  pulseIds?: Set<string>;
+  /** leadId → quantos eventos remotos já chegaram (muda = pulsa de novo). */
+  pulses?: Map<string, number>;
   onSelect?: (leadId: string, additive: boolean) => void;
 }
 
@@ -43,7 +43,7 @@ export function StageColumn({
   coolingIds,
   canonicalTags,
   selectedLeadIds,
-  pulseIds,
+  pulses,
   onSelect,
 }: StageColumnProps) {
   const totalCents = leads.reduce((sum, l) => sum + (l.value_cents ?? 0), 0);
@@ -99,7 +99,7 @@ export function StageColumn({
                 index={idx}
                 pipelineId={pipelineId}
                 isSelected={selectedLeadIds?.has(lead.id)}
-                pulse={pulseIds?.has(lead.id)}
+                pulseCount={pulses?.get(lead.id) ?? 0}
                 onSelect={onSelect}
               />
             ))}

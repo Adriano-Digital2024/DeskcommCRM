@@ -27,7 +27,7 @@ interface KanbanBoardProps {
    * desligado por causa do `useExternal`). Sem esta prop o pulso nasce no lugar
    * certo e morre na fronteira: o dado vem por prop e o sinal ficava para trás.
    */
-  pulseIds?: Set<string>;
+  pulses?: Map<string, number>;
   onSelectionChange?: (ids: string[]) => void;
 }
 
@@ -69,7 +69,7 @@ export function KanbanBoard({
   leads: leadsProp,
   pipeline: pipelineProp,
   selectedIds,
-  pulseIds: pulseIdsProp,
+  pulses: pulsesProp,
   onSelectionChange,
 }: KanbanBoardProps) {
   const useExternal = stagesProp !== undefined && leadsProp !== undefined;
@@ -222,7 +222,7 @@ export function KanbanBoard({
             pipelineId={pipelineId}
             ownerNames={ownerNames}
             coolingIds={coolingIds}
-            pulseIds={pulseIdsProp ?? queryResult.pulseIds}
+            pulses={pulsesProp ?? queryResult.pulses}
             canonicalTags={canonicalTags}
             selectedLeadIds={selectedLeadIds}
             onSelect={handleSelect}

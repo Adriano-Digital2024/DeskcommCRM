@@ -1,6 +1,6 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { consumirEcoLocal } from "@/lib/kanban/local-echo";
 import { useRealtimeChannel } from "@/hooks/realtime/useRealtimeChannel";
 import { apiClient } from "@/lib/api/client";
@@ -26,7 +26,16 @@ async function fetchBoard(pipelineId: string): Promise<BoardData> {
   return res as unknown as BoardData;
 }
 
-/** Quanto tempo o card fica marcado como "acabou de chegar". */
+/**
+ * Quanto tempo o card fica marcado como "acabou de chegar".
+ *
+ * NÃO é para bater com `--duration-slow` (320ms) do CSS, e a diferença é
+ * DELIBERADA: com movimento normal a animação dura os 320ms e o resto da
+ * janela é invisível; com `prefers-reduced-motion` o fundo estático fica os
+ * 1200ms inteiros, que é o que torna a alternativa perceptível — 320ms de
+ * fundo estático ninguém vê. Alinhar os dois números "para consertar a
+ * divergência" apaga a pista de acessibilidade.
+ */
 const PULSE_MS = 1_200;
 
 /** O id do lead dentro do payload do postgres_changes (new, ou old no delete). */
@@ -49,7 +58,8 @@ export function useBoard(pipelineId: string | null) {
    * sai sozinho depois de PULSE_MS: o pulso acontece UMA vez e cessa, em vez de
    * virar destaque persistente.
    */
-  const [pulseIds, setPulseIds] = useState<Set<string>>(new Set());
+  const [pulses, setPulses] = useState<Map<string, number>>(new Map());
+  const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const query = useQuery({
     queryKey,
@@ -67,15 +77,33 @@ export function useBoard(pipelineId: string | null) {
       const leadId = idDoEvento(payload);
       if (!leadId || consumirEcoLocal(leadId)) return;
 
-      setPulseIds((atual) => new Set(atual).add(leadId));
-      setTimeout(() => {
-        setPulseIds((atual) => {
-          if (!atual.has(leadId)) return atual;
-          const proximo = new Set(atual);
-          proximo.delete(leadId);
-          return proximo;
-        });
-      }, PULSE_MS);
+      // CONTADOR, não booleano. Com um Set, o segundo evento remoto no mesmo
+      // card dentro da janela não mudava nada: o id já estava lá, a classe
+      // nunca saía do elemento e a animação CSS não reinicia sem a classe
+      // sair — pior, o timeout do primeiro evento apagava tudo no meio do
+      // segundo. Chegava coisa de fora e a tela não dizia nada, que é o pecado
+      // que esta peça existe para matar.
+      setPulses((atual) => {
+        const proximo = new Map(atual);
+        proximo.set(leadId, (proximo.get(leadId) ?? 0) + 1);
+        return proximo;
+      });
+
+      // Cada evento reinicia a contagem: a janela é do ÚLTIMO evento.
+      const anterior = timers.current.get(leadId);
+      if (anterior) clearTimeout(anterior);
+      timers.current.set(
+        leadId,
+        setTimeout(() => {
+          timers.current.delete(leadId);
+          setPulses((atual) => {
+            if (!atual.has(leadId)) return atual;
+            const proximo = new Map(atual);
+            proximo.delete(leadId);
+            return proximo;
+          });
+        }, PULSE_MS),
+      );
     },
     [qc, queryKey],
   );
@@ -94,5 +122,15 @@ export function useBoard(pipelineId: string | null) {
     enabled: !!pipelineId,
   });
 
-  return { ...query, pulseIds };
+  // Timers pendentes morrem com o componente — senão um setState chega depois
+  // do unmount e o React reclama (e o Map de timers vaza).
+  useEffect(() => {
+    const pendentes = timers.current;
+    return () => {
+      for (const t of pendentes.values()) clearTimeout(t);
+      pendentes.clear();
+    };
+  }, []);
+
+  return { ...query, pulses };
 }

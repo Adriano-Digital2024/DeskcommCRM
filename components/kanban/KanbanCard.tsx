@@ -15,8 +15,12 @@ interface KanbanCardProps {
   index: number;
   pipelineId: string;
   isSelected?: boolean;
-  /** Chegou por evento REMOTO agora — pulsa uma vez e cessa (Wave 3). */
-  pulse?: boolean;
+  /**
+   * Contador de pulsos deste card (evento REMOTO). Muda a cada evento novo — é
+   * a MUDANÇA que remonta o overlay e reinicia a animação; um booleano deixaria
+   * o segundo evento dentro da janela passar despercebido.
+   */
+  pulseCount?: number;
   onSelect?: (leadId: string, additive: boolean) => void;
 }
 
@@ -51,7 +55,7 @@ export function KanbanCard({
   index,
   pipelineId,
   isSelected,
-  pulse,
+  pulseCount = 0,
   onSelect,
 }: KanbanCardProps) {
   const value = formatBRL(card.valueCents, card.currency);
@@ -86,9 +90,22 @@ export function KanbanCard({
             "hover:border-border-strong",
             snapshot.isDragging && "rotate-1 shadow-md ring-1 ring-accent/40",
             isSelected && "ring-2 ring-accent",
-            pulse && "card-pulse",
           )}
         >
+          {/* key = contador: cada evento remoto monta um overlay NOVO, e é isso
+              que reinicia a animação. Fica no elemento interno — pôr no wrapper
+              remontaria o draggable e quebraria o arrasto. */}
+          {pulseCount > 0 && (
+            <span
+              key={pulseCount}
+              aria-hidden
+              // Observável de propósito: é assim que o teste prova que o
+              // overlay REMONTOU (contador novo) em vez de ter sobrado do
+              // evento anterior — e "sobrou" era exatamente o defeito.
+              data-pulse={pulseCount}
+              className="card-pulse pointer-events-none absolute inset-0"
+            />
+          )}
           {/* Borda de estado — 2px, a única cor do card. */}
           <span
             aria-hidden
