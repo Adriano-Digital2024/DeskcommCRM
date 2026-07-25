@@ -2290,3 +2290,34 @@ Ele recusou parte da culpa que eu assumi, e a formulação é dele:
 relatório, num commit ou numa conversa — e a partir daí ele **compete** com os nomes que já existem.
 Rótulos nascem com prefixo (`C16.a`, `H.b`, `S15`), e o prefixo diz **de qual fonte externa** aquele
 teste é procuração. *Teste cita o cenário do briefing que prova, nunca a própria sequência* (@Arquiteto).
+
+---
+
+## §7.54 — Saída que reconstrói a entrada torna a derivação verificável sem ler o código
+
+Eu havia afirmado que a C1 (*o `reason` é **derivado** do cálculo*) **só** se verifica olhando a
+**fórmula**, porque no resultado uma frase gerada e uma frase derivada são indistinguíveis. O
+@DevVivo desfez o empate **por máquina**, e a afirmação era minha:
+
+> **O teste reconstrói o score a partir da frase.** Soma os `+12` e `−8` que ela cita e compara com o
+> número. Se a razão citar parcela que não entrou na conta, **omitir** uma que entrou, ou trouxer
+> **valor diferente** do que somou, a reconstrução **não fecha**.
+
+O que muda não é a força do teste — é o **tipo** de garantia:
+
+| antes | depois |
+|---|---|
+| derivação é propriedade **do código**, conferida por leitura | derivação é propriedade **da saída**, checada **a cada execução** |
+| revisão humana protege enquanto alguém revisar | protege **contra a mudança futura** que ninguém vai revisar |
+
+E é a segunda linha que importa: protege contra o refactor em que alguém troca a montagem por um texto
+*"mais bonito"* **mantendo o número**. Frase de modelo passa no olho humano e **falha na reconstrução**.
+
+> **Generalização:** quando for preciso provar que uma explicação foi **derivada** e não **composta ao
+> lado**, faça a explicação carregar informação suficiente para **reconstruir o resultado**. Derivação
+> deixa de ser confiança e vira **invertibilidade** — e invertibilidade é mecânica.
+
+**Nota de método:** ao verificar isto, minha mutação **abortou** porque a âncora não existia mais (o
+arquivo havia mudado). O `exit=0` que veio depois era **vazio**, e eu soube disso porque o `assert` da
+§7.44 gritou. **A lei se pagou dentro da hora em que foi escrita** — sem ela, a leitura teria sido *"o
+teste não tem dentes"*, que é a conclusão errada **e** a confortável.
