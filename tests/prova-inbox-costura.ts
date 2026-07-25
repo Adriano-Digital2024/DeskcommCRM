@@ -264,57 +264,40 @@ async function main(): Promise<void> {
   const desfecho: Desfecho = (process.env.C27_SIMULA as Desfecho) ?? desfechoMedido;
   const piorou = GRAVIDADE.indexOf(desfecho) > GRAVIDADE.indexOf(LINHA_DE_BASE.desfecho);
   const melhorou = GRAVIDADE.indexOf(desfecho) < GRAVIDADE.indexOf(LINHA_DE_BASE.desfecho);
+  // "IGUAL À BASE" SÓ É BLOQUEADO SE A BASE FOR UM DEFEITO. Com a base saudável,
+  // igualar-se a ela é o resultado desejado — e a versão anterior deste critério
+  // dizia "defeito preexistente" sobre o estado bom, carregando o texto de um
+  // achado que eu já tinha retratado. Veredito herdando a redação da hipótese
+  // morta é a mesma folclorização que eu consertei no D21.
+  const ideal = desfecho === "acompanha ao vivo";
   record(
     "C27.costura",
     "a linha da conversa aberta reflete a mensagem que a thread já mostra",
-    desfecho === "acompanha ao vivo",
+    ideal && !piorou,
     desfecho === "indecidível"
       ? "INDECIDÍVEL: nem a conversa recebeu a mensagem — sem isso não há costura a julgar"
       : melhorou
         ? `MELHOROU: desfecho "${desfecho}" contra a linha de base "${LINHA_DE_BASE.desfecho}" ` +
-          `(${LINHA_DE_BASE.quando}). Se o conserto entrou, SUBA A LINHA DE BASE — senão este ` +
-          `critério para de detectar a próxima regressão.`
+          `(${LINHA_DE_BASE.quando}). SUBA A LINHA DE BASE — senão este critério para de detectar ` +
+          `a próxima regressão.`
         : piorou
           ? `REGRESSÃO: desfecho "${desfecho}" contra a linha de base "${LINHA_DE_BASE.desfecho}" ` +
-            `(${LINHA_DE_BASE.quando}) — piorou nesta wave`
-          : `DEFEITO PREEXISTENTE, não regressão desta wave: desfecho "${desfecho}", igual à linha ` +
-            `de base de ${LINHA_DE_BASE.quando}. A lista segue dizendo "Sem mensagens" com a ` +
-            `mensagem aberta ao lado. Raiz nomeada: colunas desnormalizadas em conversations ` +
-            `mantidas por caminho de aplicação, sem trigger — a mediana de defasagem é 0,0h e o ` +
-            `defeito está na cauda, então a pergunta é QUAL escritor não atualiza.`,
-    // MELHOROU É VERMELHO, de propósito. Se o conserto entrou e a linha de base
-    // não sobe, este critério passa a aprovar um estado que ele deveria vigiar —
-    // e a próxima regressão volta ao patamar antigo sem disparar nada. É a
-    // catraca: alguém tem de subir a base conscientemente. BLOQUEADO fica só
-    // para o defeito herdado, que não é desta wave e não tem o que reprovar.
-    // E MELHOROU É VERMELHO MESMO QUANDO O DESFECHO É O IDEAL. O autoteste me
-    // pegou aqui: com "acompanha ao vivo" o critério dava PASS enquanto a
-    // mensagem pedia para subir a linha de base — passa/falha e a instrução se
-    // contradiziam, e PASS ganha, porque ninguém age sobre verde. A catraca
-    // falhava exatamente no caso para o qual ela existe: o dia do conserto.
+            `(${LINHA_DE_BASE.quando}) — piorou nesta wave. A lista deixou de acompanhar a thread.`
+          : ideal
+            ? `a lista acompanhou a thread nas ${RODADAS} rodada(s), com discordância de ` +
+              `${rs.map((r) => (r.lista !== null && r.conversa !== null ? Math.abs(r.lista - r.conversa) : -1)).join("/")}ms — ` +
+              `medido pelo caminho de produção (o insert MAIS a RPC que mantém a coluna que a lista lê)`
+            : `DEFEITO PREEXISTENTE, não regressão desta wave: desfecho "${desfecho}", igual à ` +
+              `linha de base de ${LINHA_DE_BASE.quando}`,
     desfecho === "indecidível"
       ? "INCONCLUSIVO"
       : melhorou
         ? "FALHA"
-        : !piorou
+        : !piorou && !ideal
           ? "BLOQUEADO"
           : undefined,
   );
-  console.info(
-    `\n=== ${RODADAS} rodadas ===\n` +
-      `  a CONVERSA aberta mostrou a mensagem: ${recebeu}/${RODADAS}\n` +
-      `  a LISTA acompanhou dentro de 30s ...: ${listaOk}/${RODADAS}\n`,
-  );
-  console.info(
-    recebeu === 0
-      ? "==> nem a conversa recebeu: sem isso não há costura a julgar, e a rodada não mede nada."
-      : listaOk === recebeu
-        ? "==> os dois painéis acompanham. A discordância da captura de hoje foi transitória, e a\n" +
-          "    janela medida acima é o tempo em que a tela pode ser lida errada."
-        : `==> A TELA SE CONTRADIZ E NÃO SE RESOLVE: a conversa mostrou em ${recebeu} rodada(s) e a\n` +
-          `    lista acompanhou em ${listaOk}. Quem atende pela lista vê "sem mensagens" enquanto a\n` +
-          `    mensagem já está aberta ao lado — e nada na tela avisa qual dos dois está velho.`,
-  );
+
   if (fechar() > 0) process.exitCode = 1;
   process.exit(process.exitCode ?? 0);
 }
