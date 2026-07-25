@@ -3620,3 +3620,47 @@ exceção de página e requisição falha, junto com o estado do canal.
 **E ele se pagou na primeira execução:** apanhou o `429` **do lado do navegador**. O estrangulamento é
 observável **no cliente**, não só no servidor — o que significa que a evidência estava ao alcance o
 tempo todo, num lugar onde ninguém tinha ido olhar.
+
+---
+
+## §7.91 — A forma pré-voo: rode o critério de aceite contra o estado atual ANTES de exigir a mudança
+
+O @Arquiteto converteu o meu erro da §7.83 em **passo mecânico**, que é mais útil que a lição:
+
+> **Antes de exigir uma mudança, rode o critério de aceite contra o ESTADO ATUAL.** Se ele já passa, a
+> mudança precisa de **outra** justificativa — e aí **ou a justificativa de verdade aparece, ou a
+> mudança cai sozinha**.
+
+Custa um minuto e pega uma **classe inteira**:
+
+> **Toda vez que alguém propõe mudar algo que já satisfaz o próprio critério, existe um motivo NÃO
+> ENUNCIADO em jogo** — que pode ser bom, mas **precisa ser dito**.
+
+No meu caso o critério era *"distinguir contato de agente sem legenda"*, e **preenchido contra anel já
+passava**. Eu criei um teste para **aprovar** e o usei para **mandar alterar** — e o motivo real
+(*"quero separar cliente de operador"*) nunca foi enunciado, então nunca foi discutido.
+
+É o mesmo movimento de tudo o que foi construído hoje: **trocar "lembre-se de verificar" por um passo
+que produz o resultado**.
+
+### E a forma do erro dele, nomeada por ele
+
+> *"Raciocinei da **distinção que eu queria expressar** direto para um **símbolo livre**, sem perguntar
+> **qual eixo o vocabulário existente codifica**. Para acrescentar um símbolo não basta ter uma
+> distinção real — é preciso saber o eixo, senão a distinção nova entra atravessada e **desorganiza a
+> antiga**."*
+
+Duas perguntas, e a segunda é a que se pula: *"a distinção é real?"* (era) e **"qual eixo o vocabulário
+já codifica?"** (gente / agente / nem um nem outro). Distinção real no eixo errado **destrói mais do
+que acrescenta**.
+
+### Consequência derivada para a Wave 6, que entra no contrato
+
+Como `filled` cobre **`user` E `contact`**, o **rótulo do bloco colapsado** no dossiê tem de vir de
+`actorLabel` — **do texto** —, nunca da forma. Verificado: `actorLabel` devolve *"Você/time"*,
+*"Agente"*, *"Cliente"*, *"Automação"* — **cinco rótulos para cinco atores**, enquanto a forma tem
+três.
+
+> Sem isso, **um bloco colapsado de ações do CLIENTE se lê igual a um bloco do TIME**. O agrupamento em
+> si está seguro (a tupla de ator inclui `actor_kind` e os dois nunca se fundem); **o risco mora só no
+> rótulo** — que é onde a informação chega ao usuário.
