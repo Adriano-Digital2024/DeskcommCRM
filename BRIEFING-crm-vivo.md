@@ -1399,3 +1399,47 @@ Três exclusões deliberadas, e a segunda é a mais fina:
 
 **Exclusão com motivo escrito é decisão; exclusão silenciosa é esquecimento.** As três continuam
 cobráveis pelo guarda no instante em que alguém as citar.
+
+---
+
+## §7.29 — Tipo e teste são camadas, não alternativas
+
+Nasceu do bloco 4.5, e o raciocínio errado é sedutor porque **cada metade dele é verdadeira**.
+
+`last_human_decision` entrou no `LeadContext` como **opcional** (`?:`) para contornar o hook que
+congela `tests/invariants/**` — um campo obrigatório obrigaria a acrescentar uma linha ao
+`fakeLeadContext` de um invariante existente. A justificativa foi escrita no código:
+
+> *"A garantia que interessa não é fixture de teste declarar o campo — é o PRODUTOR sempre
+> preenchê-lo, e isso está coberto por `get-lead-context-decisao.test.ts`."*
+
+O produtor **está** coberto. O teste **existe** e passa. E mesmo assim a troca foi ruinosa, porque
+as duas coisas não cobrem o mesmo conjunto:
+
+| camada | cobre | não vê |
+|---|---|---|
+| **tipo obrigatório** | **todo mundo** que constrói um `LeadContext`, hoje e no futuro | valor errado, filtro de org ausente |
+| **teste do produtor** | o produtor de verdade, com valor e org conferidos | o próximo lugar que montar um contexto |
+
+**Medição que encerra a discussão** — não argumento, número:
+
+| estado | `tsc --noEmit` |
+|---|---|
+| `?:` + fixture omitindo o campo | **0 erros** — compilador calado sobre um contexto que nasce cego |
+| obrigatório + o mesmo fixture | **TS2741**, apontando a linha |
+
+> Trocar uma garantia de **compilação sobre todos** por um teste de runtime sobre **um** é trocar
+> um bloqueio **visível** por uma cegueira **silenciosa**.
+
+**O agravante, e é o que torna esta lei necessária:** a lição já estava escrita no próprio
+`HANDOFF`, duas vezes — na linha 3217 (*"o campo é obrigatório, não opcional… campo opcional deixa o
+próximo nascer sem a decisão e ninguém percebe"*) e na 2150, de uma wave anterior (*"a interrogação
+do opcional é que calava o compilador"*). **Documentar não é aplicar.** Uma lição registrada não
+gera atrito no momento da decisão; só o instrumento gera.
+
+**Regra:** quando um guard bloquear, a pergunta não é *"como faço isto passar?"* — é *"o meu
+contorno paga o preço em qual outro lugar?"*. `freeze-invariants.sh` existe para impedir que um
+invariante seja **apagado ou afrouxado**, não que ele continue **compilando** quando um tipo ganha
+campo: acrescentar linha a um fixture é **adição**. A exceção documentada existe e cobra prova —
+`DESKCOMM_GOV_INVARIANTS_EDIT=1` com o `+N −0` **medido** no corpo do commit. Se o `−0` não
+aparecer, o bloqueio estava certo.
