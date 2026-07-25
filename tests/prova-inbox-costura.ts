@@ -272,6 +272,13 @@ async function main(): Promise<void> {
   await login(page, "manager");
 
   const rs: Rodada[] = [];
+  // O `try/finally` EXISTE PELO QUE ACONTECE QUANDO ESTOURA, não pelo caminho
+  // feliz. Sem ele: a mensagem inserida fica no banco, o estado derivado da
+  // conversa fica com a marca da sonda, e o navegador nunca fecha — e o
+  // Playwright segura o event loop, então o processo pendura até um timeout
+  // externo. Sonda que pendura em CI é pior que sonda que suja banco: a segunda
+  // alguém limpa, a primeira bloqueia a fila de todo mundo.
+  try {
   for (let i = 1; i <= RODADAS; i++) {
     const r = await rodada(page, c.id, c.contact_id, c.channel_session_id, i);
     const conv = r.conversa === null ? "NUNCA (30s)" : `${r.conversa}ms`;
@@ -285,7 +292,9 @@ async function main(): Promise<void> {
     console.info(`  rodada ${i} · conversa=${conv.padEnd(12)} lista=${lst.padEnd(12)} · ${janela}`);
     rs.push(r);
   }
-  await browser.close();
+  } finally {
+    await browser.close();
+  }
 
   const recebeu = rs.filter((r) => r.conversa !== null).length;
   const listaOk = rs.filter((r) => r.lista !== null).length;

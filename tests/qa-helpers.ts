@@ -480,6 +480,17 @@ function sujidadeAtual(deps: string[]): string {
   }
 }
 
+/** Sondas que abrem navegador e não têm bloco que rode em caso de erro. */
+function sondasQuePenduram(): string[] {
+  const dir = path.join(process.cwd(), "tests");
+  const fora: string[] = [];
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".ts"))) {
+    const src = fs.readFileSync(path.join(dir, f), "utf8");
+    if (src.includes("chromium.launch") && !src.includes("} finally {")) fora.push(f);
+  }
+  return fora;
+}
+
 /** Sondas que inserem em `crm_lead_activities` sem passar pelo desfazer. */
 function sondasQueSujamORelogio(): string[] {
   const dir = path.join(process.cwd(), "tests");
@@ -602,6 +613,17 @@ export function carimbar(dependencias: string[]): string {
   // adiantado — apagar a causa não apaga o efeito. Retrofitar 17 aparatos ao
   // fechar o épico seria churn com risco; deixar a dívida invisível seria pior.
   // Aqui ela sobe quando alguém escreve mais uma, que é o número certo.
+  // SONDA QUE ABRE NAVEGADOR SEM `finally` PENDURA O PROCESSO quando estoura —
+  // o Playwright segura o event loop e ninguém fecha o navegador. Achado do
+  // @DevVivo, sabotando a própria sonda com um throw para provar. A heurística
+  // olha o EFEITO possível (não há bloco que rode em caso de erro), não a forma.
+  const semFinally = sondasQuePenduram();
+  if (semFinally.length > 0) {
+    console.info(
+      `[carimbo] ${semFinally.length} sonda(s) abrem navegador SEM finally — se estourarem, não ` +
+        `limpam e PENDURAM o processo: ${semFinally.join(", ")}`,
+    );
+  }
   const semDesfazer = sondasQueSujamORelogio();
   if (semDesfazer.length > 0) {
     console.info(
