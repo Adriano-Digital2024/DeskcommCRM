@@ -8882,3 +8882,41 @@ aplicada na origem, ela só custa alguma coisa no dia em que alguém a ativar.
 > *"'Roda sem leitor' não é uma propriedade com uma consequência; é uma propriedade com DUAS — e a
 > segunda é invisível **por construção**, porque o rastro só aparece para quem medir DEPOIS, que é
 > sempre outra pessoa ou eu mesmo amanhã."*
+
+## §7.283 — Auditar o RESOLVIDO rende mais que investigar o suspeito
+
+Observação de fecho, e ela é a lei de método do dia inteiro:
+
+> ***"As leis vieram de conferir o que já se acreditava, não de procurar o que se suspeitava. Hoje
+> foram três: 'zero contaminação' (conferida, quase certa), o vigia (blindado num risco, cego no
+> outro) e o cenário 27 (a lei que eu escrevi há vinte minutos, não aplicada ao arquivo ao lado).
+> **Nenhuma veio de suspeita. Todas vieram de ir olhar algo que eu já tinha por resolvido.**"*
+
+**O mecanismo é simples e é o oposto do instinto:** o suspeito **já está sob vigilância** — alguém
+está olhando, medindo, desconfiando. O **resolvido saiu do campo de atenção por decreto**, e o
+decreto foi emitido por uma versão anterior de você, **com menos informação e sob a pressa de fechar
+o item**.
+
+**É a §7.136 na forma positiva.** Lá: *o verde anestesia a auditoria*. Aqui: **vá auditar o que você
+fechou — é onde está o retorno**.
+
+**Regra:** reserve parte do esforço de investigação para **re-auditar itens fechados**, escolhendo-os
+por *"quem os fechou tinha menos leis que eu tenho agora?"*. Hoje isso valeu três vezes num dia, e a
+terceira foi uma lei aplicada **vinte minutos** depois de escrita, ao arquivo **ao lado** do que a
+gerou (§7.281).
+
+## §7.284 — Ordene os desfechos por PERIGO, não por gravidade — e perigo inclui visibilidade
+
+O cenário 27 ganhou o estado que faltava: **"apareceu e foi desfeito"**. Ele entra **logo depois do
+ideal**, e não no fim da lista, **de propósito**:
+
+> *"É pior que acompanhar e melhor que nunca aparecer, **mas mais PERIGOSO que os dois, porque some
+> do relato de quem passou uma vez**."*
+
+**Gravidade e perigo não são a mesma ordenação.** Uma falha total **se anuncia** — o operador aprende
+a contornar. Uma falha intermediária que **se desfaz** deixa, em quem viu uma vez, **a lembrança de
+que estava certo** — e essa lembrança é o que impede a investigação seguinte.
+
+**Regra:** ao enumerar desfechos, ordene por **quanto cada um resiste a ser notado**, não por quanto
+estraga. O estado que engana ganha prioridade sobre o estado que quebra — porque o que quebra tem
+quem reclame.
