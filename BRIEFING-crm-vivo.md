@@ -4131,3 +4131,49 @@ edição está no lado errado** — e é por isso que a regra precisa estar escr
 
 O teste não checa só a **ordem**: checa a **existência** do validador. Um invariante que passa nas duas
 ordens não provou que a ordem importa — provou que **nada está sendo validado**.
+
+---
+
+## §7.108 — Alvo ausente e critério ausente são duas ausências diferentes
+
+O @QAVivo cometeu, à tarde, a lei que escreveu de manhã — **no mesmo arquivo onde a escreveu**:
+acrescentou dois critérios (`D19.rotulo`, `D25`) e **não os incluiu na lista do retorno antecipado**.
+No caminho *"o dossiê não existe"*, os dois **simplesmente não apareciam**.
+
+> **Sem vermelho para investigar, e com o placar de pé** — o formato exato que ele transformou em lei
+> horas antes (§7.92).
+
+**E a análise de por que o próprio helper não o salvou é o que vale:**
+
+> *"Escrevi um helper para que a LISTA VAZIA não passasse em silêncio, e caí no vizinho — o CRITÉRIO
+> que nunca chega a ser avaliado. **O helper cobre o alvo ausente, não o critério ausente.** São duas
+> ausências diferentes e a segunda ainda depende de eu lembrar."*
+
+| ausência | quem já cobre |
+|---|---|
+| **alvo** ausente (lista vazia) | `escolherAlvo()` — falha alto (§7.92) |
+| **critério** ausente (nunca avaliado) | **ninguém** — ainda depende de memória |
+
+**O mecanismo que fecha a segunda, e é dele:** o placar **declara a lista COMPLETA de critérios no
+início** e **cobra cada um no fim**. Critério declarado e não reportado vira falha — e aí *"não
+apareceu"* deixa de ser indistinguível de *"não existe"*.
+
+> É a §7.51 na sua forma profunda: lá, o placar não **listava** o que faltava; aqui, o placar **não tem
+> como saber** que faltava. Declarar antes de medir é o que transforma ausência em **discrepância**.
+
+### E os dois critérios que entraram
+
+**`D19.rotulo`** — consequência da reversão do marcador (§7.83): como `filled` cobre `user` **e**
+`contact`, o rótulo do bloco colapsado **não pode sair da forma**. Verificado: cinco nomes
+(`Você/time`, `Agente`, `Cliente`, `Automação`, `Sistema`) contra **três formas**. Sem isso, três ações
+do **cliente** se leem como três do **time** — e o dossiê passa a **mentir sobre quem fez o quê**.
+
+**E o caso é CONSTRUÍDO e declarado:** o seed cria três atividades do quinto ator, que tem **zero
+linhas** no banco real. *Sem o caso, o critério não teria o que medir* — e sem a **declaração**, a
+captura sugeriria um fluxo que ninguém exercita.
+
+**`D20`** — o `reason` tem de **nomear o campo alterado**, como asserção **separada**: *"alterou"* sem
+dizer o quê é a mesma frase vazia recusada no score. **Três metades que falham separado:** salvar,
+registrar, e **dizer o que mudou**.
+
+> **Registro que não permite discordar não serve para auditar.**
