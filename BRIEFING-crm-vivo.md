@@ -2831,3 +2831,58 @@ de *"o card não mostra"* é *"não existe"* — e aí o dossiê parece contradi
 própria linha da proposta (uma palavra, sem elemento novo), card e dossiê **passam a concordar** — o
 card mostra a versão curta, o dossiê a longa. A incoerência some porque deixa de existir, não porque
 foi explicada.
+
+---
+
+## §7.67 — A regra não falha por esquecimento; falha por não-reconhecimento
+
+Introspecção do @DevVivo sobre por que o anti-pattern nº 6 do `CLAUDE.md` (*"jsonb lock-in — UI lê path
+direto sem schema central"*) aconteceu **estando escrito**, e é a coisa mais profunda dita nesta
+entrega:
+
+> *"Eu li aquele arquivo hoje. O que faltou **não foi lembrar da regra** — foi **PERCEBER que eu estava
+> naquele caso**: quando escrevi `factors` dentro do `evidence`, o `CHECK` já existia e eu não pensei
+> nele como **'outra lista'**, pensei como **'a constraint que já passa'**. A regra estava na minha
+> cabeça e **o caso não se apresentou como o caso**."*
+
+**Isto explica por que a §7.59-a é verdadeira.** Doutrina falha **não** porque a pessoa esqueceu — mas
+porque **regras são indexadas pelo enunciado e a realidade não chega rotulada**. Ninguém encontra "duas
+listas que precisam concordar"; encontra "uma constraint que já está passando" e "um campo novo que a
+tela precisa". A mesma situação, dois nomes, e só um deles bate com a regra.
+
+> **Instrumento não depende de reconhecimento.** O `CHECK` não precisa saber que aquilo é "duas listas"
+> — ele recusa a escrita. É por isso que instrumento vence memória: **memória exige que você classifique
+> corretamente a situação no instante em que está dentro dela**, que é exatamente quando a classificação
+> é mais difícil.
+
+**Regra derivada:** ao escrever uma lei, pergunte **como o caso vai se apresentar** a quem estiver
+dentro dele. Se o enunciado só é reconhecível de fora, ele não vai ser aplicado de dentro — e precisa
+virar instrumento antes de valer.
+
+## §7.68 — Guardar a existência não impede a divergência de conteúdo
+
+O @DevVivo derrubou o meu conserto, e o argumento procede:
+
+> Eu propus que o `CHECK` exigisse **as duas** chaves (âncoras **e** `factors`). Isso guarda a
+> **existência** e deixa a **divergência de conteúdo** aberta: quem gravar `activity_ids:[X]` e um
+> `factor` com âncora apontando para `Y` **satisfaz a constraint e mente do mesmo jeito**.
+
+**Duas listas obrigatórias continuam sendo duas listas.** O conserto teria trocado *"podem não existir
+juntas"* por *"existem juntas e podem discordar"* — que é um caso mais raro e **mais difícil de
+detectar**, porque agora ambas passam.
+
+**Ruling: UMA FONTE SÓ.** O `CHECK` exige `factors` não-vazio **e pelo menos um factor com âncora**; as
+chaves de arrays de ids **saem** do `evidence` do score. O banco passa a cobrar **exatamente o caminho
+que a UI lê** — não há duas listas, então **não há o que divergir**. E a promessa do cenário 15 fica
+cobrada **por construção**: *"hover revela"* vira `factors` não-vazio; *"clique leva"* vira pelo menos
+uma âncora.
+
+**O preço, aceito com os olhos abertos:** `crm_lead_activities.evidence` (0071) continua com arrays de
+ids. **As duas tabelas passam a ter formatos diferentes** — e está certo, porque são coisas diferentes:
+**atividade cita FATOS de N tabelas; score cita PARCELAS de um cálculo.** Forçar o mesmo formato foi o
+que criou o problema. **Uniformidade de forma entre coisas que significam coisas diferentes é
+semelhança acidental, não coerência.**
+
+> **E a diferença tem de ser legível onde alguém tentaria "unificar"** (§7.56): comentário na coluna
+> dizendo por que o formato difere e que unificar reintroduz o problema das duas listas. Sem isso, a
+> unificação vai parecer limpeza — de novo.
