@@ -71,8 +71,22 @@ const LINHA_DE_BASE = {
 
 /** Os três desfechos, em ordem de gravidade crescente. O contrato do 27 pedia
  *  "sem regressão", e passa/falha não distingue regressão de defeito herdado. */
-type Desfecho = "acompanha ao vivo" | "só recarregando" | "nem recarregando" | "indecidível";
-const GRAVIDADE: Desfecho[] = ["acompanha ao vivo", "só recarregando", "nem recarregando", "indecidível"];
+type Desfecho =
+  | "acompanha ao vivo"
+  | "apareceu e foi desfeito"
+  | "só recarregando"
+  | "nem recarregando"
+  | "indecidível";
+// A ORDEM É DE GRAVIDADE CRESCENTE, e "apareceu e foi desfeito" vem logo depois
+// do ideal de propósito: é pior que acompanhar e melhor que nunca aparecer, mas
+// é o ÚNICO que engana quem olhou uma vez.
+const GRAVIDADE: Desfecho[] = [
+  "acompanha ao vivo",
+  "apareceu e foi desfeito",
+  "só recarregando",
+  "nem recarregando",
+  "indecidível",
+];
 
 const env: Record<string, string> = {};
 for (const line of fs.readFileSync(".env.local", "utf8").split("\n")) {
@@ -89,6 +103,8 @@ interface Rodada {
   conversa: number | null;
   lista: number | null;
   entregue: boolean;
+  /** Apareceu e depois SUMIU — o estado que a medição única não enxerga. */
+  sumiuDepois: boolean;
   /** `true` se a lista só passou a refletir DEPOIS de um recarregamento. */
   recarregouCorrigiu: boolean | null;
 }
@@ -194,6 +210,18 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
   // E O QUE A LINHA DIZ, para o laudo não ser só "não apareceu": sem o texto
   // observado, "a lista não acompanhou" não distingue lista velha de lista que
   // mostra outra coisa.
+  // E A SEGUNDA LEITURA, DEPOIS DE UM INTERVALO DECLARADO: a lista precisa
+  // CONTINUAR certa, não só ficar certa. "Apareceu" e "está lá" são coisas
+  // diferentes — um refetch com dado velho sobrescreveria o painel e o operador
+  // veria a linha voltar a "Sem mensagens" sem nada acusar. A medição única não
+  // distingue "nunca apareceu" de "apareceu e foi desfeito", e o segundo é o
+  // único que engana: quem olhou uma vez guarda a lembrança de que estava certo.
+  let sumiuDepois = false;
+  if (naLista !== null && naConversa !== null) {
+    await new Promise((r) => setTimeout(r, 10_000));
+    sumiuDepois = !(await lista()).includes(marca) || !(await corpo()).includes(marca);
+  }
+
   // E O RECARREGAMENTO SEPARA DOIS DEFEITOS MUITO DIFERENTES: "não atualiza ao
   // vivo" (o operador aperta F5 e resolve) e "não atualiza nem recarregando" (a
   // lista está errada e continua errada). Sem esta leitura eu reportaria o
@@ -217,6 +245,7 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
     conversa: naConversa,
     lista: naLista,
     entregue: naConversa !== null,
+    sumiuDepois,
     recarregouCorrigiu: apoRecarga === "(não medido)" ? null : apoRecarga.startsWith("SIM"),
   };
 }
@@ -264,8 +293,11 @@ async function main(): Promise<void> {
   // ---- o critério do cenário 27 --------------------------------------------
   const { record, fechar } = criarPlacar("CENÁRIO 27 · a lista acompanha a conversa", ["C27.costura"]);
   const recarregou = rs.some((r) => r.recarregouCorrigiu === true);
+  const desfeito = rs.some((r) => r.sumiuDepois);
   const desfechoMedido: Desfecho =
-    recebeu === 0
+    desfeito
+      ? "apareceu e foi desfeito"
+      : recebeu === 0
       ? "indecidível"
       : listaOk === recebeu
         ? "acompanha ao vivo"
