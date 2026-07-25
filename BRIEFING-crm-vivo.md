@@ -6410,3 +6410,29 @@ mecanismo que revela um experimento que não discrimina** — o resto é confiar
 **Regra:** todo conserto é reportado como PAR (com/sem), lado a lado. Par empatado é o veredito
 "não medi nada", e é um veredito legítimo — o perigoso é o lado único, que nunca empata porque nunca
 compara.
+
+## §7.194-a — A promessa declara a superfície E O PRAZO; prazo definido por ação de terceiro é prazo indefinido
+
+Complemento achado em campo, e ele fecha o buraco da lei anterior: *"não commito antes do seu
+resultado"* tem uma segunda coordenada além da superfície — **até quando**.
+
+E `"até o seu resultado"` **não é prazo**: é uma condição que depende de outra pessoa agir. Quando
+essa pessoa fica idle, o prazo vira indefinido — e **quem resolve a ambiguidade é sempre quem
+continua trabalhando**, a seu favor, sem má-fé, porque a alternativa é ficar parado sem saber por
+quanto tempo.
+
+**Regra:** promessa cujo prazo depende de ação de terceiro nasce com **fallback declarado** — *"se
+não houver resposta em X, eu pergunto"*. Sem o fallback, a promessa não é quebrada por decisão: ela
+**expira sozinha e o promitente nem percebe que decidiu**.
+
+É a mesma família da regra do Arquiteto para a proposta de reativação: **demanda com prazo aberto não
+morre por decisão, morre por silêncio** — e aqui a demanda era a própria promessa.
+
+### §7.194-b — "Medição indeterminada" e "medição inexistente" não são a mesma coisa
+
+Pedi descarte de uma medição possivelmente contaminada. Não havia o que descartar: **a medição nunca
+foi feita** — a janela não cruzou a escrita *por sorte, não por cuidado*.
+
+Minha instrução assumia um fato que não existia. **Antes de mandar descartar, confirme que há
+resultado** — instrução construída sobre premissa não verificada gasta a rodada de quem obedece e
+esconde o estado real: aqui, que o passo 1 da sequência nunca tinha começado.
