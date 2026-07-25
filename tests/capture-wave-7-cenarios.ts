@@ -243,16 +243,31 @@ async function main(): Promise<void> {
     const { card: frioRecarregado } = await cardLocator(page, casos.FRIO!.titulo);
     const faixaRecarregada = await faixa(frioRecarregado);
     const corRecarregada = await corDaBorda(frioRecarregado);
+
+    // JANELA ou PERMANENTE? A classificação de risco vem de uma SEGUNDA consulta,
+    // com ciclo de vida próprio. Se a faixa aparecer depois de esperar, a
+    // divergência é a janela entre as duas cargas; se não aparecer, é permanente.
+    // Duas hipóteses, uma medida — e sem ela o mesmo vermelho serviria às duas,
+    // com gravidades muito diferentes.
+    let faixaConvergiu = faixaRecarregada;
+    for (let i = 0; i < 6 && faixaConvergiu === ""; i++) {
+      await page.waitForTimeout(3000);
+      faixaConvergiu = await faixa(frioRecarregado);
+    }
+    const ehJanela = faixaRecarregada === "" && faixaConvergiu !== "";
     record(
       "E22.consistencia",
       "o MESMO lead lê igual ao vivo e depois de recarregar",
       faixaRecarregada === faixaDepois && corRecarregada === corDepois,
-      `ao vivo: faixa "${faixaDepois}" borda "${corDepois}" · recarregado: faixa ` +
-        `"${faixaRecarregada}" borda "${corRecarregada}"` +
+      `ao vivo: faixa "${faixaDepois}" · logo após recarregar: "${faixaRecarregada}" · ` +
+        `depois de esperar até 18s: "${faixaConvergiu}" (borda ${corRecarregada})` +
         (faixaRecarregada === faixaDepois
           ? ""
-          : " — quem classifica ao vivo e quem classifica na carga NÃO concordam, e o usuário vê " +
-            "um estado que some ao apertar F5"),
+          : ehJanela
+            ? " — é JANELA: a classificação de risco vem de uma SEGUNDA consulta e, enquanto ela " +
+              "não chega, o card AFIRMA que o negócio está saudável em vez de dizer que não sabe. " +
+              "Desconhecido virando normal, que é a afirmação que este épico existe para impedir"
+            : " — é PERMANENTE nesta janela de observação: a faixa não apareceu nem depois de 18s"),
     );
 
     // ---- 24: precedência, com a perna positiva ANTES ------------------------
