@@ -486,7 +486,22 @@ export function carimbar(dependencias: string[]): string {
   }
   // Grita. Não bloqueia: iterar com a árvore suja é legítimo enquanto se
   // desenvolve; o que não pode é o resultado sair parecendo veredito.
-  console.info("[carimbo] ⚠ ÁRVORE SUJA nas dependências — este resultado NÃO é veredito:");
+  //
+  // ⚠️ ESTA LISTA NUNCA PODE SER TRUNCADA, RESUMIDA OU OMITIDA POR BREVIDADE.
+  // Desde que "árvore suja" virou código de saída, toda rodada de
+  // desenvolvimento sai vermelha — então o vermelho passou a ter DUAS causas
+  // (defeito medido / árvore suja), e a única coisa que as distingue é
+  // exatamente esta lista. No dia em que alguém "limpar a saída" cortando-a, o
+  // veredito binário fica sem o que o desambigua e as duas causas viram uma só.
+  //
+  // E a proteção não é este comentário — é o CONTADOR na linha de cima: se a
+  // lista for truncada, o número deixa de bater com as linhas impressas, e a
+  // omissão se denuncia sozinha. Comentário depende de alguém ler; contagem
+  // que não fecha aparece na saída.
+  console.info(
+    `[carimbo] ⚠ ÁRVORE SUJA em ${sujos.length} arquivo(s) das dependências — ` +
+      `este resultado NÃO é veredito (as ${sujos.length} linhas seguintes são a lista COMPLETA):`,
+  );
   for (const l of sujos) console.info(`[carimbo]   ${l}`);
   return "-ARVORE-SUJA";
 }
