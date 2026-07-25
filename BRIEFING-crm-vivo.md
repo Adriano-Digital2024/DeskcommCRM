@@ -7254,3 +7254,45 @@ enquanto a tese está sendo desmentida.
 Com isso, a varredura da doutrina ganha filtro operável em vez de critério de gosto: **toda lei que
 manda contar algo tem de dizer se o número conta fragilidade ou progresso — e as de progresso são
 lembretes disfarçados de cerca.**
+
+## §7.232 — Melhoria que INTERROMPE uma série contínua tem de pagar o histórico que apaga
+
+O vigia ganhou a contagem de fragilidade — **e não foi reiniciado**. A série em curso segue com o
+código anterior, e a troca vale a partir do próximo início, marcada no log com hora.
+
+**A decisão está certa e o critério é geral:** para um instrumento cujo valor É a continuidade,
+reiniciar cinco minutos depois do último reinício **fragmenta a linha de base que ele existe para
+estabelecer**. **Instrumento bom contínuo mede mais que instrumento perfeito interrompido.**
+
+**Quase toda melhoria é grátis; melhoria em instrumento contínuo não é** — ela cobra o histórico
+acumulado, e o histórico é o produto. **Regra:** antes de aplicar melhoria a algo que roda sozinho,
+pergunte quanto de série ela apaga e se o defeito que ela corrige já se manifestou naquela série.
+Aqui: nenhum ciclo indecidível havia ocorrido, então a melhoria não tinha nada a recuperar — só a
+oferecer daqui pra frente.
+
+## §7.233 — Aplique a lei nova PRIMEIRO onde um defeito sobreviveria SEM TESTEMUNHA
+
+Correção honesta a um elogio meu. A lei foi aplicada ao próprio instrumento **não por virtude**:
+
+> *"O vigia era o único artefato meu que roda SOZINHO e que ninguém vai reauditar — todos os outros
+> eu leio a saída na hora. Era o único lugar onde um alarme falso sobreviveria sem testemunha. **A
+> prioridade veio do risco, não da disciplina.**"*
+
+Isso é melhor que *"aplique primeiro a si mesmo"*, que é enquadramento de virtude e não escala. A
+ordenação por risco é **mecânica**: entre todos os lugares onde uma lei nova se aplica, comece pelos
+que **rodam sem leitor** — cron, watcher, worker, hook de CI, alerta automático. Ali um defeito de
+instrumento **não tem quem o contradiga**, e a única correção possível é a preventiva.
+
+**Corolário do que NÃO fazer:** foi recusado refazer uma medição só para "ter o número na mão", com
+o motivo certo — *"seria confundir completude com necessidade"*. **Completude é estética; necessidade
+é o que muda uma decisão.**
+
+### Consequência imediata na nossa própria régua: o placar da wave está invertido
+
+Aplicando o filtro à maquinaria de relatório: o placar de wave reporta **"17/0/0" — verdes primeiro**.
+**É leitura de progresso**, exatamente a que não protege. O número que invalida (falhas + ausentes +
+inconclusivos) existe no `fechar()` e **não aparece no título**.
+
+**O veredito de uma wave passa a começar pelo que a invalida.** E vale contra mim: passei o dia
+celebrando "13/0/0" e "23/0/0" — lendo o número que sobe quando está tudo bem, que é o que a §7.230
+refinada acabou de proibir.
