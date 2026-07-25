@@ -12,6 +12,7 @@ import { audit } from "@/lib/audit";
 import { resolveOwnerPatch, type OwnerPatch, type OwnerPatchInput } from "@/lib/leads/owner-patch";
 import { emitLeadActivity, stageChangeReason } from "@/lib/leads/activity-emitter";
 import { listaLegivel } from "@/lib/leads/activity-vocabulary";
+import { camposAlterados } from "@/lib/leads/campos-alterados";
 import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 import type { CreateLeadInput, UpdateLeadInput } from "@/lib/schemas";
 
@@ -334,9 +335,13 @@ export async function updateLeadHandler(
   leadId: string,
   input: UpdateLeadInput,
 ): Promise<Record<string, unknown>> {
+  // `*` e nao lista explicita DE PROPOSITO: `camposAlterados` compara o patch
+  // contra isto, e uma lista fixa faria todo campo NOVO do patch cair contra
+  // `undefined` e ser marcado como alterado em toda edicao — o mesmo defeito
+  // que este select conserta, reaparecendo por outra porta em seis meses.
   const { data: existing, error: selErr } = await supabase
     .from("crm_leads")
-    .select("id, organization_id, tags")
+    .select("*")
     .eq("id", leadId)
     .maybeSingle();
 
@@ -382,7 +387,10 @@ export async function updateLeadHandler(
   }
 
   const a = actorAuditPayload(ctx.actor);
-  const fields = Object.keys(input);
+  // O QUE MUDOU, nao o que foi enviado: o formulario do dossie manda o form
+  // inteiro a cada salvamento, entao `Object.keys(input)` acusava cinco campos
+  // quando a pessoa mexeu em um. Detalhe em lib/leads/campos-alterados.ts.
+  const fields = camposAlterados(patch, existing as Record<string, unknown>);
 
   // A EDIÇÃO HUMANA ENTRA NA TIMELINE (wave 6). Antes disto, mexer num campo
   // era invisível: a IA deixava rastro e o humano não — meia continuidade
@@ -392,7 +400,11 @@ export async function updateLeadHandler(
   // não muda o que ninguém faz a seguir; saber que mudou o VALOR é diferente de
   // saber que mudou a descrição. Os nomes vão em português — o que a pessoa lê
   // não pode ser o vocabulário da coluna.
-  const atividadeEdicao = await emitLeadActivity(supabase, {
+  // Salvar sem mexer em nada NAO e um acontecimento. Sem esta guarda, abrir o
+  // dossie e clicar Salvar geraria "Dados do negocio alterados" com a lista
+  // vazia — ruido na timeline exatamente na superficie que promete contar a
+  // vida do negocio.
+  const atividadeEdicao = fields.length === 0 ? { ok: true as const } : await emitLeadActivity(supabase, {
     organizationId: existing.organization_id,
     leadId,
     contactId: (updated as { contact_id?: string | null }).contact_id ?? null,
