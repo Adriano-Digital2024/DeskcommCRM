@@ -7205,3 +7205,52 @@ linhas o `−N` removeu; quantos blocos a superfície agrupou.
 **Critério para as leis daqui em diante — e para reescrever as antigas:** se uma lei só pode ser
 seguida por quem já está lúcido, ela é lembrete e não cerca. **Procure a versão contável.** Quase
 sempre existe, e quase sempre é mais curta.
+
+## §7.231 — O controle tem de compartilhar o APARATO que ele valida, não só a janela
+
+O vigia media o pipeline saudável e o doente em **assinaturas separadas**. Bastaria a assinatura do
+doente **nascer surda** — anônima no servidor enquanto o cliente diz `SUBSCRIBED`, exatamente o
+defeito já encontrado — para o log gritar *"o defeito voltou"* **com o controle verde**, porque o
+controle era **outra assinatura, viva**.
+
+> ***"Um vigia que produz alarme falso é pior que nenhum: ele treina o time a ignorar o alarme, e aí
+> o alarme verdadeiro chega e passa."***
+
+**Controle em aparato separado valida o AMBIENTE; só o controle no MESMO aparato valida o
+INSTRUMENTO.** E validar o instrumento é a única razão de o controle existir — a falha do aparato é
+precisamente o caso em que um controle paralelo mente junto.
+
+**O conserto é contável:** o canário viaja **na mesma assinatura** que julga o alvo. Escreve-se no
+saudável primeiro (**tem** de chegar); só então no doente. Canário ausente ⇒ **INDECIDÍVEL**, com o
+motivo no log. O controle deixa de ser *"outra medição na mesma janela"* e passa a ser **a mesma
+medição**.
+
+**E a troca de critério foi marcada NO PRÓPRIO LOG, com hora** — senão alguém compara linhas de antes
+e depois sem saber que a régua mudou (§7.182 aplicada preventivamente a um log em produção contínua).
+
+## §7.230 — REFINADA: conte o que INVALIDARIA, não o que confirma
+
+Objeção honesta, e ela é correta: *"regra contável não é imune — **eu escolho O QUE contar**. Contei
+'quantas assinaturas separam controle de alvo' e achei o defeito; podia ter contado 'quantos ciclos
+verdes' e ficado tranquilo com quatro. A regra terceiriza o JULGAMENTO para um número, mas não
+terceiriza a ESCOLHA do número — e essa continua sendo feita pelo mesmo estado mental que produz o
+erro."*
+
+**Aceito integralmente, e a lei estreita:** não é *"procure a versão contável"* — é ***"conte o que,
+se fosse zero, invalidaria a conclusão"***. São **contagens de FRAGILIDADE**, não de progresso:
+
+| conta fragilidade (protege) | conta progresso (não protege) |
+|---|---|
+| resgates que a tese precisou | ciclos verdes |
+| desfechos que o instrumento **não** distingue | testes passando |
+| assinaturas separando controle de alvo | evidências a favor |
+| lados que o par **não** tem | rodadas sem incidente |
+
+**E o teste que decide qual contador escolher, porque é mecânico: prefira o número que SOBE QUANDO
+VOCÊ ESTÁ ERRADO.** "Ciclos verdes" só cresce quando parece que está tudo bem — é confirmação com um
+número em cima, e por isso *parece* rigor. "Resgates que a tese precisou" cresce **exatamente**
+enquanto a tese está sendo desmentida.
+
+Com isso, a varredura da doutrina ganha filtro operável em vez de critério de gosto: **toda lei que
+manda contar algo tem de dizer se o número conta fragilidade ou progresso — e as de progresso são
+lembretes disfarçados de cerca.**
