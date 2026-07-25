@@ -66,10 +66,14 @@ export interface ScoreCalculado {
   /** `null` = sinal insuficiente. NUNCA zero — zero é uma afirmação. */
   score: number | null;
   reason: string;
+  /**
+   * FONTE ÚNICA (migration 0077): só `factors`, cada um com a sua âncora.
+   *
+   * Os arrays de ids saíram: manter as duas listas trocava "podem não existir
+   * juntas" por "existem juntas e podem DISCORDAR" — mais raro e mais difícil
+   * de detectar, porque as duas passam.
+   */
   evidence: {
-    checkpoint_ids?: string[];
-    activity_ids?: string[];
-    message_ids?: string[];
     formula_v?: number;
     factors?: FatorDoScore[];
   };
@@ -216,11 +220,7 @@ export function calculaScore(sinais: SinaisDoLead): ScoreCalculado {
   return {
     score,
     reason: partes.length > 0 ? partes.join(", ") : "sem parcelas relevantes além da base",
-    evidence: {
-      checkpoint_ids: [sinais.checkpointId],
-      formula_v: FORMULA_V,
-      factors: relevantes,
-    },
+    evidence: { formula_v: FORMULA_V, factors: relevantes },
     band: resolveBand(score, sinais.bandAnterior),
   };
 }

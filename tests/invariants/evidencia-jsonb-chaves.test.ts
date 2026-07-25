@@ -39,7 +39,9 @@ const PARES: ParDeChaves[] = [
     constraint: "crm_lead_scores_needs_reason",
     // `factors` é o que a UI renderiza (board/route.ts → ScoreSlot); as âncoras
     // são o destino do clique. A constraint exige as DUAS desde a 0076.
-    lidasPeloCodigo: ["factors", "checkpoint_ids"],
+    // FONTE ÚNICA desde a 0077: a âncora mora dentro do fator, então há uma
+    // chave só para o banco guardar e para a tela ler.
+    lidasPeloCodigo: ["factors"],
     origem: "score-formula.ts (escreve) + board/route.ts (lê)",
   },
   {
@@ -57,7 +59,13 @@ function chavesDoCheck(constraint: string): string[] {
   const def = sql(
     `select pg_get_constraintdef(oid) from pg_constraint where conname = '${constraint}'`,
   ).trim();
-  return [...new Set([...def.matchAll(/->\s*'([a-z_]+)'/g)].map((m) => m[1]!))].sort();
+  // Duas formas de citar a chave, e o CHECK do score usa a segunda: `-> 'x'` e
+  // o jsonpath `$.x[*]` de `@?`. Ler só a primeira faria o invariante dizer que
+  // a constraint não guarda nada — instrumento cego para a forma nova é pior
+  // que instrumento ausente, porque acusa o inocente.
+  const porSeta = [...def.matchAll(/->\s*'([a-z_]+)'/g)].map((m) => m[1]!);
+  const porJsonpath = [...def.matchAll(/\$\.([a-z_]+)/g)].map((m) => m[1]!);
+  return [...new Set([...porSeta, ...porJsonpath])].sort();
 }
 
 describe("evidência jsonb: a chave da constraint × a chave do código", () => {

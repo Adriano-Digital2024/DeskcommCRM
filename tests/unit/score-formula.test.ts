@@ -83,9 +83,15 @@ describe("fórmula do score", () => {
     expect(r.reason).not.toContain("qualificação");
   });
 
-  it("a evidência aponta para o checkpoint que sustenta os fatos", () => {
+  it("a evidência aponta para o checkpoint DENTRO do fator, não numa lista à parte", () => {
+    // Fonte única (0077): manter um array de ids ao lado dos fatores criaria
+    // duas listas que podem discordar — e discordar sem sintoma, porque as duas
+    // passariam na constraint.
     const r = calculaScore(sinais({ commitments: ["ok", "beleza"], checkpointId: "ck-42" }));
-    expect(r.evidence.checkpoint_ids).toEqual(["ck-42"]);
+    const comAncora = (r.evidence.factors ?? []).filter((f) => f.ancora);
+    expect(comAncora.length).toBeGreaterThan(0);
+    expect(comAncora[0]!.ancora).toEqual({ kind: "checkpoint", id: "ck-42" });
+    expect("checkpoint_ids" in r.evidence).toBe(false);
   });
 
   it("recência entra pelo classificador ÚNICO, e muda o número", () => {
