@@ -176,3 +176,28 @@ Matar a entrega exigiu `addInitScript` substituindo o construtor de `WebSocket`.
 A primeira versão usou `page.route`, que intercepta HTTP e **não** WebSocket: o
 canal entregou normalmente, e o "curou: sim" era o realtime funcionando. Aparato
 que não produz a condição mede outra coisa e devolve um verde que parece prova.
+
+---
+
+## Nota sobre as evidências: elas foram REVERTIDAS, não regeneradas
+
+Quinze capturas apareceram com **conteúdo alterado** no fim da wave — 8 da wave
+3, 6 da wave 4 e 1 da wave 6. Uma delas dobrou de tamanho (61KB → 126KB). Não
+foi edição: foram sondas re-executadas sobre um banco que continuou vivendo.
+
+Abri a que mais mudou (`wave-3-c11-timeline-veto.png`). A legenda promete a
+linha "Envio bloqueado — não enviei: limite de ritmo de envio atingido", e ela
+**está lá** — no topo, sob o cabeçalho "ONTEM". Mas está lá **por sorte de
+ordenação**: a timeline ordena do mais recente para o mais antigo, e com mais um
+dia de atividade aquela linha desce e sai do enquadramento. A legenda passaria a
+afirmar o que a captura não mostra, sem nada quebrar.
+
+**Por isso as quinze foram revertidas para as versões commitadas.** Evidência de
+wave fechada documenta um INSTANTE que sustentou um veredito; regenerá-la
+substitui a prova por outra foto, tirada de outro estado do mundo. Quando a nova
+ainda mostra o que a legenda diz, é coincidência — e coincidência que passa
+despercebida vira legenda falsa na próxima vez.
+
+A regra que fica: **sonda de wave fechada roda para verificar, nunca para
+sobrescrever.** Se a re-execução precisar virar prova, ela vira prova NOVA, com
+nome e legenda próprios — não por cima da antiga.
