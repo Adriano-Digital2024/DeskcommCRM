@@ -8163,3 +8163,53 @@ reprovada por um defeito que ela não causou (§7.240, com o suspeito mais recen
 E a raiz vai **escrita dentro do critério**: colunas desnormalizadas mantidas por caminho de
 aplicação, sem trigger, **mediana de defasagem 0,0h e o defeito na cauda** — para que o próximo a
 lê-lo não repita a leitura binária que sugeria colapso geral (§7.262).
+
+## §7.266 — Proxy FRACO produz números COMPATÍVEIS, e compatível não é prova
+
+A raiz do inbox foi isolada **por leitura de código**, e é conclusiva: `messages/_handler.ts` insere
+a mensagem **e** atualiza as colunas desnormalizadas; `lib/waha/ingest.ts` insere e **nunca toca
+`conversations`** — e o ingest é o caminho de **toda** mensagem vinda do WhatsApp, inbound do cliente
+**e** outbound enviada do próprio celular.
+
+**E a medição foi declarada como não-discriminante pelo próprio autor.** A direção da mensagem foi
+usada como **proxy** do caminho de escrita, esperando que inbound defasasse e outbound não. Deu
+**6/13 inbound e 5/15 outbound** — os dois defasam, porque **outbound também entra pelo ingest**
+quando a pessoa responde pelo celular.
+
+> ***"Os números são COMPATÍVEIS com a leitura, e não a provam. Quem prova é o código."***
+
+**Proxy fraco é o que produz esse resultado:** números que **encaixam** na tese sem a sustentar, e
+que passariam como confirmação em qualquer relatório. **A diferença entre "compatível" e "prova" é
+exatamente onde a §7.202 mora** — e aqui foi declarada antes de alguém perguntar.
+
+**E o critério que torna isso avaliável:** só se sabe que o proxy é fraco **porque a razão da
+fraqueza foi nomeada** (outbound entra pelos dois caminhos). Proxy cuja fraqueza não se consegue
+enunciar é proxy que ninguém pode avaliar — inclusive quem o escolheu.
+
+## §7.267 — Coluna derivada por trigger em tabela PUBLICADA: conte o que mais o trigger acorda
+
+**Direção aprovada — trigger, e pelos motivos certos:** hoje há **pelo menos dois escritores e um
+esquece**; forçar caminho único depende de todo escritor futuro **lembrar**, que é a espécie de regra
+que já falhou seis vezes neste épico. Trigger **torna impossível em vez de improvável**, e é o uso
+legítimo — atualizar coluna na MESMA transação, sem rede. **O anti-pattern do `CLAUDE.md` é trigger
+que faz HTTP, não trigger que mantém consistência local.**
+
+**E o contra levantado pelo próprio autor é o certo e vem primeiro:** com o trigger, o preview vira
+**derivado**, e qualquer caminho que hoje dependa de escrever um preview **diferente** do texto da
+última mensagem quebra. A varredura vem **antes** da migration.
+
+**Duas consequências que a proposta não listou, e a segunda este épico já pagou:**
+
+1. **`conversations` está NA publicação `supabase_realtime`** (verificado). Com o trigger, **toda
+   mensagem passa a emitir também um evento de `conversations`** — o que é *desejável* (a lista deve
+   atualizar), mas **dobra o tráfego de realtime por mensagem**. Precisa ser escolha declarada, não
+   surpresa medida depois.
+2. **Trava otimista fantasma.** Se algo usasse `conversations.updated_at` como trava otimista,
+   **toda mensagem invalidaria a escrita em voo** — exatamente o "409 fantasma" que motivou a
+   migration 0075 a tirar o score de `crm_leads`. **Verificado: nada usa** — mas a verificação tinha
+   de existir, e é a mesma que deveria ter existido antes de qualquer coluna nova em tabela que o
+   board assina.
+
+**Regra:** ao criar trigger que escreve numa tabela, pergunte **quem mais é acordado pela escrita** —
+publicação de realtime, travas otimistas, `updated_at` observado, cascatas. **A escrita nova é
+barata; os despertares dela não.**
