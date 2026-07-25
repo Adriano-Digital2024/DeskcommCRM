@@ -5757,3 +5757,23 @@ grupo, três mudam juntos.
 de uma fila de trabalho que não existe, e uma fila inflada muda decisão de prioridade tanto quanto um
 defeito real. O relatório honesto lidera pelas **raízes**, com os vermelhos listados como sintomas
 delas; a contagem vai no rodapé, onde não induz.
+
+## §7.165 — "Árvore limpa" não significa "código inalterado" — a comparação precisa de INTERVALO, não de estado
+
+Um critério que passava de manhã falhou três vezes à tarde, e o laudo dizia: *"a árvore do produto
+está LIMPA e os dois últimos commits são de doutrina"*. **Os dois últimos, não todos desde a última
+medição.** No intervalo há exatamente um commit de produto — o que criou a tabela de estado de
+risco — e ele executa `alter publication supabase_realtime add table ...`.
+
+**`git status` limpo responde "não há alteração NÃO COMMITADA agora".** A pergunta era outra: *"o que
+mudou desde a medição que estou contradizendo?"* — e essa só se responde com `git log BASE..HEAD`
+sobre os caminhos de produto. **Estado responde sobre o instante; regressão é afirmação sobre um
+INTERVALO.**
+
+**Regra:** todo laudo de regressão cita o RANGE (`<sha da medição anterior>..<sha atual>`) e os
+commits de produto dentro dele. "Árvore limpa" entra como complemento, nunca como o argumento.
+
+**E a explicação chata desta vez tem nome:** alterar a publicação de replicação **com conexões vivas
+assinando** é candidato imediato para *"o evento saiu e a tela não aplicou"*. Antes de declarar
+regressão de produto, o discriminador é trivial — **reconectar e repetir**. Se voltar a passar, o
+vermelho foi transitório de migração, não defeito.
