@@ -2743,3 +2743,52 @@ Isso generaliza para **todos** os guardas construídos nesta entrega: o objetivo
 risco — foi **converter risco silencioso em risco barulhento**. Um `assert` que aborta, um `CHECK` que
 recusa, um carimbo que se acusa de árvore suja, um teste que fica vermelho: todos fazem a mesma coisa,
 que é **trocar a falha que ninguém vê pela falha que grita**.
+
+---
+
+## §7.65 — Limpeza que depende do processo sobreviver não é limpeza
+
+Erro do @DevVivo que virou a lei mais operacional da entrega. Ele rodou a sonda com `| head`, o pipe
+fechou, o **SIGPIPE matou o processo antes do `finally`**, e a proposta que a sonda tinha removido para
+liberar o slot **ficou apagada**. A execução seguinte **não percebeu**: o banco já parecia normal — só
+que sem a proposta que existia.
+
+> **Achei porque fui conferir o estado, não porque algo reclamou.**
+
+**A lição não é sobre o `head`, é sobre a FORMA da reposição:**
+
+> `finally` é uma **promessa que só vale se o processo cooperar em morrer**. E **quem morre não repõe,
+> por definição.**
+
+**O conserto:** a reposição virou **idempotente e roda na ENTRADA**. A sonda anota um bilhete **antes**
+de tirar; a próxima execução repõe pelo que morreu.
+
+| quando anotar | consequência |
+|---|---|
+| **depois** de mutar | anota o que **talvez não tenha acontecido** |
+| **antes** de mutar | no pior caso **repõe o que já estava lá** — o erro **barato** |
+
+**E ele provou matando a sonda no meio**, não afirmando: rodou com `head` de novo, confirmou estado
+nulo e bilhete gravado, e a execução seguinte imprimiu *"repus a proposta que uma execução anterior
+deixou pendente"* — e o texto voltou.
+
+**Regra:** toda sonda que muta estado precisa de reposição que funcione **sem a cooperação do processo
+que mutou**. O padrão anterior (*"limpa o que escreve"*) estava certo na **intenção** e frágil na
+**implementação** — e a fragilidade só aparece no dia em que alguém usa um pipe.
+
+### E a fidelidade da reposição: restaurado ≠ reescrito
+
+Ele recuperou o texto **da origem** (`lead_checkpoints.next_action`, seq 100), não inventou um
+parecido:
+
+> Repor com texto **aproximado** apagaria a diferença entre **RESTAURADO** e **REESCRITO** — e ninguém
+> depois teria como saber qual dos dois aconteceu.
+
+É a mesma família da âncora inventada (§C8) e do lastro que não resolve: **um dado plausível no lugar
+certo é indistinguível do verdadeiro, e por isso é pior que um buraco**.
+
+**Nota contra mim:** rodei sondas com `| grep` e `| tail` o dia inteiro. Conferi o banco — **zero**
+resíduo. Mas não por método: `grep` e `tail` **consomem o stream até o fim**; foi o `head` que fecha
+cedo. **Escolhi o pipe seguro por acaso**, exatamente como o @Arquiteto escolheu as aspas seguras por
+acaso (§7.59-a). Duas vezes no mesmo dia a diferença entre incidente e nada foi **sorte na escolha da
+ferramenta** — que é precisamente o argumento para tirar a proteção da escolha e pôr no mecanismo.
