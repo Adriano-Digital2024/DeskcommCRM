@@ -1176,3 +1176,23 @@ um intermitente, que foi o que custou duas rodadas de diagnóstico neste mesmo d
 
 **Recusar-se a revisar não é o mesmo que não contribuir.** Esperar o commit para dizer tudo é
 guardar para depois o que só tem valor antes.
+
+## §7.21 — Comentário que diz o PORQUÊ é artefato, não documentação
+
+Fecho da wave, observação do `@DevVivo` sobre si mesmo:
+
+> *"Eu só testei o caso lento porque tinha acabado de escrever o comentário dizendo que a cascata
+> estica em VPS. **Foi o texto que me lembrou, não disciplina.**"*
+
+O comentário não descreveu um comportamento — **causou** um. É a mesma família do `carimbar()` e do
+check de evidência citada: peça que muda o que a próxima pessoa faz, em vez de registrar o que a
+anterior fez.
+
+> **Comentário que repete o código é documentação. Comentário que declara o PORQUÊ — a alternativa
+> descartada, o custo assimétrico, o caso que estica — é artefato.** O primeiro envelhece e mente;
+> o segundo trabalha.
+
+Foi por isso que esta wave insistiu em três coisas que parecem excesso e não são: registrar a
+**tentativa fracassada** (o `inset` que não sobreviveu ao contexto de pintura), registrar o que
+**não se deve consertar** (o `delete` de marca vencida, o avanço do `aberta`), e registrar **as três
+linhas do tempo** em vez de só a que venceu.
