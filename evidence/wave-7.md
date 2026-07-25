@@ -172,10 +172,35 @@ funcionou" de "o canal funcionou"; só o lado vivo não mostraria nada. Juntos:
 **cura nos dois casos, denuncia só quando há o que denunciar** — um detector que
 gritasse sempre seria desligado na primeira semana.
 
-Matar a entrega exigiu `addInitScript` substituindo o construtor de `WebSocket`.
-A primeira versão usou `page.route`, que intercepta HTTP e **não** WebSocket: o
-canal entregou normalmente, e o "curou: sim" era o realtime funcionando. Aparato
-que não produz a condição mede outra coisa e devolve um verde que parece prova.
+### E no dossiê também — o par completo
+
+| | canal trouxe | apareceu na tela | divergências |
+|---|---|---|---|
+| board · entrega **morta** | não | sim | 0 → **1** |
+| board · entrega **viva** | sim | sim | 0 → 0 |
+| dossiê · entrega **morta** | não | sim | 0 → **1** |
+| dossiê · entrega **viva** | sim | sim | 0 → 0 |
+
+### Três aparatos descartados antes de um funcionar
+
+Matar a entrega parecia trivial e não era. Cada tentativa media outra coisa:
+
+| tentativa | o que realmente acontecia |
+|---|---|
+| `page.route` | intercepta HTTP, **não** WebSocket — o canal entregava, e o "curou" era o realtime funcionando |
+| `throw` no construtor | derrubava a página com *Runtime Error* do Next: **app quebrado**, que é outra condição |
+| stub artesanal de `WebSocket` | o canal seguia `subscribed` — o stub nem estava em uso, e eu media um canal vivo achando-o morto |
+| **`page.routeWebSocket`** | o canal fica em `connecting` e nunca entrega: **o defeito real** |
+
+O que revelou cada erro foi sempre uma linha defensiva escrita antes de precisar
+dela — "o canal trouxe? SIM ← o bloqueio falhou" — e o `data-realtime-status`,
+que respondeu se o bloqueio tinha pegado quando "não chegou nada" era
+indistinguível de "o refetch chegou primeiro".
+
+**E o instrumento errou mais uma vez depois disso**: eu contava `<li>`, e as duas
+atividades da sonda são do mesmo ator em menos de 60s — o agrupamento que **eu
+mesmo construí** junta as duas num bloco, a contagem fica igual, e a cura parece
+não ter acontecido. Passou a contar AÇÕES REPRESENTADAS, colapsadas ou não.
 
 ---
 

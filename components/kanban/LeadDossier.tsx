@@ -66,6 +66,10 @@ export function LeadDossier({
         // Observável pelo mesmo motivo do board: "a assinatura morreu" e "nada
         // aconteceu" têm a mesma aparência, que é silêncio.
         data-realtime-status={timeline.realtimeStatus.toLowerCase()}
+        // Observável como no board: "a entrega morreu" e "nada aconteceu"
+        // têm a mesma aparência, e no dossiê a segunda é ainda mais crível —
+        // negócio sem novidade é um estado normal.
+        data-refetch-divergencias={timeline.seguranca.divergencias}
       >
         <SheetHeader className="pb-3">
           <SheetTitle className="text-base leading-6">{lead.title}</SheetTitle>

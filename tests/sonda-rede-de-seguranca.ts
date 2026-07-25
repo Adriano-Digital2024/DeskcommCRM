@@ -34,25 +34,25 @@ async function main(): Promise<void> {
   const page = await ctx.newPage();
   await login(page, "manager");
 
-  // MATA A ENTREGA — e a primeira versão desta sonda FALHOU aqui: usei
-  // `page.route`, que intercepta HTTP e NÃO WebSocket. O canal entregou
-  // normalmente e o teste mediu o canal, não a rede: "curou" era o realtime
-  // funcionando. Aparato que não produz a condição mede outra coisa e devolve
-  // um verde que parece prova.
-  //
-  // `addInitScript` roda ANTES do app: o construtor de WebSocket passa a
-  // rejeitar as URLs de realtime, e nada mais na página muda.
   const MATAR = process.env.ENTREGA !== "viva";
-  if (MATAR) await page.addInitScript(() => {
-    const Original = window.WebSocket;
-    window.WebSocket = function (url: string | URL, protocols?: string | string[]) {
-      if (String(url).includes("/realtime/")) {
-        throw new Error("[sonda] WebSocket de realtime bloqueado de propósito");
-      }
-      return new Original(url, protocols);
-    } as unknown as typeof WebSocket;
-    window.WebSocket.prototype = Original.prototype;
-  });
+  console.info(MATAR ? "modo: ENTREGA MORTA" : "modo: ENTREGA VIVA (controle)");
+  // MATA A ENTREGA com a ferramenta que existe para isso: `routeWebSocket`
+  // intercepta o WS de verdade. As duas tentativas anteriores foram descartadas
+  // e o motivo importa:
+  //   `page.route`        → intercepta HTTP e NÃO WebSocket. O canal entregou
+  //                         normalmente e o "curou" era o realtime funcionando.
+  //   `throw` no construtor → derrubava a página com Runtime Error do Next, o
+  //                         que é OUTRA condição: app quebrado, não canal mudo.
+  //   stub artesanal      → o socket seguia `subscribed`, então nem estava
+  //                         sendo usado — eu media um canal vivo achando que
+  //                         estava morto.
+  // O defeito real é um canal que CONECTA e não entrega; é isso que se simula.
+  if (MATAR) {
+    await page.routeWebSocket(/realtime/, (ws) => {
+      // Não conecta ao servidor: o handshake do cliente completa e nada chega.
+      void ws;
+    });
+  }
   console.info(MATAR ? "modo: ENTREGA MORTA" : "modo: ENTREGA VIVA (controle)");
 
   await page.goto(`${BASE}/app/pipelines/${PIPE}`, { waitUntil: "networkidle" });

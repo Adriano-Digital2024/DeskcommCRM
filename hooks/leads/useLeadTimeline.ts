@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { apiClient } from "@/lib/api/client";
 import { useRealtimeChannel } from "@/hooks/realtime/useRealtimeChannel";
+import { useRefetchDeSeguranca, type RefetchDeSeguranca } from "@/hooks/realtime/useRefetchDeSeguranca";
 import type { TimelineItemView } from "@/lib/types/contacts";
 
 /**
@@ -38,6 +39,8 @@ export interface TimelineAoVivo {
    */
   chegouAoVivo: Set<string>;
   realtimeStatus: string;
+  /** A rede que cura a perda e denuncia a falha — ver o hook. */
+  seguranca: RefetchDeSeguranca;
 }
 
 async function fetchTimeline(leadId: string): Promise<TimelineItemView[]> {
@@ -98,7 +101,7 @@ export function useLeadTimeline(
   // 100% do que existe hoje, e a atividade órfã de lead (se um dia nascer)
   // chega pelo refetch da invalidação, não ao vivo. Limitação conhecida e
   // escrita, não descoberta depois.
-  const { status } = useRealtimeChannel({
+  const { status, ultimaEntrega } = useRealtimeChannel({
     name: leadId ? `timeline-${leadId}` : "timeline-disabled",
     postgresChanges: leadId
       ? {
@@ -113,11 +116,28 @@ export function useLeadTimeline(
   });
   void contactId; // a rota usa; o canal não consegue (filtro simples).
 
+  // A REDE, aqui pelo mesmo motivo do board e com um agravante: o dossiê está
+  // INTEIRAMENTE quebrado quando a entrega morre — a timeline nunca recupera,
+  // nem por tempo nem ao voltar para a aba. E o dossiê é a superfície que
+  // PROMETE contar a vida do negócio: uma timeline congelada não parece
+  // congelada, parece um negócio sem novidade.
+  //
+  // A assinatura é a contagem mais o id do item mais recente: sensível a
+  // exatamente o que o canal deveria ter trazido (atividade nova), e insensível
+  // a reordenação — que não é perda.
+  const seguranca = useRefetchDeSeguranca<TimelineItemView[]>({
+    queryKey,
+    assinatura: (d) => `${d?.length ?? 0}:${d?.[0]?.id ?? ""}`,
+    ultimaEntrega,
+    enabled: !!leadId,
+  });
+
   return {
     itens: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
     chegouAoVivo,
     realtimeStatus: status,
+    seguranca,
   };
 }
