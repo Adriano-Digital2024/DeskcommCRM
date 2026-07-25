@@ -5658,3 +5658,62 @@ custa nada.
 É a §7.131 pelo lado prático: o critério nasce antes da peça e por isso só pode citar a forma
 imaginada — **o antídoto não é escrever depois, é decidir SUJEITO, OBSERVÁVEL e ORDEM DAS PERNAS
 enquanto ainda não há frase.**
+
+## §7.161 — Concordância por AUSÊNCIA: asserção relacional também tem caso vazio
+
+Um critério de consistência ficou VERDE. Lido o motivo: ao vivo `""` e recarregado `""` — **as duas
+leituras concordavam em não mostrar nada**, enquanto o estado real aparecia 18s depois. O critério
+nasceu para pegar divergência entre dois caminhos e **foi satisfeito por ambos estarem cegos**.
+
+**É a variante mais escorregadia da doença, e o motivo é o disfarce:** a asserção era de
+**IGUALDADE**, não de ausência. Quem blindou as asserções negativas não aplica a blindagem aqui,
+porque **igualdade entre dois nadas parece uma afirmação** — "eles concordam!" soa como resultado
+positivo.
+
+Forma geral: **toda asserção RELACIONAL tem um caso vazio em que é trivialmente verdadeira** —
+igualdade, diferença, ordem, correspondência, "todos os X têm Y" sobre conjunto vazio. E nenhuma
+delas *parece* uma asserção de ausência, que é o que faz a defesa não ser acionada.
+
+**Regra:** asserção relacional exige que o objeto da relação seja **OBSERVÁVEL em pelo menos um dos
+lados**. Sem isso, não há veredito.
+
+### §7.161-a — A suíte precisa do veredito INCONCLUSIVO
+
+O conserto foi introduzir um terceiro desfecho: se o estado não é observável em nenhuma leitura, o
+veredito é **INCONCLUSIVO** — nem passa nem reprova.
+
+**É a §7.153 aplicada ao próprio veredito.** Lá, um instrumento com dois desfechos media uma
+realidade com três; aqui, o VEREDITO tem dois (verde/vermelho) e a realidade tem três (funcionou,
+quebrou, **não deu para saber**). E como praticamente nenhuma ferramenta de teste oferece o terceiro,
+o "não deu para saber" **é sistematicamente absorvido pelo verde** — por omissão do ferramental, não
+por decisão de ninguém.
+
+Onde não der para ter o terceiro desfecho nativo, **falhe** — inconclusivo é mais próximo de
+vermelho que de verde, porque o custo de investigar um falso alarme é menor que o de arquivar uma
+pergunta que ninguém mais vai abrir.
+
+### §7.157-a — A ferramenta cara veste a fantasia do rigor
+
+Acréscimo à lei da restrição, e é mais duro do que soa: poder fazer a coisa cara **não só impede de
+procurar a barata — faz a cara parecer rigor.** Reverter produção para provar um teste tem cara de
+zelo; ninguém questiona quem "foi até o fim". E o custo real aparece depois, no dia em que alguém
+esquece produção revertida.
+
+**Quando o método mais caro também é o mais virtuoso na aparência, a escolha deixa de ser técnica** —
+e é exatamente aí que a restrição de papel decide melhor que o julgamento.
+
+### §7.158-a — Por que é sistêmico: representar "não sei" custa uma linha a mais em TODA camada
+
+O fecho do dia, e ele é econômico, não moral: **a linguagem, o ORM, o React e o Postgres oferecem
+"assuma que está tudo bem" de graça, e cobram uma linha a mais por "não sei"** — `?? false`, o
+default de coluna, o estado inicial de query, o `LEFT JOIN` que devolve null.
+
+Não é problema de conhecimento — é de **preço**. Todo mundo aqui sabia da regra; oito superfícies
+falharam mesmo assim, porque em cada uma o caminho certo custava uma linha e o errado custava zero.
+**Logo o conserto durável não é atenção: é tornar o "não sei" o default NA NOSSA camada** — tipos com
+três estados, helpers compartilhados, veredito inconclusivo — para que a linha a mais seja paga uma
+vez, e não em cada ponto de uso.
+
+**E o epílogo:** o épico existe porque o produto fazia isso com o CLIENTE do usuário. Passamos o dia
+descobrindo que fazíamos com os nossos próprios dados, em três andares independentes. Mesmo hábito,
+mesma origem, mesma cura.
