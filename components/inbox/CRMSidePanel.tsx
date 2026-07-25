@@ -272,6 +272,8 @@ export function CRMSidePanel({ conversation }: Props) {
                       actorShape(a.actor_kind) === "ring" &&
                         "rounded-full border border-accent bg-surface",
                       actorShape(a.actor_kind) === "square" && "rounded-[2px] bg-text-muted/50",
+                      actorShape(a.actor_kind) === "dashed" &&
+                        "rounded-full border border-dashed border-border-strong",
                     )}
                     aria-hidden
                   />

@@ -123,6 +123,9 @@ export function TimelineView({ contactId, types }: Props) {
                         forma === "filled" && "rounded-full bg-accent-soft",
                         forma === "ring" && "rounded-full border border-accent bg-surface ring-1 ring-inset ring-accent/40",
                         forma === "square" && "rounded-md border border-border bg-surface-muted",
+                        // Autor não registrado: mesmo tracejado do "Sem
+                        // responsável" no card — um desenho por fato, nas duas telas.
+                        forma === "dashed" && "rounded-full border border-dashed border-border-strong",
                       )}
                       aria-hidden
                     >

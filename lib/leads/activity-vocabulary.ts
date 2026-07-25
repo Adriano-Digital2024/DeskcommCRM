@@ -32,29 +32,51 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   handoff_triggered: "Passou para humano",
 };
 
+/** Quando o tipo é legado/desconhecido, a linha ainda é honesta — sem jargão. */
+export const ACTIVITY_LABEL_FALLBACK = "Atividade registrada";
+
 /**
  * Rótulo para exibir. Aceita `string` porque o banco tem histórico anterior a
  * este vocabulário — o que não se pode é ESCREVER fora dele.
+ *
+ * O fallback NÃO devolve o identificador cru: era exatamente isso que punha
+ * "stage_changed" no rosto do usuário, e reintroduzir aqui seria trazer de
+ * volta, pelo lado da leitura, o defeito que este arquivo existe para matar.
+ * Nenhum teste pegaria: "stage_changed" não é uuid, então a asserção que caça
+ * uuid na tela continuaria verde.
  */
 export function activityLabel(type: string): string {
-  return ACTIVITY_LABELS[type as ActivityType] ?? type;
+  return ACTIVITY_LABELS[type as ActivityType] ?? ACTIVITY_LABEL_FALLBACK;
 }
 
 /** Como o marcador do ator é desenhado (BRIEFING §5: forma, nunca cor). */
-export type ActivityActorShape = "filled" | "ring" | "square";
+export type ActivityActorShape = "filled" | "ring" | "square" | "dashed";
 
 /**
- * Humano = disco PREENCHIDO; agente = círculo VAZADO COM ANEL; sistema/regra =
- * quadrado. É a mesma geometria do OwnerBadge no card — se divergirem, a mesma
- * pessoa lê dois desenhos para o mesmo fato em duas telas.
+ * Humano = disco PREENCHIDO; agente = círculo VAZADO COM ANEL (a mesma
+ * geometria do OwnerBadge no card); sistema/regra = QUADRADO (BRIEFING §5 §2 da
+ * timeline); autor NÃO REGISTRADO = TRACEJADO, reusando o desenho de "sem dono"
+ * que o OwnerBadge já tem.
+ *
+ * A separação entre "sistema" e "não sei quem foi" é o ponto: sistema é um ator
+ * conhecido — o produto agiu — e merece o quadrado do briefing; `actor_kind`
+ * null (a coluna é nullable) é ausência de informação, e desenhar quadrado nos
+ * dois casos fazia a tela afirmar autoria que ninguém registrou.
  */
 export function actorShape(actorKind: string | null): ActivityActorShape {
   if (actorKind === "user" || actorKind === "contact") return "filled";
   if (actorKind === "ai") return "ring";
-  return "square";
+  if (actorKind === "system" || actorKind === "rule") return "square";
+  return "dashed";
 }
 
-/** Quem agiu, em uma palavra — vai ao lado do rótulo na linha. */
+/**
+ * Quem agiu, em uma palavra — vai ao lado do rótulo na linha.
+ *
+ * SEMPRE devolve texto, porque `actorShape` sempre desenha: marcador sem
+ * legenda é ruído que o leitor não consegue decifrar. As duas funções têm de
+ * concordar, inclusive no caso desconhecido.
+ */
 export function actorLabel(actorKind: string | null): string {
   switch (actorKind) {
     case "user":
@@ -68,6 +90,6 @@ export function actorLabel(actorKind: string | null): string {
     case "system":
       return "Sistema";
     default:
-      return "";
+      return "Autor não registrado";
   }
 }
