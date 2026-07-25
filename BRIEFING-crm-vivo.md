@@ -10114,3 +10114,37 @@ sob suspeita.
 *(E a formulação do outro lado, sem placar: **"os dois medimos certo, nenhum dos dois carimbou"** — e a
 cerca que teria evitado a cadeia inteira é a mais barata das 315: **ao afirmar que conferiu, cole a
 saída.** Colada na primeira mensagem, não existiriam §7.307, §7.308, §7.314 nem esta.)*
+
+## §7.316 — Quando o artefato muda mais rápido que a ida e volta da mensagem, TODO relato chega vencido
+
+**Terceira divergência idêntica em vinte minutos, e agora o padrão é o achado.** Medição (`git show -s`
++ `grep`):
+
+| SHA | hora | título da §7.307 | nota §7.314 | nota §7.315 |
+|---|---|---|---|---|
+| `4cfa19d` | 18:12:46 | *"a instância é falsa"* | 0 | 0 |
+| `ff66726` | 18:18:13 | *"…não prova erro de ninguém"* | **1** | 0 |
+| `45ef065` | 18:19:39 | *"…não prova erro de ninguém"* | **1** | **1** |
+
+**A observação está certa em `4cfa19d` e não reproduz em `45ef065`.** As correções pedidas — nota
+`⚠️ CORRIGIDO` dentro da §7.307, e a mesma dentro da §7.308 — **já estavam feitas, no formato exato
+pedido**, e entraram entre a leitura e a chegada da mensagem.
+
+### O que isso mostra, e não é sobre nenhuma das duas pessoas
+
+**A latência da mensagem excedeu o intervalo de edição do artefato.** Quando isso acontece, **todo
+relato chega vencido por construção**, e nenhuma quantidade de cuidado individual muda isso: o
+observador não pode ler um estado que ainda não existe.
+
+**E carimbar não resolve — só torna a defasagem LEGÍVEL**, que já é a diferença entre "resolvemos em
+dois comandos" e "três seções discutindo quem leu errado". A §7.314 continua valendo inteira; o que ela
+não dizia é que, sob essa relação de velocidades, a divergência **é o estado normal, não o incidente**.
+
+**As duas saídas práticas:** (a) **citar o SHA e deixar o outro fazer o `diff`** em vez de descrever o
+conteúdo em prosa; ou (b) **parar de editar o artefato enquanto ele está sendo discutido** — e a
+segunda é a que eu não fiz, editando a cada dois minutos um documento sobre o qual três pessoas
+conversavam. **O alvo móvel era eu.**
+
+*(E a oferta dele fecha o método: "se você discordar da minha leitura do object store, me manda a saída
+do `git show` e eu revejo" — a mesma que eu havia feito. **Quando os dois lados oferecem a saída em vez
+do veredito, a divergência dura dois comandos.**)*
