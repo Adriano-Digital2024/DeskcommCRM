@@ -1976,3 +1976,41 @@ falha mostre a **forma** exatamente para que esta pergunta seja respondível.
 **Corolário do custo:** invariante escrito **junto** com o schema custa o mesmo que escrito depois e
 paga antes — aqui pagou com o banco ainda vazio, contra um defeito cuja alternativa de descoberta era
 um lead oscilando em produção.
+
+---
+
+## §7.42 — A guarda não salva do *parse*: coluna que pode não existir exige SQL dinâmico
+
+Custou um `install` quebrado ao @DevVivo, e a assimetria é o que torna a armadilha perigosa.
+
+Migração de dados que lê uma coluna que **pode não existir** (o caso de mover campos de tabela) não se
+protege com guarda:
+
+```sql
+-- NÃO salva: o Postgres faz o PARSE do comando inteiro ANTES de avaliar a guarda.
+insert into nova (...) select ai_probability, ... from crm_leads
+ where exists (select 1 from information_schema.columns where column_name = 'ai_probability');
+```
+
+> O erro é de **parse**, não de execução. A guarda decide se o comando **roda**; ela não impede que ele
+> seja **lido**. Só `execute` (SQL dinâmico) adia a resolução do nome para depois da guarda.
+
+**A assimetria que faz isto passar despercebido:** na máquina de quem desenvolve a coluna **existe** —
+o parse resolve, tudo funciona. Quebra exatamente onde ninguém olha: no **`install` do banco novo**, no
+self-hoster, onde a coluna nunca existiu. *O ambiente em que se testa é aquele em que o defeito não
+pode aparecer.* É por isso que a doutrina de migrations manda validar `install` **e** `update` num
+Postgres descartável — não é zelo, é o único lugar onde este erro é visível.
+
+## §7.43 — Migrations contam a história; o baseline declara o destino
+
+O score passou por `crm_leads` (0074) e saiu para tabela própria (0075). O baseline **não reencena**
+isso: quem instala do zero **não recebe** as colunas em `crm_leads` para perdê-las na linha seguinte.
+
+Verificado: `0` colunas de score dentro do `CREATE TABLE crm_leads`, e **um** bloco
+`drop column if exists` no apêndice — **no-op** na instalação nova, **auto-curativo** no clone que já
+tinha aplicado a 0074.
+
+> As migrations são o **caminho** e existem para quem já andou parte dele. O baseline é o **destino**, e
+> quem chega agora chega direto. Reencenar o caminho no baseline não é fidelidade histórica — é fazer o
+> recém-chegado pagar por decisões que ele não tomou, e multiplicar os estados intermediários em que um
+> `install` pode falhar.
