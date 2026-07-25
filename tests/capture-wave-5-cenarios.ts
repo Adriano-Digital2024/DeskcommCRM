@@ -114,6 +114,50 @@ const CASOS: Caso[] = [
   },
 ];
 
+
+/**
+ * A tabela do score é `crm_lead_scores`, não `crm_leads` (migration 0075).
+ *
+ * E a escrita é upsert porque a linha pode não existir: o score é 1:1 com o
+ * lead, mas nasce quando o worker calcula, não quando o lead nasce.
+ */
+async function escreverScore(
+  client: pg.PoolClient,
+  leadId: string,
+  campos: Record<string, unknown>,
+): Promise<void> {
+  const base: Record<string, unknown> = { lead_id: leadId, organization_id: ORG, ...campos };
+  const chaves = Object.keys(base);
+  const valores = chaves.map((k) => {
+    const v = base[k];
+    return v !== null && typeof v === "object" ? JSON.stringify(v) : v;
+  });
+  const params = chaves.map((_, i) => `$${i + 1}`).join(", ");
+  const sets = chaves
+    .filter((k) => k !== "lead_id")
+    .map((k) => `${k} = excluded.${k}`)
+    .join(", ");
+  await client.query(
+    `insert into crm_lead_scores (${chaves.join(", ")}) values (${params})
+       on conflict (lead_id) do update set ${sets}`,
+    valores,
+  );
+}
+
+/**
+ * A RECUSA TEM DE VIR DA CONSTRAINT, e esta função existe por causa de um verde
+ * falso meu.
+ *
+ * Quando a 0075 tirou as colunas de `crm_leads`, seis das oito linhas da
+ * tabela-verdade continuaram VERDES: eu perguntava "o banco recusou?", e o banco
+ * recusava — com `42703`, coluna inexistente. Um teste que afirma "score sem
+ * razão é recusado" ficou verde num banco onde a coluna do score tinha sumido.
+ *
+ * `23514` é violação de CHECK. Qualquer outro código significa que a montagem do
+ * caso está errada, e isso é falha do instrumento, não do produto.
+ */
+const VIOLACAO_DE_CHECK = "23514";
+
 async function tabelaVerdade(): Promise<void> {
   const { rows } = await pool.query<{ id: string }>(
     `select id from crm_leads where organization_id = $1 and status = 'open' order by id limit 1`,
@@ -129,29 +173,26 @@ async function tabelaVerdade(): Promise<void> {
     await client.query("begin");
     for (const caso of CASOS) {
       await client.query("savepoint c");
-      const chaves = Object.keys(caso.campos);
-      const sets = chaves.map((k, i) => `${k} = $${i + 2}`).join(", ");
-      const valores = chaves.map((k) => {
-        const v = caso.campos[k];
-        return v !== null && typeof v === "object" ? JSON.stringify(v) : v;
-      });
       let erro: { code?: string; message?: string } | null = null;
       try {
-        await client.query(`update crm_leads set ${sets} where id = $1`, [leadId, ...valores]);
+        await escreverScore(client, leadId, caso.campos);
       } catch (e) {
         erro = e as { code?: string; message?: string };
         await client.query("rollback to savepoint c");
       }
       const recusou = erro !== null;
+      const porCheck = erro?.code === VIOLACAO_DE_CHECK;
       const constraint = (erro?.message ?? "").match(/"([a-z_]+)"/)?.[1] ?? "-";
       record(
         caso.n,
         caso.nome,
-        recusou === caso.recusar,
+        caso.recusar ? porCheck : !recusou,
         caso.recusar
-          ? recusou
+          ? porCheck
             ? `recusado por ${constraint} (${erro?.code})`
-            : "ACEITO — a lei não está no banco, está só no comentário da migration"
+            : recusou
+              ? `recusado por ${erro?.code} (${constraint}) — NÃO é violação de CHECK: o caso está mal montado`
+              : "ACEITO — a lei não está no banco, está só no comentário da migration"
           : recusou
             ? `RECUSADO indevidamente: ${erro?.code} ${constraint}`
             : "aceito, como tem de ser",
@@ -187,7 +228,7 @@ async function coerenciaFaixaScore(): Promise<void> {
   const existe = await pool.query<{ nome: string; def: string }>(
     `select conname as nome, pg_get_constraintdef(oid) as def
        from pg_constraint
-      where conrelid = 'public.crm_leads'::regclass and contype = 'c'
+      where conrelid = 'public.crm_lead_scores'::regclass and contype = 'c'
         and pg_get_constraintdef(oid) like '%ai_probability_band%'
         and pg_get_constraintdef(oid) like '%ai_probability %'`,
   );
@@ -196,7 +237,7 @@ async function coerenciaFaixaScore(): Promise<void> {
       "15.i",
       "COERÊNCIA faixa × score: o banco recusa faixa que o score não sustenta",
       false,
-      "nenhuma constraint em crm_leads confronta ai_probability_band com ai_probability — a trava do §7.36 ainda não entrou",
+      "nenhuma constraint em crm_lead_scores confronta ai_probability_band com ai_probability — a trava do §7.36 ainda não entrou",
       "BLOQUEADO",
     );
     return;
@@ -216,11 +257,12 @@ async function coerenciaFaixaScore(): Promise<void> {
       for (let score = 0; score <= 100; score++) {
         await client.query("savepoint c");
         try {
-          await client.query(
-            `update crm_leads set ai_probability = $2, ai_probability_reason = 'varredura de coerência',
-                    ai_probability_evidence = $3::jsonb, ai_probability_band = $4 where id = $1`,
-            [leadId, score, JSON.stringify(LASTRO), banda],
-          );
+          await escreverScore(client, leadId, {
+            ai_probability: score,
+            ai_probability_reason: "varredura de coerência",
+            ai_probability_evidence: LASTRO,
+            ai_probability_band: banda,
+          });
           aceitos[banda]!.push(score);
         } catch {
           await client.query("rollback to savepoint c");
@@ -288,14 +330,15 @@ async function caminhadaContraATrava(): Promise<void> {
         const faixa = resolveBand(score, anterior);
         await client.query("savepoint c");
         try {
-          await client.query(
-            `update crm_leads set ai_probability = $2, ai_probability_reason = 'saída da função de produção',
-                    ai_probability_evidence = $3::jsonb, ai_probability_band = $4 where id = $1`,
-            [leadId, score, JSON.stringify(LASTRO), faixa],
-          );
+          await escreverScore(client, leadId, {
+            ai_probability: score,
+            ai_probability_reason: "saída da função de produção",
+            ai_probability_evidence: LASTRO,
+            ai_probability_band: faixa,
+          });
         } catch (e) {
           await client.query("rollback to savepoint c");
-          if ((e as { code?: string }).code === "23514") {
+          if ((e as { code?: string }).code === VIOLACAO_DE_CHECK) {
             rejeitados.push({ anterior, score, obtido: faixa, esperado: faixaCrua(score) });
           } else {
             throw e;
@@ -556,6 +599,7 @@ function autoTesteDaCerca(): void {
 async function main(): Promise<void> {
   carimbar([
     "supabase/migrations/20260725040000_0074_lead_score_com_evidencia.sql",
+    "supabase/migrations/20260725050000_0075_score_sai_do_lead_para_tabela_propria.sql",
     "lib/kanban/score-band.ts",
     "lib/kanban/card-state.ts",
     "components/kanban/KanbanCard.tsx",

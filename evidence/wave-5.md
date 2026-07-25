@@ -4,15 +4,27 @@
 
 | | |
 |---|---|
-| Carimbo | `HEAD=c8156e3`, quatro dependências declaradas, **todas limpas** |
+| Carimbo | `HEAD=1ff6990`, cinco dependências declaradas, **todas limpas** |
 | Aparato | `tests/capture-wave-5-cenarios.ts` (modo normal e `SELFCHECK=1`) |
 
-> **Escopo, e ele é estreito de propósito.** Este placar vale para o estado em que
-> as colunas do score ainda moravam em `crm_leads`. O commit que as move para
-> `crm_lead_scores` veio **depois** desta leitura e **não está coberto** — muda
-> onde as colunas vivem, onde os CHECKs vivem e o caminho de leitura do board.
-> Alvo que se move depois da medição não invalida a medição; invalida o alcance
-> dela.
+> **Recarimbada depois da mudança de schema.** O primeiro placar (15/0/0 em
+> `c8156e3`) valia para o estado em que as colunas do score moravam em
+> `crm_leads`; a migration 0075 as moveu para `crm_lead_scores`. Alvo que se move
+> depois da medição não invalida a medição — invalida o **alcance** dela. Este
+> placar é o de depois da mudança, e a migration 0075 entrou nas dependências
+> declaradas do carimbo.
+
+## O que a mudança de schema revelou no MEU instrumento
+
+Ao rodar contra a tabela nova, **seis das oito linhas da tabela-verdade
+continuaram verdes** — e estavam erradas. A coluna tinha sumido de `crm_leads`,
+então toda escrita falhava com `42703` (coluna inexistente), e eu só perguntava
+*"o banco recusou?"*. Um teste que afirma "score sem razão é recusado" ficou
+verde num banco onde a coluna do score não existia mais.
+
+A asserção agora exige o código **`23514`** — violação de CHECK. Qualquer outro
+código significa que o caso está mal montado, e isso é falha do instrumento, não
+do produto. **"Recusou" não é a pergunta; "recusou pelo motivo certo" é.**
 
 ## Esta wave não tem imagem, e isso é um dado
 
