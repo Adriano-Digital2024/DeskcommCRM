@@ -9588,9 +9588,15 @@ classe** — e isso é um número, não um alívio: a ansiedade virou varredura,
 
 ### O número final ganhou uma subdivisão que muda o que ela significa
 
-**42 sondas abrem navegador · 28 sem bloco que rode em caso de erro · e destas, 15 SÓ sujam o banco
-sem pendurar.** As 13 que penduram **se anunciam**: estouram um timeout, alguém investiga, alguém
-conserta. **As 15 nunca aparecem em lugar nenhum** — terminam verdes, deixando estado no banco
+> **⚠️ CORRIGIDO (§7.305).** A versão original desta seção dizia *"das 28, 15 só sujam"* e *"as 13 que
+> penduram"* — **subtração de duas populações que não se contêm**. A partição medida é esta:
+
+**43 sondas sem bloco que rode em caso de erro e que fazem alguma coisa** →
+**21 SÓ penduram** · **7 fazem as duas** · **15 SÓ sujam**.
+Logo: **barulhentas = 28** (21+7) · **sujas = 22** (15+7) · **interseção = 7**.
+
+**As 28 se anunciam de algum jeito** (7 delas também sujam, mas o defeito é descoberto porque
+penduram); **as 15 não se anunciam de jeito nenhum** — terminam **verdes**, deixando estado no banco
 compartilhado para o próximo teste encontrar. **O modo de falha barulhento é o que se conserta; o
 silencioso é o que fica** — e é o silencioso que envenena o vizinho.
 
@@ -9754,3 +9760,33 @@ no primeiro turno — coisa que nenhum observador viu e que eu não podia medir.
 mesmo gesto seria o defeito da §7.303**: cautela virada reflexo, que deixa de distinguir "não posso
 saber" de "não conferi". **O que foi observado se aceita; o que foi inferido sobre estado interno,
 não.**
+
+## §7.305 — O último erro do dia foi uma subtração sem conferir a cardinalidade das populações, dentro da seção que registra esse defeito
+
+**O erro é meu e é aritmético.** Escrevi *"das 28, 15 só sujam sem pendurar"* e *"as 13 que penduram
+se anunciam"*. **Os 15 não são subconjunto dos 28** — são subconjunto dos 22 que sujam. E **13 não é
+número de ninguém**: saiu de `28 − 15`, que subtrai duas populações que não se contêm. A §7.301 já
+está corrigida acima com a partição medida.
+
+### A ironia é estrutural, não anedótica
+
+**A §7.301 diz: *"toda operação que não verifica a própria cardinalidade reporta sucesso nos dois
+casos"*. O erro foi cometido dentro da seção que a registra.** E pelo mesmo mecanismo:
+
+> **Subtrair dois conjuntos que não se contêm devolve um número perfeitamente legível.** `13` não
+> acusa nada — do mesmo jeito que o `delete` que apagou zero linhas emite "ok".
+
+A aritmética é a ferramenta **sem opinião sobre quantos** por excelência: ela opera sobre os números e
+não sabe nada sobre as populações que os produziram. **A cerca é a mesma da §7.301, aplicada a
+contas:** antes de subtrair duas contagens, dizer em voz alta se uma está contida na outra — e se não
+estiver, o resultado não é um número, é um erro de tipo que a linguagem não tem como recusar.
+
+### E ele só pegou porque o número voltou a quem mediu
+
+> ***"Eu só peguei porque você citou o número de volta para mim. Se você tivesse escrito só no doc,
+> ele ia embora com a SUA ASSINATURA E A MINHA MEDIÇÃO."***
+
+**Mais uma da classe que só se pega de fora** (§7.300/§7.304) — e o instrumento aqui foi banal:
+**devolver ao autor da medição o que se fez com a medição dele.** Um número derivado citado de volta é
+a versão barata da revisão por quem tem o contexto; sem esse eco, o erro sairia assinado por dois, com
+a autoridade de quem mediu emprestada a uma conta que quem mediu nunca viu.
