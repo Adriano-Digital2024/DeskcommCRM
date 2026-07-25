@@ -2939,3 +2939,54 @@ O rastro perdido vai para `event_log` + alerta, **pelo mesmo caminho**.
 > `console.error` em rota de servidor é a **definição de log morto**: existe, ninguém lê, e o item 4 do
 > checklist do sistema vivo reprova. **Falhar baixo é escolher não bloquear — não é escolher não
 > contar.**
+
+---
+
+## §7.70 — Intenção não é efeito: pré-condição lida na aba que agiu mede o otimismo
+
+Furo que o @QAVivo achou **na própria sonda da Wave 3**, e é o mais perigoso da entrega porque estava
+**dentro da pré-condição**:
+
+> O `12.a` declarava *"a ação aconteceu"* lendo a coluna do card **na aba que agiu** — que é a
+> atualização **otimista**, aplicada **antes de qualquer resposta**.
+
+**Consequência:** se a mutação **falhasse**, aquela aba continuaria mostrando o card no lugar novo, o
+`12.a` **passaria**, e todo mundo iria caçar realtime **enquanto a escrita nunca aconteceu**.
+
+> A pré-condição da cadeia tinha de ser **"persistiu"** e estava sendo **"apareceu"**. **Intenção não é
+> efeito** — e UI otimista é, por desenho, a intenção desenhada antes do efeito existir.
+
+**Regra:** toda pré-condição de cadeia confronta a **fonte**, nunca a superfície que **iniciou** a ação.
+Quem age tem interesse: a tela que disparou a mutação mostra o resultado pretendido **mesmo quando ele
+não ocorreu**.
+
+## §7.71 — Decompor antes de acusar: três instrumentos cegos lidos como defeito do produto
+
+O alarme de regressão no realtime foi **retirado**, e a forma como foi retirado vale mais que o alarme.
+Verifiquei com o **mesmo instrumento** que estabeleceu a falha: **23 verdes, 0 vermelhos** — o evento
+chega, o card pulsa, a ação local não pulsa, duas mudanças remotas produzem dois pulsos.
+
+**E ele se recusou a inventar causa:**
+
+> *"NÃO reproduzi a falha que reportei, e não tenho causa. As duas rodadas de antes foram observação
+> real naquele momento; **não vou inventar explicação ambiental para fechar a história**."*
+
+Observação não reproduzida **fica não reproduzida**. O que sobra é **instrumento**: a sonda existe e,
+na próxima vez, responde em cinco minutos **qual elo caiu** em vez de abrir uma caça.
+
+**Os três erros que ele achou na própria sonda são todos do mesmo tipo — instrumento cego lido como
+defeito do produto:**
+
+| erro | o que teria sido reportado |
+|---|---|
+| contador procurava `'event':'UPDATE'`; o quadro real diz `'type':'UPDATE'` | *"a entrega falhou"* — **sobre uma entrega viva** |
+| alvo de `limit(2)` e destino = estágio do 2º lead; caindo no mesmo estágio, o elo era **pulado em silêncio** | *"zero quadros"* — **sem nada ter sido disparado** (o alvo sorteado que ele apontou em sonda alheia de manhã) |
+| o arrasto por teclado não engatou | *"zero quadros na aba B"* — **idêntico** ao que se vê quando a entrega falha |
+
+> **Os três só apareceram porque ele decompõe antes de acusar.** Reportar no primeiro sinal teria
+> mandado o @DevVivo caçar um defeito inexistente — **três vezes**.
+
+**A cadeia que ele instrumentou** (token responde · o token **vale**, com `role`/`sub`/validade
+decodificados · o join entra **com identidade** · a entrega chega · o card **anda**) é o que converte
+*"o realtime não funciona"* — afirmação inútil — em **qual elo**. E o elo 2 existe porque `200` **não é
+token bom**: a versão anterior provava que a resposta não era cacheada e chamava isso de prova.
