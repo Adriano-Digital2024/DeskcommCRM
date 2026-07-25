@@ -3394,3 +3394,62 @@ alvo sorteado. Sonda que mede um alvo diferente a cada execução não produz ve
 do próprio QA: o SQL dele trocava `next_action` direto no banco e deixava `next_action_seq` parada —
 **estado impossível pelo caminho real**, fabricado à mão e depois cobrado do produto. Corrigido
 roteando as duas escritas por `applyLeadStateUpdate`.
+
+---
+
+## Wave 5 — o score com evidência (cenários 15, 16 e 17)
+
+### A lei mora no banco (16)
+
+`crm_lead_scores_needs_reason` recusa score sem razão **e** sem lastro. Validação de aplicação
+morre no primeiro caminho novo que esquecer de chamar; um número sem porquê é o "dado que não
+muda decisão" que a doutrina proíbe — o humano não consegue nem concordar nem **discordar** dele.
+Constraint em implicação, então ausência de score segue livre: `null` é o estado legítimo de
+"sinal insuficiente" (17), nunca zero.
+
+### A fórmula, e por que não é modelo
+
+Com fórmula, o `reason` é **derivado**: cada parcela que mexeu no número aparece na frase. Com um
+modelo, a frase seria gerada *ao lado* do número e a lei estaria cumprida só na aparência.
+
+E a derivação virou **verificável**: o teste reconstrói o score somando os `+12`/`−8` que a frase
+cita. Frase gerada passa no olho e falha ali. Foi esse teste que achou o **clamp** — o único caso
+em que a soma não bate com o número exibido (`30 − 24 − 20 = −14` vira 0), hoje explicitado com
+"limitado a 0".
+
+### O score no card (15) e o vazio honesto (17)
+
+`evidence/wave5-15-card-com-score.png` mostra o card do Carlos com o medidor e `42%` na faixa ③,
+enquanto os demais cards da mesma tela seguem sem score — o par que o cenário 17 exige na
+**mesma captura**, porque sem ele "não apareceu" é compatível com "não funciona".
+
+`evidence/wave5-15-evidencias-abertas.png` mostra o porquê aberto: `Morno · 42%`, a razão
+completa (`+36 3 compromissos do cliente, −24 3 objeções em aberto, +10 2 itens de qualificação,
+−10 1 outro fator`) e as três evidências com peso. Repare no rótulo: **"(registro que sustenta)"**,
+não "momento da conversa" — não se fabricou âncora de mensagem para cumprir a frase do cenário.
+
+> A captura foi refeita uma vez: o popover abria para cima e a imagem saía ancorada no card
+> **vizinho**. Quem olhasse concluiria coisa errada sobre qual lead tem score. Evidência ambígua
+> é evidência fraca.
+
+### O achado que muda produto, não teste
+
+**Todo lead com sinal suficiente tem proposta pendente.** Os dois vêm do harness, que escreve
+checkpoint e `next_action` no mesmo turno; como o slot é um só e `awaiting` precede `meter`, o
+medidor fica escondido **exatamente onde o score existe**. Não havia um único lead com score e sem
+proposta no board inteiro.
+
+Na prática, o score só aparece depois que alguém decide a proposta. Isso pode estar certo (uma
+decisão por vez, e a proposta é mais urgente que o número) ou ser um problema de produto — é
+decisão do Rafael. A sonda encena o gesto que o produto espera e repõe o estado.
+
+### A sonda aprendeu a repor mesmo morrendo
+
+Rodei a sonda com `| head`, o SIGPIPE matou o processo antes do `finally`, e a proposta que ela
+tinha tirado ficou apagada — a execução seguinte não percebeu, porque o banco já parecia normal.
+Recuperei o texto da **origem** (`lead_checkpoints`), não um parecido: repor com texto aproximado
+apaga a diferença entre *restaurado* e *reescrito*.
+
+A correção é de forma: **reposição no `finally` não sobrevive à morte do processo**, e quem morre
+não repõe por definição. Agora a sonda anota um bilhete **antes** de tirar e repõe na **entrada** —
+quem morreu não repõe, mas o próximo repõe por ele. Provado matando a sonda no meio.
