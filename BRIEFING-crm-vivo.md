@@ -9419,3 +9419,49 @@ registrado para reversão, board com **zero** leads de sonda.
 edição de origem desconhecida; identificado por três sinais, título restaurado, valor anterior
 registrado para reversão. **A autoria da edição permanece desconhecida**"* — ela passou pelo caminho
 do produto (`source_module=crm`), logo foi UI, e nenhum arquivo do repo gera aquele texto.
+
+## §7.298 — O objeto da ação não é o objeto em vigor: as duas falhas do detector removido têm a MESMA forma
+
+Um detector de "sonda que abre navegador sem `finally`" foi escrito **com** controle positivo (§7.292),
+o padrão foi sabotado de propósito para ver o controle morder — **e o controle não disparou**. Duas
+causas, ambas do mesmo autor, e a lição é que **elas são a mesma causa vista de dois ângulos**:
+
+1. **O scanner se varria.** `qa-helpers.ts` contém, COMO TEXTO, os próprios padrões que ele procura.
+   Varrendo a si mesmo, ele sempre casava a pré-condição — **o zero era inalcançável por construção**.
+   *"A observação sendo instância do que ela mede, dentro do detector escrito para vigiar as outras."*
+2. **Havia DUAS definições da mesma função.** Edits programáticos criaram uma duplicata; o TypeScript
+   usa a ÚLTIMA, e ele vinha corrigindo a PRIMEIRA. *"Eu estava editando um arquivo e executando
+   outro, dentro do mesmo arquivo."*
+
+**A forma comum: aquilo sobre o que se age NÃO é aquilo que está em vigor.** No caso 1, a população
+medida incluía o medidor; no caso 2, a definição editada não era a definição que rodava. Em ambos, o
+gesto foi correto e caiu fora do alvo — e **nenhum sintoma diz isso**, porque o gesto *acontece*: o
+arquivo salva, o comando roda, a saída sai.
+
+### O sintoma diagnóstico, que vale como reflexo
+
+> **Quando NENHUMA correção muda o comportamento, a hipótese não é "a correção está errada" — é
+> "não é este o código que roda".**
+
+E a sonda mais barata para isso é **apagar**: o `tsc` só acusou a duplicata **quando ele começou a
+REMOVER**, porque duplicata só vira erro quando as duas ficam visíveis ao mesmo tempo. **O
+desmonte revelou o que a construção escondia** — adicionar nunca teria mostrado.
+
+### E o desfecho: a cerca foi REMOVIDA, e removê-la foi a decisão certa
+
+> ***"Cerca que eu não consigo provar mordendo é pior que cerca nenhuma — ela ocupa o lugar da
+> vigilância sem exercê-la, e o próximo a ler o carimbo vai supor que aquilo está coberto."***
+
+Isto fecha com a §7.297 pelo outro lado: lá, **o desfecho conservador** blindava a razão inventada;
+aqui, **o desfecho VERDE** teria blindado uma cerca quebrada. *"Se eu não tivesse sabotado o padrão
+de propósito, esse detector teria entrado no fecho do épico imprimindo '0 sondas penduram' — verde,
+silencioso e falso."* **Os dois desfechos que ninguém audita são o seguro e o verde.**
+
+**O que fica sem cerca:** o conserto real (critério vivo do 27 com `try/finally`) e o número medido à
+mão — **42 sondas abrem navegador, 28 sem bloco que rode em caso de erro**. O número vive no RELATO,
+não num carimbo não provado.
+
+**E a §7.287 aplicada a si mesma:** *"as leis que sobrevivem são as que não dependem do estado de quem
+as segue. Esta dependia — de eu conseguir provar que funcionava — e eu não consegui. Então ela não
+virou lei; virou uma linha de relatório."* **Lei que não se prova mordendo é anotação, e chamar
+anotação de lei é o mesmo erro do carimbo verde, um andar acima.**
