@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { sql } from "./gov-helpers";
@@ -29,22 +31,37 @@ import { sql } from "./gov-helpers";
  * certo.
  */
 
-/** Os pares. Coluna nova com CHECK de conjunto → uma linha aqui. */
-const PARES: Array<{ tabela: string; coluna: string; ts: string[]; origem: string }> = [
+/**
+ * Os pares. Coluna nova com CHECK de conjunto → uma linha aqui.
+ *
+ * ⚠️ O par aponta para o ARQUIVO e o SÍMBOLO — nunca transcreve os valores.
+ * A versão anterior os copiava, e o resultado é o defeito que este invariante
+ * existe para pegar, uma camada acima: ele comparava o banco com uma cópia
+ * MANUAL do TypeScript, então era ELE PRÓPRIO a terceira lista. Medido por
+ * sabotagem: removendo um membro do union type DE VERDADE, o invariante passava
+ * VERDE. Invariante presumido é pior que invariante nenhum — ele CONSOME a
+ * atenção que iria para uma checagem de verdade.
+ */
+const PARES: Array<{
+  tabela: string;
+  coluna: string;
+  arquivo: string;
+  simbolo: string;
+}> = [
   {
     tabela: "crm_lead_activities",
     coluna: "actor_kind",
     // lib/leads/activity-emitter.ts → ActivityActorKind
-    ts: ["user", "ai", "system", "rule", "contact"],
-    origem: "ActivityActorKind (lib/leads/activity-emitter.ts)",
+    arquivo: "lib/leads/activity-emitter.ts",
+    simbolo: "ActivityActorKind",
   },
   {
     tabela: "crm_leads",
     coluna: "owner_kind",
     // lib/types/leads.ts → OwnerKind (o `null` do tipo é a ausência de dono, e
     // não um valor do CHECK — por isso não entra na lista).
-    ts: ["user", "ai"],
-    origem: "OwnerKind (lib/types/leads.ts)",
+    arquivo: "lib/types/leads.ts",
+    simbolo: "OwnerKind",
   },
   {
     tabela: "crm_lead_scores",
@@ -52,8 +69,8 @@ const PARES: Array<{ tabela: string; coluna: string; ts: string[]; origem: strin
     // lib/kanban/score-band.ts → ScoreBand. Nasce com o par no mesmo commit da
     // migration: a taxa deste eixo é de quatro pares em dois dias, e todos os
     // que divergiram divergiram por terem nascido sozinhos.
-    ts: ["frio", "morno", "quente"],
-    origem: "ScoreBand (lib/kanban/score-band.ts)",
+    arquivo: "lib/kanban/score-band.ts",
+    simbolo: "ScoreBand",
   },
   {
     tabela: "crm_leads",
@@ -64,8 +81,8 @@ const PARES: Array<{ tabela: string; coluna: string; ts: string[]; origem: strin
     // coluna com DUAS constraints casando por substring (a que define o enum e a
     // que amarra `closed_at`). Com o extrator antigo, o `limit 1` sem `order by`
     // podia devolver [lost, won] — e o par reprovaria por motivo falso.
-    ts: ["open", "won", "lost"],
-    origem: "LeadStatus (lib/types/leads.ts)",
+    arquivo: "lib/types/leads.ts",
+    simbolo: "LeadStatus",
   },
   {
     tabela: "agent_inbox_items",
@@ -82,21 +99,8 @@ const PARES: Array<{ tabela: string; coluna: string; ts: string[]; origem: strin
     // Por isso este invariante lê do Postgres DESCARTÁVEL que nasce do
     // `baseline.sql` versionado (TEST_DB_CONTAINER), nunca do banco de dev: o
     // banco de dev conta o que aconteceu com ele, não o que o sistema promete.
-    ts: [
-      "qr_rescan",
-      "job_dead",
-      "event_dead",
-      "budget_exceeded",
-      "handoff",
-      "promotion_review",
-      "judge_unaligned",
-      "followup_dead",
-      "snooze_expired",
-      "next_action_ambiguous",
-      "risk_backlog_seeded",
-      "other",
-    ],
-    origem: "InboxKind (lib/agent-engine/db/repository.ts)",
+    arquivo: "lib/agent-engine/db/repository.ts",
+    simbolo: "InboxKind",
   },
 ];
 
@@ -195,6 +199,56 @@ function valoresDoCheck(tabela: string, coluna: string): string[] {
   return definidoras[0]?.valores ?? [];
 }
 
+
+/**
+ * Os literais do union type, LIDOS DO ARQUIVO — nunca transcritos.
+ *
+ * ⚠️ TODA FALHA DE EXTRAÇÃO ESTOURA, e isso não é zelo: se o regex deixar de
+ * casar — o type ganha um comentário no meio, muda de arquivo, é reformatado, é
+ * trocado por um `const ... as const` — a lista extraída viraria `[]` e a
+ * comparação passaria POR VACUIDADE. O instrumento diria "banco e TypeScript
+ * concordam" quando o que houve foi ele deixar de ler.
+ *
+ * Zero valores extraídos é ERRO DO INSTRUMENTO, jamais conjunto vazio legítimo:
+ * não existe union type de vocabulário sem membro nenhum. A mesma regra do lado
+ * do banco, onde duas constraints definidoras fazem o extrator se RECUSAR a
+ * escolher em vez de chutar.
+ */
+function literaisDoUnionType(arquivo: string, simbolo: string): string[] {
+  let fonte: string;
+  try {
+    fonte = readFileSync(arquivo, "utf8");
+  } catch {
+    throw new Error(
+      `extrator de vocabulário: não consegui ler ${arquivo} (par ${simbolo}). ` +
+        `O arquivo mudou de lugar? Corrigir o caminho é o conserto; apagar o par NÃO.`,
+    );
+  }
+
+  const decl = new RegExp(`type\\s+${simbolo}\\s*=([^;]*);`, "s").exec(fonte);
+  if (!decl) {
+    throw new Error(
+      `extrator de vocabulário: não achei \`type ${simbolo} = ...;\` em ${arquivo}. ` +
+        `Se o tipo virou \`const ... as const\` ou mudou de nome, ENSINE O EXTRATOR — ` +
+        `deixar isto falhar em silêncio devolveria lista vazia e o par passaria sem ler nada.`,
+    );
+  }
+
+  // Comentários saem ANTES da extração: um `// "user" era o default` no meio do
+  // union entraria como valor e o par reprovaria por motivo falso.
+  const corpo = decl[1]!.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  const valores = [...corpo.matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]!);
+
+  if (valores.length === 0) {
+    throw new Error(
+      `extrator de vocabulário: \`type ${simbolo}\` em ${arquivo} não rendeu literal nenhum. ` +
+        `Isso é falha do INSTRUMENTO, não vocabulário vazio — union type de vocabulário ` +
+        `sem membro não existe.`,
+    );
+  }
+  return [...valores].sort();
+}
+
 describe("vocabulário: banco × TypeScript", () => {
   it("a tabela de pares não pode vir vazia", () => {
     // Sem esta guarda, esvaziar PARES faria a suíte passar sem verificar nada —
@@ -203,19 +257,19 @@ describe("vocabulário: banco × TypeScript", () => {
   });
 
   for (const par of PARES) {
-    it(`${par.tabela}.${par.coluna} aceita exatamente o que ${par.origem} declara`, () => {
+    it(`${par.tabela}.${par.coluna} aceita exatamente o que ${par.simbolo} (${par.arquivo}) declara`, () => {
       const noBanco = valoresDoCheck(par.tabela, par.coluna);
       expect(
         noBanco.length,
         `${par.tabela}.${par.coluna} não tem CHECK de conjunto — ou a coluna mudou, ou o par saiu da lista`,
       ).toBeGreaterThan(0);
 
-      const noTs = [...par.ts].sort();
+      const noTs = literaisDoUnionType(par.arquivo, par.simbolo);
       expect(
         noBanco,
         `divergência de vocabulário — o compilador NÃO pega esta:\n` +
           `  banco aceita: ${noBanco.join(", ")}\n` +
-          `  ${par.origem} declara: ${noTs.join(", ")}`,
+          `  ${par.simbolo} (${par.arquivo}) declara: ${noTs.join(", ")}`,
       ).toEqual(noTs);
     });
   }
