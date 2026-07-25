@@ -8802,3 +8802,48 @@ pergunta era se ela continuava existindo.**
 **E "zero contaminação" passou de afirmada a VERIFICADA em sete tabelas** — leads, atividades,
 mensagens, pipelines, estados de risco, reativações e a fila. A diferença entre as duas é a mesma do
 dia inteiro.
+
+## §7.281 — A CERCA NOVA nasce no mesmo estado mental que produziu o defeito antigo
+
+O detector de dívida — escrito **para vigiar limpeza** — acusou o vigia, **que restaura à mão e
+corretamente**. Ele exigia a **FORMA** (*"usa o meu helper"*) em vez do **EFEITO** (*"devolve o
+relógio"*). **É o falso vermelho por forma que já custara sete achados na wave 6, cometido DENTRO da
+cerca recém-escrita contra outra coisa.**
+
+E o diagnóstico do autor é a **meta-lei do dia inteiro**:
+
+> ***"Não é distração: é que a cerca nova nasce no mesmo estado mental que produziu o defeito antigo,
+> e nada no ato de escrevê-la me tira de lá."***
+
+**Escrever uma cerca corrige o SISTEMA; não corrige o AUTOR.** O ato de escrever não muda o
+enquadramento de quem escreve — continua sendo alguém que pensa em forma e não em efeito, em
+nascimento e não em vida, em contagem e não em distribuição. **E o pior: o autor se sente
+pós-lição**, o que reduz o escrutínio exatamente onde ele deveria subir.
+
+**As ocorrências de hoje, e são mais de três:**
+
+| cerca nova | defeito que ela continha |
+|---|---|
+| catraca `test.fails` | escondia **qual** asserção falhou (§7.229) |
+| critério do cenário 27 | herdou redação de hipótese **morta** (§7.182) |
+| detector de dívida | exigiu **forma** em vez de efeito (§7.124) |
+| invariante do `performed_at` | mais **rigoroso que o schema** (§7.261) |
+| detector de divergências | nasceu **sempre-verdadeiro**, duas vezes e por portas diferentes (§7.273) |
+
+**Regra:** **cerca nova recebe a mesma auditoria que código novo — e a checklist é a das leis
+vizinhas**, porque é exatamente delas que ela vai enfermar. Perguntar, antes de commitá-la: *ela
+exige forma ou efeito? mede nascimento ou vida? conta fragilidade ou progresso? distingue quantos
+desfechos?*
+
+### E a dívida virou NÚMERO em vez de retrofit
+
+**16 sondas inserem atividade e não devolvem o relógio.** Retrofitar dezesseis aparatos no fecho do
+épico seria churn com risco de quebrar sonda que funciona; **deixar a dívida invisível seria pior**.
+
+**Ela passa a ser CONTADA na saída de todo carimbo** — e o número **sobe quando alguém escrever mais
+uma**, que é a contagem de fragilidade correta (§7.230-refinada). E `atividadeDeTeste()` entra no
+helper para quem escrever a próxima: insere e devolve o `desfazer()` que remove a linha **e** restaura
+o relógio, por UPDATE direto (§7.277).
+
+**E a atribuição foi declarada:** das 16, quatro são de outro autor. **O número é "dívida do
+repositório", não "dívida minha"** — dito antes que alguém o lesse errado.
