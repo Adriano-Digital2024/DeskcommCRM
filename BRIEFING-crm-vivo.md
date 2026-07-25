@@ -7848,3 +7848,30 @@ alguém lembrar o que fez, nem chega corrompida pelo canal.
 **E o custo do erro é assimétrico:** perguntar custa uma rodada de ida e volta por vez; medir custa
 uma consulta, uma vez. Três perguntas equivalem a três rodadas para uma informação que estava a um
 `select` de distância desde o início.
+
+## §7.256 — Escolher entre mecanismos "equivalentes" esconde REQUISITOS OPERACIONAIS desiguais
+
+O produto tem **dois** mecanismos de agendamento: `followup_enrollments`, drenado por **rota de
+cron**, e `cron_jobs`, drenado por **processo separado** (`npm run worker`). Para o envio da
+reativação foi escolhido o segundo, com o argumento certo — *"é o caminho que já existe para envio de
+agente"*.
+
+**E ele é. Mas os dois não custam a mesma coisa para operar:** o segundo exige um **processo vivo**
+que o kit self-host precisa subir; o primeiro não exige nada além do cron que já existe.
+
+> ***"Isso é informação de DEPLOY que estava escondida na escolha, e eu só vi porque você
+> perguntou."***
+
+**Num produto self-host isso é um defeito de entrega esperando acontecer:** alguém instala o kit,
+aceita uma reativação, o sistema responde *"agendado"* — **e a mensagem nunca sai**, sem erro, sem
+aviso, sem nada que ligue o sintoma à causa. É a doença do épico inteiro, agora no manual de
+instalação.
+
+**Regra:** ao escolher entre mecanismos que fazem a mesma coisa no código, **conte quantos processos
+precisam estar VIVOS para cada um funcionar**. A diferença não aparece em teste — aparece na máquina
+de quem instalou. E quando a escolha custa um processo a mais, **isso vira requisito declarado do
+deploy, não detalhe da implementação.**
+
+**Medido, e é o que prova que o mecanismo está inerte:** 7 `followup_turn` vencidos, o mais antigo
+esperando **56 minutos**, `attempts = 0` em todos. Ninguém drena a fila neste ambiente — e nenhum
+sintoma aponta para isso.
