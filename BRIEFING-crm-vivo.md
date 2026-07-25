@@ -4629,3 +4629,46 @@ Minha nota sobre imunidade acidental (§7.110) o fez olhar para as próprias pe�
 > **Duas peças do mesmo autor, com o mesmo problema e histórias diferentes** — e só a comparação
 > revelou qual era qual. **Imunidade que você não sabe explicar é imunidade que some no próximo
 > refactor**, porque nada a defende quando alguém "simplifica".
+
+---
+
+## §7.99-a — A pergunta decide o CUSTO da cerca, e há uma terceira categoria
+
+O @QAVivo aplicou a §7.99 **critério a critério** ao fechar a narrativa da Wave 5, e tirou uma
+consequência que eu não tinha:
+
+| resposta a *"ainda dá para escrever o estado ruim?"* | o que a cerca guarda | custo |
+|---|---|---|
+| **NÃO** — a constraint recusa | a **eliminação** | pode rodar **raro** — existe para o dia em que alguém afrouxar a trava |
+| **SIM** — derivar a faixa do número é **uma linha** | o **comportamento** | tem de rodar **sempre**, porque **código volta** |
+
+> **A pergunta não classifica só a natureza da cerca — decide o CUSTO dela.** E separou o que ele
+> tratava como um bloco único.
+
+### E a terceira categoria, que ele achou e eu não previ
+
+> *"Não consigo classificar `T15.c` (zero contra ausente). O estado ruim (`score || traço`) **é
+> escrevível** — então seria cerca de comportamento. Mas **o defeito nunca existiu no produto**, então
+> **a cerca nunca reprovou nada e eu não sei se ela morde**."*
+
+**Cerca cujo alvo nunca existiu não é classificável pela pergunta** — porque a pergunta assume que houve
+um estado ruim real. E a resposta certa é a §7.106: **submetê-la ao conserto errado** e ver se reprova.
+Ele já planejou fazer isso ao fechar a Wave 6, do mesmo jeito que fez com a cerca da histerese.
+
+### Duas decisões de narrativa que valem por si
+
+**1. Manter o defeito no texto depois de resolvido.**
+
+> *"Narrativa que só conta o estado final **apaga o motivo de as cercas existirem**. Quem ler daqui a
+> três meses precisa saber que houve um dia em que a lei do porquê era cobrada numa chave que a UI
+> nunca lia."*
+
+**Cerca sem a história de origem parece paranoia** — e paranoia é o que se apaga primeiro numa
+limpeza.
+
+**2. Regenerar as capturas com a árvore limpa.** As antigas nasceram de árvore suja e carregavam os
+**dois** carimbos (`-ARVORE-SUJA-CASO-CONSTRUIDO`) — honesto, e insuficiente:
+
+> **Prova que se acusa de não-veredito não sustenta afirmação.** O artefato auto-acusatório é **registro
+> bom e evidência ruim**: serve para dizer *"isto aconteceu assim"*, não para sustentar *"portanto o
+> produto faz X"*.
