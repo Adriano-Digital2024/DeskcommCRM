@@ -155,72 +155,7 @@ async function duasMudancasRemotas(leadId: string, estagios: string[], intervalo
   if (a2.error) throw new Error(`2a mudança: ${a2.error.message}`);
 }
 
-/**
- * Mede o overlay do pulso pelo que o OLHO receberia, não pelo contador.
- *
- * Dois riscos concretos, ambos verificáveis por estilo computado:
- *  (a) ANEL RECORTADO — sombra desenhada para FORA de um overlay que preenche o
- *      card, dentro de um pai com overflow-hidden, é cortada: o contador sobe e
- *      a tela não muda. Sombra `inset` desenha para DENTRO e sobrevive.
- *  (b) COBERTOR SÓLIDO — overlay com fundo opaco sobre o card inteiro deixa o
- *      usuário sem ler o conteúdo. Aviso tem de ser anel, não cobertor.
- */
-async function medirOverlay(page: Page, titulo: string) {
-  return page.evaluate(
-    ({ attr, alvo }: { attr: string; alvo: string }) => {
-      for (const card of Array.from(document.querySelectorAll(`[${attr}]`))) {
-        if (!(card.textContent ?? "").includes(alvo)) continue;
-        const ov = card.querySelector("[data-pulse]") as HTMLElement | null;
-        const csCard = getComputedStyle(card as Element);
-        if (!ov) {
-          return {
-            existe: false,
-            contador: null as string | null,
-            sombra: "",
-            fundo: "",
-            paiRecorta: csCard.overflow,
-          };
-        }
-        const cs = getComputedStyle(ov);
-        return {
-          existe: true,
-          contador: ov.getAttribute("data-pulse"),
-          sombra: cs.boxShadow,
-          fundo: cs.backgroundColor,
-          paiRecorta: csCard.overflow,
-        };
-      }
-      return { existe: false, contador: null as string | null, sombra: "", fundo: "", paiRecorta: "" };
-    },
-    { attr: CARD_ATTR, alvo: titulo },
-  );
-}
 
-/**
- * O overlay VIVE apenas durante o pulso — medir depois encontra nada e diria
- * "não há aviso" sobre um aviso que existiu. Então: dispara e persegue, lendo
- * rápido até apanhá-lo no ar.
- */
-async function capturarOverlayDurante(
-  page: Page,
-  titulo: string,
-  janelaMs: number,
-): Promise<Awaited<ReturnType<typeof medirOverlay>> | null> {
-  // Não basta apanhar o overlay: ele VIVE 1200ms, mas a animação dura 320ms.
-  // Pegá-lo depois da animação devolve sombra "none" — e eu concluiria que o
-  // aviso não é desenhado, quando ele só já tinha terminado. Persigo até achar
-  // a sombra ACESA; guardo a última vista como consolo para a mensagem de erro.
-  const limite = Date.now() + janelaMs;
-  let ultima: Awaited<ReturnType<typeof medirOverlay>> | null = null;
-  while (Date.now() < limite) {
-    const m = await medirOverlay(page, titulo);
-    if (m.existe) {
-      ultima = m;
-      if (m.sombra && m.sombra !== "none") return m;
-    }
-  }
-  return ultima;
-}
 
 /** Fundo é "cobertor" quando é opaco o bastante para esconder o texto do card. */
 function ehCobertor(fundo: string): boolean {
@@ -346,6 +281,10 @@ async function main(): Promise<void> {
   // Declara de QUE arquivos esta prova depende. Obriga a escrever a cadeia
   // causal antes de medir — e, com a árvore suja, o resultado nasce marcado
   // como não-veredito em vez de parecer um.
+  // O sufixo era CALCULADO E DESCARTADO: a evidência desta wave nunca nasceu
+  // marcada quando a árvore estava suja, que é exatamente o que o carimbo existe
+  // para fazer. Com a árvore limpa o nome não muda — o custo é zero e a proteção
+  // volta a existir.
   const sufixoCarimbo = carimbar([
     "app/globals.css",
     "components/kanban/KanbanCard.tsx",
@@ -445,11 +384,17 @@ async function main(): Promise<void> {
     "a AÇÃO aconteceu na aba A (o arrasto por teclado engatou)",
     acaoAconteceu,
     acaoAconteceu
-      ? `card mudou de coluna na origem`
-      : `o card NÃO saiu do lugar na aba A — o arrasto não engatou; nada do que vem depois é conclusivo`,
+      ? `card mudou de coluna na origem: "${colunaAntesA}" → "${colunaDepoisA}"`
+      : `o card NÃO saiu do lugar na aba A (segue em "${colunaAntesA}") — o arrasto não ` +
+        `engatou; nada do que vem depois é conclusivo`,
   );
 
-  const durante = await amostrarPulso(abaB, ALVO, 6000);
+  // A amostragem é o instrumento SUPERADO (ela lia a cada 150ms e não enxergava
+  // uma animação de 320ms — produziu dois vermelhos falsos). O que sobrou dela é
+  // a JANELA DE ESPERA, que é load-bearing: sem ela eu leria o contador antes do
+  // evento chegar. Mantenho a chamada pelo tempo que ela consome e uso o número
+  // só como informativo, para não fingir que uma medição descartada decide algo.
+  const amostragemInformativa = await amostrarPulso(abaB, ALVO, 6000);
   const pulsosAposEvento = await lerPulsos(abaB);
   // Janela EXTRA: se novas animações começarem depois que tudo deveria ter
   // cessado, é loop. Zerar o contador e olhar de novo separa "pulsou" de "não para".
@@ -492,7 +437,8 @@ async function main(): Promise<void> {
     "o card pulsa quando a mudança vem de FORA",
     eventoChegou && pulsou,
     eventoChegou
-      ? `${pulsosAposEvento} início(s) de animação após a chegada remota`
+      ? `${pulsosAposEvento} início(s) de animação após a chegada remota ` +
+        `(amostragem, instrumento superado, viu ${amostragemInformativa.transicoes} — informativo)`
       : "gatilho não chegou nesta rodada — inconclusivo",
   );
   record(
@@ -502,7 +448,7 @@ async function main(): Promise<void> {
     `${pulsosAposEvento} início(s) na chegada · ${pulsosTardios} novo(s) início(s) na janela seguinte` +
       (pulsosTardios > 0 ? " — está reanimando sozinho" : " — cessou"),
   );
-  await shotPage(abaB, "wave-3-c12-apos-pulso.png", false);
+  await shotPage(abaB, `wave-3-c12-apos-pulso${sufixoCarimbo}.png`, false);
 
   // ---- 12.c: ação LOCAL não pulsa ------------------------------------------
   // O card se move sob o cursor e já tem retorno próprio; pulsar aí é ruído com
@@ -621,7 +567,7 @@ async function main(): Promise<void> {
         ` · animação="${ovDurante?.animacao ?? "-"}" (informativo, não decide)` +
         ` · fundo="${ovDurante?.fundo ?? "-"}" (cobertor=${cobertor})`,
     );
-    await shotPage(abaB, "wave-3-c12d-duas-chegadas.png", false);
+    await shotPage(abaB, `wave-3-c12d-duas-chegadas${sufixoCarimbo}.png`, false);
   }
 
   // ---- 12.rm: MOVIMENTO REDUZIDO -------------------------------------------
@@ -686,7 +632,7 @@ async function main(): Promise<void> {
     pulsou ? undefined : "BLOQUEADO",
   );
   console.info(`  [rm] repouso="${repousoRM.amostras[0]?.slice(0, 28)}" transições=${duranteRM.transicoes}`);
-  await shotPage(abaRM, "wave-3-c12rm-movimento-reduzido.png", false);
+  await shotPage(abaRM, `wave-3-c12rm-movimento-reduzido${sufixoCarimbo}.png`, false);
   await ctxRM.close();
 
   // ---- NEGATIVO obrigatório: o outro tenant não recebe nada ----------------
@@ -716,7 +662,7 @@ async function main(): Promise<void> {
       ? "inconclusivo: o pulso não funcionou nem no tenant certo — silêncio alheio não prova filtro"
       : `${pulsoC.transicoes} transição(ões) no board do outro tenant`,
   );
-  await shotPage(abaC, "wave-3-c12-outro-tenant.png", false);
+  await shotPage(abaC, `wave-3-c12-outro-tenant${sufixoCarimbo}.png`, false);
 
   // ---- token do canal: chegou com no-store? --------------------------------
   const ok200 = respostasToken.filter((r) => r.status === 200);
@@ -831,7 +777,7 @@ async function main(): Promise<void> {
       superficieTemConteudo && !sup.temRotuloCru,
       sup.temRotuloCru ? "tipo cru visível (ex.: stage_changed) em vez de rótulo humano" : "rótulos humanos",
     );
-    await shotPage(abaA, "wave-3-c10-timeline-contato.png", false);
+    await shotPage(abaA, `wave-3-c10-timeline-contato${sufixoCarimbo}.png`, false);
   }
 
   // ---- SEGUNDA SUPERFÍCIE: o painel lateral do inbox ------------------------
@@ -889,7 +835,7 @@ async function main(): Promise<void> {
       temConteudo && !painel.temRotuloCru,
       painel.temRotuloCru ? "tipo cru visível" : "rótulos humanos",
     );
-    await shotPage(abaA, "wave-3-c10-painel-inbox.png", false);
+    await shotPage(abaA, `wave-3-c10-painel-inbox${sufixoCarimbo}.png`, false);
 
     // LADO B do painel: quando a LEITURA FALHA, a tela tem de dizer que falhou —
     // nunca "Sem leads". Erro convertido em lista vazia transforma falha técnica
@@ -919,7 +865,7 @@ async function main(): Promise<void> {
           ? "painel sinaliza falha de leitura"
           : `painel não diz nada: "${comFalha.slice(0, 100)}"`,
     );
-    await shotPage(abaA, "wave-3-c10-painel-falha-de-leitura.png", false);
+    await shotPage(abaA, `wave-3-c10-painel-falha-de-leitura${sufixoCarimbo}.png`, false);
     await abaA.unroute(/\/rest\/v1\/crm_leads|\/api\/v1\/.*(leads|crm)/).catch(() => null);
   }
 
@@ -987,7 +933,7 @@ async function main(): Promise<void> {
         `roteado=${r.routed} · anuncia o bloqueio=${anunciaVeto} · motivo legível=${temMotivo} · uuid visível=${sup.uuidsVisiveis.length}` +
           (anunciaVeto ? "" : ` · tela: "${sup.texto.slice(0, 110)}"`),
       );
-      await shotPage(abaA, "wave-3-c11-timeline-veto.png", false);
+      await shotPage(abaA, `wave-3-c11-timeline-veto${sufixoCarimbo}.png`, false);
     }
   } finally {
     // Limpa o que escreveu — a mesma disciplina da sonda do regente.
