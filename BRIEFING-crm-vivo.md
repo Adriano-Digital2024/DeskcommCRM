@@ -2014,3 +2014,46 @@ tinha aplicado a 0074.
 > quem chega agora chega direto. Reencenar o caminho no baseline não é fidelidade histórica — é fazer o
 > recém-chegado pagar por decisões que ele não tomou, e multiplicar os estados intermediários em que um
 > `install` pode falhar.
+
+---
+
+## §7.44 — Mutação tem de provar que mutou, antes de valer como prova
+
+Aconteceu comigo agora, verificando o bloco de decisão no `draft-reply`. Duas tentativas de mutação
+**não casaram** (escape de `perl` errado) e as duas devolveram `exit=0` com `10 passed`.
+
+> **Mutação que falha em mutar é indistinguível de teste sem dentes.** As duas dão verde, e a
+> conclusão errada é a mais confortável: *"o teste não pega isso"* — o **inverso exato** da verdade.
+
+Só percebi porque reli o arquivo depois de editar e vi o alvo intacto. Na terceira tentativa (troca
+literal com âncora obrigatória) a mutação pegou e o veredito veio: **2 vermelhos**, exatamente os dois
+testes da decisão.
+
+**Regra:** toda mutação começa **falhando ruidosamente se a âncora não existir** e **exibe o trecho
+alterado** antes de rodar o teste. Sem isso, o verde do teste mutado não distingue *"o gate é fraco"*
+de *"eu não mexi em nada"*.
+
+```python
+alvo = "` +\n    blocoDecisao;"
+assert alvo in s, "âncora não encontrada — mutação abortada"   # <- sem isto, o verde mente
+```
+
+É a mesma família da §7.30 (*sem o antes, todo depois é compatível com o acaso*), aplicada ao próprio
+instrumento: **o verde de um teste mutado só significa alguma coisa se a mutação for observada, não
+suposta.**
+
+## §7.45 — Apagar um verde que não prova nada, e deixar escrito por quê
+
+O @DevVivo tinha uma perna na sonda que fazia **grep no arquivo-fonte** procurando
+`[DECISÃO DO VENDEDOR]`. Ela **passava** — e não provava nada: media que o texto **existe escrito em
+algum lugar**, não que **chega ao modelo**. *Citação não conferida com cara de prova.*
+
+Ele **removeu**, e deixou o motivo no comentário **para ninguém "completar" a sonda de volta**.
+
+> Verde a menos com escopo honesto vale mais que verde a mais com escopo falso. E a segunda metade é
+> a que sustenta: sem o motivo escrito, a perna volta — porque um teste ausente **parece** lacuna, e
+> quem vier depois vai querer preenchê-la.
+
+É a §7.38 pelo avesso: lá, a cerca ganhou um anti-teste para provar que morde; aqui, a perna que não
+mordia foi **retirada**. Os dois movimentos servem à mesma pergunta — *"o que este verde me autoriza a
+afirmar?"*.
