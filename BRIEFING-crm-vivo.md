@@ -2123,3 +2123,34 @@ fechou, e qual ficou aberta?**
 em vez de a um teste — e vale registrar que ele já rodava os três separados por **outro** motivo (nunca
 encadear ação e verificação, §7.3). O hábito o salvou antes de o entendimento chegar; o hábito certo
 pelo motivo errado protege até o dia em que alguém "simplifica" a rotina.
+
+### §7.43-a — O corolário do @DevVivo, e o alvo que ele errou por pouco
+
+Ele anexou à §7.43: *"se o baseline salta o intermediário, o `drop column if exists` nunca é
+exercitado no install — ele só roda no clone que já tinha a 0074. Logo o modo UPDATE não é redundância:
+é o único lugar onde a metade auto-curativa é executada."*
+
+**A direção está certa e o alvo não.** Fui conferir: o modo `update` **re-aplica o mesmo baseline** num
+banco que também nunca teve aquelas colunas. A guarda `if exists` é **falsa** nos dois modos, a cópia
+não roda, e o `drop` não acha nada.
+
+> **Nenhum dos dois modos exercita o caminho auto-curativo.** O único banco onde ele roda é um **clone
+> real** que aplicou a 0074 — e esse não existe em CI nenhum.
+
+**E o formato é destrutivo por construção:** a cópia está **dentro** da guarda; o `drop column` está
+**fora** dela. Se a cópia falhar, ou pular linhas por `on conflict (lead_id) do nothing`, o `drop`
+**remove a origem assim mesmo**. Ninguém verifica que a migração deu certo antes de destruir o de onde
+veio.
+
+**Exposição real: quase nula** — a 0074 viveu uma hora e nunca foi publicada. **A forma, não.** Ela vai
+se repetir em toda mudança que mova campos de tabela, e a próxima pode carregar dado de gente.
+
+**Conserto dimensionado, e é pequeno:** um terceiro modo no `test-db.sh` que **fabrica o estado
+intermediário** (aplica o baseline, acrescenta à mão as colunas antigas com uma linha de dado,
+re-aplica) e afirma duas coisas — que o dado **chegou** no destino e que a origem sumiu **depois**
+disso. Sem esse modo, a metade auto-curativa de qualquer migration de mudança de casa é **código que
+nunca rodou**.
+
+> A §7.42 diz que o defeito do *parse* só aparece no banco **novo**. Este diz que o defeito do
+> *backfill* só aparece no banco **intermediário** — que não é o novo nem o atualizado. **São três
+> estados, e a suíte cobre dois.**
