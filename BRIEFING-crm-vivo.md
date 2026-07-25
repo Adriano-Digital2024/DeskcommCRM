@@ -9209,3 +9209,42 @@ produção, ou pelo tempo.
 
 **E é o fecho apropriado para um dia inteiro sobre isto:** a última medição do dia vem **com a
 declaração do que ela não pode medir.**
+
+## §7.291 — Cautela BARATA vira reflexo — e reflexo não distingue "não posso saber" de "não verifiquei"
+
+Sete leads de sonda esperavam a palavra de um colega antes de serem apagados. **A espera era vazia:**
+`git log` mostrou, em dez segundos, que **os sete títulos são gerados por dois arquivos do mesmo
+autor**. Não havia nada de terceiro ali.
+
+> ***"A pergunta era legítima, mas a espera não. Em ambiente compartilhado a cautela é barata e por
+> isso vira REFLEXO — e reflexo não distingue 'não posso saber sozinho' de 'não verifiquei'."***
+
+**Esta é a lei que faltava ao dia**, porque é o contrapeso de tudo o que se construiu: uma doutrina
+inteira de "não afirme, meça, pergunte, espere" **produz paralisia se a cautela não for examinada com
+o mesmo rigor que as afirmações**. Perguntar tem custo — o do outro e o do tempo — e **pergunta que
+uma consulta responderia é trabalho transferido, não prudência**.
+
+**E a demonstração está na mesma operação, e é perfeita:**
+
+| | dúvida | ação |
+|---|---|---|
+| **7 leads** | **resolvível** — `git log` diz quem gerou | **apagados**, com padrão ancorado e contagem antes/depois |
+| **1 lead** | **irredutível** — nenhum arquivo do repo gera aquela string | **mantido**, porque *"apagar seria exatamente o que eu passei o dia dizendo que não se faz"* |
+
+**A cautela se aplica onde a dúvida é IRREDUTÍVEL, não onde ela é PREGUIÇOSA.** E o mesmo autor, no
+mesmo comando, fez as duas coisas certas por razões opostas — que é o que prova que a distinção é
+operável.
+
+**E a condição que eu mesmo impus estava certa em princípio e produziu espera desnecessária neste
+caso:** mandei não apagar sem a palavra do colega, **baseado na incerteza dele, sem perguntar se a
+incerteza era resolvível**. A regra certa não é *"espere pelo dono"* — é ***"descubra o dono; espere
+só se não der"***.
+
+### E a terceira ocorrência da limpeza no caminho feliz — achada de propósito
+
+`sonda-worker-travessia.ts` tinha o `delete` **na penúltima linha** e `void main()` na última. Foi
+ela que plantou dois dos sete. **A primeira ocorrência apareceu por acaso, numa screenshot; a
+terceira apareceu porque alguém foi procurar** (§7.283) — e a diferença entre as duas é a diferença
+entre sorte e método.
+
+**Provada por sabotagem também:** `EXIT=1` em 2s, *"cobaia removida"* no log, contador inalterado.
