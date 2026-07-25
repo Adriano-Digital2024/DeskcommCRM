@@ -1139,7 +1139,7 @@ async function main(): Promise<void> {
       console.info(
         `[D21 diag] quadros de postgres_changes na janela da ação, POR CANAL: ` +
           (porCanal.size === 0
-            ? "NENHUM canal recebeu nada — o silêncio não é do dossiê, é do socket inteiro"
+            ? "NENHUM canal recebeu nada — não é do dossiê nem do socket: é a entrega deste pipeline"
             : [...porCanal.entries()].map(([k, v]) => `${k} ×${v.length}`).join(" | ")),
       );
       // O MESMO EIXO APLICADO AO PASSADO. "Zero na janela" tem dois pais muito
@@ -1197,13 +1197,16 @@ async function main(): Promise<void> {
         execFile(
           "npx",
           ["tsx", "tests/prova-taxa-de-entrega.ts"],
-          { env: { ...process.env, LEAD_ID: caso.leadComContato, N: "3", ESPERA_MS: "6000" } },
+          // N=1 basta desde que a raiz foi nomeada: aqui o controle não investiga
+          // mais nada, só responde "havia como chegar?". Três rodadas eram o
+          // preço de uma pergunta que já foi respondida noutro lugar.
+          { env: { ...process.env, LEAD_ID: caso.leadComContato, N: "1", ESPERA_MS: "6000" } },
           (_e, saida) => resolve((saida.match(/TAXA DE ENTREGA: (\d+\/\d+)/) ?? [])[1] ?? "(não mediu)"),
         );
       });
       const placarDoEspiao =
         `MESMO lead, MESMA janela · controle em processo IRMÃO=${controleExterno} · ` +
-        `navegador=${quadrosDeAtividade - quadrosNavegadorAntes} quadro(s) das 3 atividades do controle`;
+        `navegador=${quadrosDeAtividade - quadrosNavegadorAntes} quadro(s) da atividade do controle`;
       console.info(`[D21 diag] ${placarDoEspiao}`);
 
       const depoisA = await contarLinhas(page);
@@ -1224,11 +1227,17 @@ async function main(): Promise<void> {
               `${quadrosDeAtividade - quadrosAntes} (${quadrosDeAtividade} desde o carregamento) — ` +
               (quadrosDeAtividade - quadrosAntes > 0
                 ? "o quadro CHEGOU e a tela não aplicou"
-                : "o quadro NÃO chegou: o defeito é a montante da tela. Respostas do servidor ao " +
+                : "o quadro NÃO chegou. RAIZ NOMEADA (590b594): a entrega de postgres_changes " +
+                  "morre para leads do pipeline do CRM Vivo — medido com assinante de serviço, sem " +
+                  "filtro, contra pipeline fabricado de controle. A tela do dossiê está INOCENTE: " +
+                  "não há quadro para ela aplicar. O vermelho continua sendo vermelho porque para " +
+                  "quem usa o board a timeline não anda sozinha, mas o conserto não é aqui. " +
+                  "Respostas do servidor ao " +
                   `canal da timeline: ${respostasTimeline.slice(0, 2).join(" | ") || "(NENHUMA — o canal não foi confirmado)"}. ` +
                   `Entregas na MESMA janela, por canal: ` +
                   (porCanal.size === 0
-                    ? "NENHUMA em canal nenhum — o silêncio é do socket, não do dossiê"
+                    ? "NENHUMA em canal nenhum — e o socket está vivo (o servidor responde e " +
+                      "confirma a assinatura). O que morre é a ENTREGA deste pipeline"
                     : [...porCanal.keys()].join(" | ") +
                       " — outro canal entrega e o do dossiê não, o que isola na configuração dele")),
         acaoPersistiu ? undefined : "BLOQUEADO",
