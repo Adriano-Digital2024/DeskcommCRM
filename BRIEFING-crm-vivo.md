@@ -3368,3 +3368,58 @@ ambiente de todo dia dizia que estava tudo bem.
 
 > **Os três só apareceram porque ele rodou em vez de supor.** Script que faz três coisas e falha na
 > segunda deixa a primeira feita e a terceira ausente — e nada nessa combinação **parece** erro.
+
+---
+
+## §7.83 — Antes de dar significado novo a um símbolo, verifique o que ele já carrega
+
+**Eu decidi errado e o @QAVivo pegou antes de existir código** — que é exatamente por que o aparato foi
+armado primeiro.
+
+Aceitei do @Arquiteto que o quinto ator (`contact`) ganhasse marcador **tracejado**, pelo motivo de que
+*"é o único ator fora da organização"*. O motivo é real. **Mas eu não verifiquei o que o tracejado já
+significa.** Medido:
+
+```
+actorShape:  user | contact → "filled"      ← contato JÁ é gente
+             ai             → "ring"
+             system | rule  → "dashed"      ← "nem gente nem agente"
+```
+
+O eixo que a forma codifica é **gente / agente / máquina**. Mover o contato para tracejado **põe uma
+pessoa no balde das máquinas** — e não elimina colisão: **troca *"duas pessoas com a mesma forma"* por
+*"uma pessoa junto de duas máquinas"***.
+
+**E o meu próprio critério já estava satisfeito:** *distinguir contato de agente sem legenda* —
+preenchido contra anel, hoje. **Pedi uma mudança que não era necessária e que quebraria um sistema
+coerente.**
+
+> **Ruling revertido: `contact` permanece `filled`.** A forma codifica gente/agente/máquina; **quem
+> especificamente** fica no **texto ao lado** — exatamente como a distinção `user` × `rule` já faz.
+
+**Regras que ficam:**
+
+1. **Antes de atribuir significado novo a um símbolo, leia o significado que ele já carrega.** Um
+   símbolo com semântica declarada não é espaço livre — é vocabulário em uso.
+2. **Critério já satisfeito não justifica mudança.** Eu estabeleci um teste, ele passava antes da
+   mudança, e mesmo assim mandei mudar. O teste existia para **aprovar**, e eu o usei como se fosse
+   uma **exigência de alteração**.
+3. **E a doutrina do módulo estava escrita e contra a decisão:** *"um quarto desenho obrigaria o
+   usuário a decorar um alfabeto no kanban e outro na timeline, para dizer o que a palavra já diz."*
+   Se um dia a decisão mudar, **o comentário muda junto** — senão volta a doença do dia (código e
+   comentário discordando).
+
+**Nota factual:** o quinto ator tem **zero linhas** no banco (`user` 173, `ai` 3; `contact`, `system` e
+`rule` não existem em dado). Qualquer prova visual dele exige **caso construído** — e isso precisa
+estar declarado na evidência, senão a captura sugere um fluxo que ninguém exercita.
+
+### E o instrumento que só o uso real revelaria
+
+O @QAVivo encodou o ponto do Sheet do único jeito que funciona: **abrir e fechar uma vez não revela
+assinatura órfã — canal órfão só incomoda quando ACUMULA.** Então o teste abre e fecha **cinco vezes**
+e compara `phx_join` com `phx_leave` no socket. Se desassina, cada entrada tem a sua saída; **se não, a
+diferença é o vazamento, em número.**
+
+**E a régua para "o dossiê mostra mais que o card" ficou operável:** *contradição é **a mesma grandeza
+com valor diferente*** (card diz 72%, dossiê diz 65%). Mostrar o que o card escondeu **por orçamento de
+espaço** é **mais informação**, não contradição — e não reprova.
