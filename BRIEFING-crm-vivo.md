@@ -6634,3 +6634,57 @@ tabela que já existia.
   enquanto o contador da wave 6 marcava zero.
 
 **Nenhuma conclusão viva se apoiava na v2. A grade continua valendo: NÃO CHEGAM, dois defeitos.**
+
+## §7.206 — Medir "do jeito que não separa": quando o desenho garante que as hipóteses coincidam
+
+*"A perda é da JANELA"* estava errado. A palavra certa é **LOTE**, e não é vocabulário.
+
+Duas observações nunca encaixaram: mesma ordem, resultados opostos. A leitura foi *"a ordem revela o
+envenenamento"*. **Não era a ordem** — as seis escritas caíam em menos de um segundo nas duas
+rodadas, e o que mudava era se **couberam na mesma leitura do WAL**.
+
+**Escrever tudo junto GARANTE o mesmo lote — e com isso torna "lote envenenado" e "assinatura morta"
+indistinguíveis, porque as duas produzem "sumiu tudo".** O desenho não estava medindo mal: estava
+medindo **do jeito que impede a separação**, e nenhuma repetição o corrigiria.
+
+A separação exigiu **afastar as escritas no tempo**, que é a única forma de forçar lotes diferentes:
+
+```
+t=0    pipeline saudável .... CHEGOU (2/2)
+t=6s   CRM Vivo ............. sumiu
+t=12s  pipeline saudável .... CHEGOU (2/2)   ← decide
+```
+
+**A assinatura não morre.** Perdem-se as linhas que **viajam junto** com a envenenada.
+
+**Regra:** quando duas hipóteses produzem a mesma observação, repetir não ajuda — o desenho tem de
+**forçá-las a divergir**. E a variável que força quase nunca é a que está sob estudo: aqui era o
+**intervalo entre as ações**, que ninguém listaria como parâmetro do experimento.
+
+**Raio corrigido nos DOIS sentidos:** é **menor** do que se afirmou — o board de outros pipelines não
+morre quando alguém mexe no CRM Vivo; e é **maior** do que *"só o CRM Vivo está mudo"* — **qualquer
+pipeline perde eventos, em silêncio, quando eles calham de viajar no mesmo lote de uma escrita de
+lá**. Somado ao raio do silêncio, essa perda colateral é imperceptível por construção: sem aviso, sem
+refetch, e o status dizendo `subscribed`.
+
+**Alvo mais preciso para o conserto:** não é *"o pipeline não entrega"*, é ***"uma linha daquele
+pipeline aborta o lote de leitura do WAL em que ela viaja"*** — olhar o que o Realtime faz ao MONTAR
+o lote, não ao filtrar a linha.
+
+## §7.207 — Explicar uma observação NÃO ISOLADA promove ela a fato (erro meu)
+
+A observação *"`crm_leads` UPDATE não entrega para ninguém"* veio **explicitamente marcada como não
+isolada**, com a janela já fechada. Eu construí em cima dela um mecanismo detalhado (replica identity
+`DEFAULT` + RLS descartando o `old_record`) e **despachei trabalho de DDL** com base nisso.
+
+Medido depois: `crm_leads` UPDATE e `crm_lead_activities` INSERT **entregam 3/3 os dois**, na mesma
+assinatura e no mesmo instante. **O zero era momentâneo. A hipótese está morta.**
+
+**O mecanismo do erro é o que importa: explicação boa promove a observação a fato, retroativamente.**
+Quanto mais específica e mecanicista a explicação, mais forte a promoção — porque uma explicação que
+encaixa em detalhe *parece* exigir que o fenômeno exista. Quem marcou a observação como não isolada
+fez o certo; **quem explicou apagou a marca**.
+
+**Regra:** observação declarada não isolada só admite uma resposta — **isolar**. Explicá-la antes é
+gastar trabalho de terceiros num fenômeno que ainda não se sabe existir, e é pior que ignorá-la,
+porque a explicação vira a razão para não isolar.
