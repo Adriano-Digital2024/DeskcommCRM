@@ -1,6 +1,6 @@
 "use client";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
 /**
  * O REFETCH DE SEGURANÇA — uma peça com três papéis.
@@ -42,8 +42,15 @@ interface Opts<T> {
    * sensível ao que o realtime deveria ter trazido.
    */
   assinatura: (dado: T | undefined) => string;
-  /** Instante da última entrega do canal (de `useRealtimeChannel`). */
-  ultimaEntrega: number | null;
+  /**
+   * A REF do instante da última entrega do canal (de `useRealtimeChannel`).
+   *
+   * Ref e não valor porque a leitura acontece dentro do timer, e o timer roda
+   * fora do render: um valor capturado no render estaria congelado no instante
+   * errado — exatamente na janela entre a entrega e o redesenho, que é quando
+   * este detector dispara.
+   */
+  ultimaEntrega: RefObject<number | null>;
   /** De quanto em quanto tempo conferir. */
   intervaloMs?: number;
   enabled?: boolean;
@@ -71,12 +78,17 @@ export function useRefetchDeSeguranca<T>({
     ultimaDivergencia: null,
     ultimaVerificacao: null,
   });
-  // Refs para o efeito não re-montar a cada render e o intervalo não reiniciar
+  // Ref para o efeito não re-montar a cada render e o intervalo não reiniciar
   // — reiniciar adiaria a verificação para sempre numa tela que redesenha.
+  //
+  // A escrita mora num efeito, não no corpo do render: render pode ser
+  // descartado ou reexecutado pelo React 19, e escrever ali é efeito colateral
+  // que ninguém rastreia. Como quem lê é o timer (depois do render, sempre), a
+  // ref já está atualizada quando importa.
   const assinaturaRef = useRef(assinatura);
-  assinaturaRef.current = assinatura;
-  const entregaRef = useRef(ultimaEntrega);
-  entregaRef.current = ultimaEntrega;
+  useEffect(() => {
+    assinaturaRef.current = assinatura;
+  }, [assinatura]);
 
   const verificar = useCallback(async () => {
     const antes = assinaturaRef.current(qc.getQueryData<T>(queryKey));
@@ -98,9 +110,9 @@ export function useRefetchDeSeguranca<T>({
       // divergência em toda mudança legítima, e um detector que grita sempre é
       // desligado na primeira semana.
       const mudou = depois !== antes;
+      const entrega = ultimaEntrega.current;
       const canalTrouxe =
-        entregaRef.current !== null &&
-        (prev.ultimaVerificacao === null || entregaRef.current > prev.ultimaVerificacao);
+        entrega !== null && (prev.ultimaVerificacao === null || entrega > prev.ultimaVerificacao);
       const perdeu = mudou && !canalTrouxe;
       return {
         divergencias: perdeu ? prev.divergencias + 1 : prev.divergencias,
@@ -108,7 +120,9 @@ export function useRefetchDeSeguranca<T>({
         ultimaVerificacao: Date.now(),
       };
     });
-  }, [qc, queryKey]);
+    // `ultimaEntrega` é ref (identidade estável): entra na lista por higiene,
+    // sem recriar o callback nem reiniciar o intervalo.
+  }, [qc, queryKey, ultimaEntrega]);
 
   useEffect(() => {
     if (!enabled) return;

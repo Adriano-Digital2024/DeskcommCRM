@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -120,8 +120,22 @@ function esperarAuth(supabase: ReturnType<typeof createClient>): Promise<void> {
 
 export function useRealtimeChannel(opts: UseRealtimeChannelOpts): {
   status: RealtimeStatus;
-  /** Instante da última entrega deste canal, ou null se nunca entregou nada. */
-  ultimaEntrega: number | null;
+  /**
+   * Instante da última entrega deste canal (`.current` é null se nunca entregou).
+   *
+   * ⚠️ DEVOLVE A REF, NÃO O VALOR, e isso é correção e não estilo: ler
+   * `.current` aqui no render entregaria um número CONGELADO naquele render —
+   * a ref muda depois e nada redesenha, então quem recebeu ficaria com carimbo
+   * velho até algo mais causar um render. Funcionava por acidente (a query
+   * redesenha ao invalidar), e falharia justamente na janela entre a entrega e
+   * esse redesenho, que é onde o detector de perda dispara.
+   *
+   * Virar `useState` resolveria a propagação e criaria pior: o valor entra nas
+   * dependências do efeito e o canal RE-ASSINA a cada evento, perdendo eventos
+   * na reassinatura. Quem lê isto é um timer — roda fora do render e enxerga
+   * `.current` sempre fresco.
+   */
+  ultimaEntrega: RefObject<number | null>;
 } {
   const { name, postgresChanges, broadcast, onChange, enabled = true } = opts;
 
@@ -139,8 +153,10 @@ export function useRealtimeChannel(opts: UseRealtimeChannelOpts): {
    * que a tela mostra é indistinguível de "nada aconteceu no intervalo", e a
    * checagem só consegue REPROVAR, nunca aprovar.
    *
-   * `useRef` e não `useState`: isto não redesenha nada, e virar dependência de
-   * efeito faria o canal re-assinar a cada evento — perdendo eventos na janela.
+   * `useRef` e não `useState` porque virar dependência de efeito faria o canal
+   * re-assinar a cada evento, perdendo eventos na janela da reassinatura. A
+   * ref ATRAVESSA a fronteira do hook em vez de ser lida aqui — ver o tipo de
+   * retorno, onde está por que ler `.current` no render seria defeito.
    */
   const ultimaEntrega = useRef<number | null>(null);
 
@@ -222,5 +238,5 @@ export function useRealtimeChannel(opts: UseRealtimeChannelOpts): {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, enabled, instanceId, postgresChanges?.event, postgresChanges?.table, postgresChanges?.filter, postgresChanges?.schema, broadcast?.event]);
 
-  return { status, ultimaEntrega: ultimaEntrega.current };
+  return { status, ultimaEntrega };
 }
