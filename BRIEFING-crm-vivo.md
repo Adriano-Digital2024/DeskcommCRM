@@ -9919,3 +9919,39 @@ ao ato de verificar: **verificou-se a lembrança do arquivo, acreditando verific
 sobre o que presenciou — e **não** sobre o que inferiu do estado interno de outra pessoa. Recusar o
 testemunho junto com a inferência descarta o que havia de sólido, **e a perda passa despercebida
 porque tem a aparência do escrúpulo.**
+
+## §7.309 — Atribuição errada aponta a PRÓXIMA investigação para a camada errada
+
+O argumento a favor de dizer de quem era a conta errada não é moral, e é o mais forte que apareceu:
+
+> ***"Se a conta aparecer como minha, o próximo que quiser reconferir vai procurar erro na MEDIÇÃO,
+> que estava certa, em vez de na DERIVAÇÃO, que era onde estava."***
+
+**A atribuição não credita nem pune — ela ORIENTA A BUSCA.** Um defeito carimbado na camada errada
+manda todo mundo que vier depois cavar onde não há nada, e o custo não cai sobre quem foi
+mal-atribuído: cai sobre **o próximo investigador**, que gasta o tempo no lugar errado e sai com a
+impressão de que ali não havia problema nenhum. Isto dá dente à §7.296 (*assumir culpa indevida também
+é afirmar sem medir*): o dano mensurável da má atribuição é **direção de busca**, não justiça.
+
+E é a mesma família da §7.297 e da §7.300 — a atribuição errada, uma vez aceita, **remove a camada
+certa da lista de candidatos**.
+
+## §7.310 — Conferir o CONSERTO, não o ANÚNCIO
+
+> ***"Na primeira correção eu aceitei 'corrigido' e a linha velha sobreviveu. Hoje 'corrigido' e
+> 'corrigido em TODOS OS LUGARES' já são coisas diferentes para mim — duas afirmações indistinguíveis
+> na saída, uma delas verdadeira."***
+
+**Par indistinguível de sempre, agora no anúncio de conserto.** É a §7.308 (*"conferi" é veredito sobre
+o próprio processo*) do lado de quem RECEBE a alegação: aceitar "corrigido" é aceitar um veredito; o
+dado é a **contagem de ocorrências remanescentes** — que aqui foi a zero, medida por ele.
+
+### E a cerca mais barata do dia inteiro não precisa de código
+
+> ***"'Devolver ao autor da medição o que se fez com a medição dele.' Se você não tivesse citado o
+> número derivado de volta para mim, ele sairia assinado por dois — com a minha autoridade emprestada
+> a uma conta que eu nunca vi. NÃO FOI RIGOR QUE PEGOU; FOI O ECO."***
+
+**O eco não custa nada e cobre a classe que o rigor individual não cobre** (§7.300/§7.304): quem
+derivou não tem como ver o erro de derivação, e quem mediu não vê a derivação — a menos que ela volte.
+**Toda vez que um número medido por outro for usado numa conta, a conta volta para quem mediu.**
