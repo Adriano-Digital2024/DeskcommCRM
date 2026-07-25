@@ -8700,3 +8700,64 @@ declarada afirma quantas linhas esperava.**
 A dúvida **não disparou** — havia uma explicação pronta e boa. **É exatamente o caso em que o
 julgamento falha e a regra mecânica funciona**, e é o argumento inteiro para preferir cerca a
 lembrete (§7.230).
+
+## §7.233-c — "Roda sem leitor" vale para os DOIS lados: ninguém vê o alarme falso E ninguém vê o RASTRO
+
+A varredura própria achou o pior caso **no vigia** — o instrumento que existe para detectar a morte
+da entrega **estava adiantando o relógio dos negócios que vigia**.
+
+O tipo `note`, usado pelas sondas, está na **lista positiva** do gatilho de última atividade. Cada
+ciclo movia `last_activity_at` dos dois leads, e **apagar a atividade depois não devolvia o relógio**.
+
+**Medido: 2 leads de 60 com o relógio adiantado, até 49 minutos** — exatamente os dois que o vigia
+toca. Doze ciclos os deixaram parecendo mais ativos do que estavam **num pipeline cuja feature
+central é decidir quem esfriou**.
+
+> ***"O vigia estava contaminando exatamente a grandeza que a wave 7 mede, a cada 4 minutos, sozinho,
+> sem ninguém olhando."***
+
+**E a §7.233-a estava pela metade.** *"Roda sem leitor"* tem **duas** consequências, e só uma tinha
+sido nomeada:
+
+| consequência | o que ninguém vê |
+|---|---|
+| já nomeada | o **alarme falso** que ele emite |
+| **faltava** | o **rastro** que ele deixa |
+
+> ***"Vigiar sem ser visto vale para os dois lados."***
+
+E o autor foi preciso sobre a própria cegueira: **o vigia foi o PRIMEIRO artefato que ele blindou
+contra alarme falso — e o ÚLTIMO em que pensou como poluidor.** Aplicou a lei certa ao artefato
+certo **e enxergou só um dos dois riscos dele**.
+
+**Critério de varredura que fica, e é contável:** *o instrumento escreve em tabela que alimenta coluna
+derivada, contador ou carimbo?* Se sim, **apagar a linha NÃO é limpeza**. Duas famílias encontradas —
+atividades (relógio do lead) e mensagens (prévia, carimbos e contador) — **as duas consertadas**.
+
+**E a reconstrução aqui é EXATA, e ele disse por quê:** nada no app escreve aquela coluna, só o
+gatilho a partir das atividades. *"Quando dá para provar que a reconstrução é exata eu digo; quando
+não dá, eu digo também"* — a §7.276 funcionando nas duas direções.
+
+## §7.279 — Toda defesa cobre UM eixo; confiar nela contra outro é o erro
+
+Acréscimo à §7.272, e ele generaliza as duas:
+
+> *"Além de 'repetição não protege contra premissa errada', tem **'limpeza não protege contra efeito
+> derivado'**. São a mesma família — eu confiei numa defesa que cobria outra coisa. **Repeti 3 vezes
+> e apaguei 3 vezes, e nenhuma das duas tocava no que estava errado.**"*
+
+**Repetição e limpeza são defesas reais** — contra intermitência e contra resíduo de linha,
+respectivamente. **O erro não é a defesa ser fraca: é ela ser forte contra outro eixo**, e a força
+observada (três repetições! três limpezas!) **alimenta a confiança sem tocar no risco**.
+
+**Regra:** ao se apoiar numa defesa, **nomeie qual modo de falha ela cobre** — e verifique se o que
+você teme está nessa lista. *"Eu repeti"* e *"eu limpei"* são respostas para perguntas específicas, e
+quase nunca para a que está em jogo.
+
+**A tabela mínima, para as três que já custaram caro hoje:**
+
+| defesa | cobre | **não cobre** |
+|---|---|---|
+| repetição | intermitência | premissa errada, construção enviesada |
+| limpeza da linha | resíduo direto | **coluna derivada, contador, carimbo** |
+| verde/vermelho do teste | comportamento do código | precondição de ambiente, régua trocada |
