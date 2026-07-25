@@ -5231,3 +5231,38 @@ Pedir a segunda para decidir a primeira não é cautela: é **um veto disfarçad
 
 **Corolário do parâmetro:** quando um limiar for inevitável, ancore-o no que o ambiente não
 falsifica. Aqui: **tamanho da lista**, nunca tempo — tempo é o eixo que este banco mente.
+
+## §7.144 — Escolha observável ESPECÍFICO DE UM CONJUNTO e INSENSÍVEL À APRESENTAÇÃO
+
+Quase toda lei acumulada aqui é um "não". Esta é o "faça", e ela nasceu de uma coincidência que não
+é coincidência: a **contagem de linhas da timeline** resolveu, sozinha, duas doenças diferentes.
+
+- Contra a **ocultação** (§7.132): contagem sobrevive ao agrupamento — texto não.
+- Contra a **contaminação** (teste confundido): contagem é de UMA lista — o texto do painel também
+  mudaria pelo cabeçalho, que exibe o título editado, e a conclusão seria verdadeira pelo motivo
+  errado.
+
+As duas propriedades que explicam isso, e são o critério de escolha:
+
+1. **Escopo:** o observável pertence a UM conjunto identificável, e nenhum elemento vizinho pode
+   satisfazê-lo por acidente.
+2. **Invariância de apresentação:** não muda se a tela agrupar, truncar, paginar ou reordenar.
+
+**Texto falha nas duas** — é o observável mais disponível e o pior. Contagem, total e id passam nas
+duas. Antes de escrever a asserção, escolha o observável por esse par; boa parte das armadilhas
+desta entrega não teria existido.
+
+## §7.140-a — O número de explicações chatas cresce com as camadas atravessadas
+
+Na asserção de mesma origem havia UMA explicação chata (o gatilho não disparou). Na asserção
+entre-abas há **três**: a ação não aconteceu, a entrega está morta para todos, ou chegou e a tela
+não aplicou. Só a terceira é o defeito procurado.
+
+**Cada camada entre a causa e a observação acrescenta uma forma de o resultado sair igual por outro
+motivo.** Logo, asserção que atravessa processo, rede ou aba precisa de MAIS exclusões que a
+equivalente local — e a prática que dá conta é confirmar cada elo no ponto onde ele é
+inequívoco (a ação, no BANCO; a entrega, no canal; a aplicação, na tela). **Intenção não é efeito.**
+
+**E a serialização que descarta nulos é a pior variante da §7.134**, porque ali o campo **foi
+pedido** e sumiu no caminho: declarar o que se exigiu da consulta não protege. Nesse elo, quem
+recebe também precisa distinguir "não veio" de "não tem".
