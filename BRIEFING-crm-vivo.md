@@ -7939,3 +7939,48 @@ coisa.
 Antes de rodar, foi verificado que os 7 destinatários são contatos de teste **sem número**, e que o
 WAHA aponta para `localhost`. *"Se os destinatários fossem reais, eu teria pedido confirmação
 antes."* **A verificação de destino veio antes da ação, não depois do susto.**
+
+## §7.258 — Recusar e REGISTRAR vence adivinhar, quando o erro é invisível e a recusa é corrigível
+
+Duas decisões do mapeamento agente↔pipeline, e as duas se resolvem pela mesma assimetria:
+
+- **Dois estágios com o mesmo `hint`** → **não move, registra qual colisão ocorreu.**
+- **Nenhum estágio com o `hint`** → **não move, deixa rastro.**
+
+**A assimetria que decide:** a recusa é **visível e corrigível** — o tenant vê o registro, entende que
+mapeou duas etapas para o mesmo passo, e conserta. O movimento errado é **invisível**: parece um
+movimento legítimo, e a pessoa conclui que **alguém moveu o negócio dela**.
+
+> *"Adivinhar num roteador erra um card; adivinhar aqui **move o negócio da pessoa para o lugar
+> errado**, e ela vai achar que alguém moveu."*
+
+**E o argumento que fecha contra "menor position vence":** essa regra funcionaria *bem o bastante*
+para sempre — **e o tenant nunca descobriria que mapeou errado.** É o sistema tomando, em silêncio,
+uma decisão que é dele, com um default que ninguém validou. **Silêncio que funciona é o mais difícil
+de corrigir, porque não gera sintoma.**
+
+**Condição obrigatória:** o registro tem de **nomear as duas etapas que colidiram**. Registro que diz
+*"não foi possível mapear"* transfere o trabalho de diagnóstico para quem não tem os dados — e vira
+ruído na terceira vez.
+
+## §7.259 — O PEDÁGIO DO EIXO: o modelo é por CONTATO, a experiência é por NEGÓCIO
+
+Terceira vez hoje que a mesma junção cobra:
+
+1. **Dossiê** — a timeline era indexada por contato; negócio sem contato ficava sem porta (§7.123).
+2. **Reativação** — `cron_jobs` é indexado por contato; 26 de 68 negócios não têm caminho (§7.222).
+3. **Agora** — `lead_state.stage` é `unique(org, contact)` e o card é por negócio: **um contato com
+   dois negócios abertos não diz qual card move.**
+
+**Não é coincidência: é um pedágio estrutural.** O modelo tem um eixo em CONTATO e o produto promete
+uma experiência por NEGÓCIO — **toda peça nova que cruze os dois paga**, e quem não souber disso
+descobre no meio da implementação.
+
+**A resposta já existe e foi decidida na wave 4:** rotear pelo lead ATIVO
+(`resolveActiveLeadForContact`) e, havendo ambiguidade, **não agir em nenhum** e virar item de caixa.
+**Reusar não é conveniência — é evitar a divergência**: um segundo resolvedor de "qual negócio deste
+contato" seria a doença do dia inteiro, criada de propósito.
+
+**Regra:** ao desenhar peça que cruze contato e negócio, **a primeira pergunta é "qual negócio?", e a
+resposta é o resolvedor existente**. E o mapa vivo (`docs/architecture/`) precisa mostrar esse
+pedágio explicitamente — três pedágios pagos e nenhum registrado é o que faz o quarto custar igual.
