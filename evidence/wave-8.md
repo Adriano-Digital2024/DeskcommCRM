@@ -179,3 +179,52 @@ no HEAD já põe a marca no começo, eu mesmo a movi durante a wave. As órfãs 
 versão antiga. Abri o arquivo por disciplina da lei do alvo em movimento, **não porque
 duvidasse** — e era o mesmo erro que eu tinha acabado de me retratar, sendo reconstruído
 do zero. A disciplina pegou o que a dúvida não pegaria.
+
+## O oitavo lead: identificado, e deliberadamente NÃO tocado
+
+O único lead de aparência suspeita que sobrou no board após a limpeza:
+
+> **"Título editado pela prova 1784986646931"** — org `6e567068`, pipeline CRM Vivo — Clínica
+
+**Ele não é lixo. É o `Bruno Tavares — protocolo superior` do seed**, com o título
+sobrescrito. A atribuição não é palpite — são três sinais independentes:
+
+| sinal | evidência |
+|---|---|
+| ausência | dos 11 títulos de `scripts/seed-crm-vivo.ts`, falta **exatamente um** no banco: Bruno Tavares |
+| valor | o seed define `valueCents: 4_500_000`; o lead tem `4500000` |
+| estágio | o seed define `stage: "proposta"`; o lead está em "Proposta enviada" |
+
+E a criação bate: `24/07 21:07:32`, o mesmo minuto em que o pipeline foi criado.
+
+### Por que não restaurei o título
+
+A timeline dele mostra atividade **de hoje, recente, que não é minha**: `note` às
+17:52 ("caça à linha envenenada"), 17:58 e 18:23. Vocabulário de outra sessão.
+**Este lead é cobaia ativa de alguém agora** — mexer no título durante a medição
+alheia é o erro que este dia inteiro tratou de evitar.
+
+Aqui a espera tem objeto, e é o contraste exato com os 7 que apaguei: naqueles, a
+dúvida era resolvível (`git log` dizia quem gerou) e esperar era transferir
+trabalho; neste, a dúvida sobre *quem está usando agora* é real e a evidência
+está na timeline.
+
+**Para quem retomar:** o título correto é `Bruno Tavares — protocolo superior`.
+Restaure quando a sessão que o usa terminar. A busca que acha o lead **sem
+depender de acentuação** é `where title like '%1784986646931%'`.
+
+### E a lição que este lead deu de graça
+
+O QA reportou que ele "não existia no banco" — e reportou de boa-fé, tendo
+consultado. Não achou porque **eu lhe dei uma chave quebrada**: escrevo as
+mensagens do Espaço sem acentuação, e o título real tem acento no *í*. Medido no
+mesmo banco, no mesmo instante: `like 'Titulo editado%'` → 0; `like 'Título
+editado%'` → 1.
+
+**Canal que normaliza texto destrói CHAVE e preserva PROSA.** "Conversao" sem til
+continua legível e ninguém age errado; identificador sem til não é *lido*, é
+*colado numa consulta*. E quem escreve não sente a diferença, porque as duas
+formas continuam legíveis para humano — ele leu uma string compreensível, ela só
+não era mais a mesma string.
+
+A regra: o que o outro vai **colar** vai em ASCII puro.
