@@ -9342,3 +9342,39 @@ produz artefato para conferir** — ela produz **ausência**, e ausência não r
 **Consequência prática:** não se cobra de alguém que examine a própria cautela **antes** de ele ter o
 hábito de examinar as próprias afirmações. **A ordem é o método**, e inverter só produz paralisia com
 vocabulário de rigor.
+
+## §7.296 — Assumir culpa ERRADO também é afirmar sem medir — e a atribuição decide se existe conserto
+
+A última correção do dia **não foi de um erro de medição: foi de uma ATRIBUIÇÃO DE CULPA.**
+
+Quem buscou pelo texto sem acento havia reportado *"errei por um acento — erro ortográfico meu"*. O
+autor da chave assumiu depois: **ela trafegou sem acento porque ele escreve assim de propósito**, e a
+busca colou o que recebeu.
+
+> ***"Eu tinha assumido sozinho o que era do canal — e assumir errado também é afirmar sem medir."***
+
+**Auto-atribuição é uma ATRIBUIÇÃO**, e atribuições precisam de evidência como qualquer outra
+afirmação. Assumir a mais **parece humildade e é o mesmo erro epistêmico** de culpar outro — só que
+com sinal invertido e, por isso, **sem ninguém para contestar**.
+
+**E o custo não é moral, é operacional — porque a atribuição decide a NATUREZA do defeito:**
+
+| versão | o que o defeito é | conserto disponível |
+|---|---|---|
+| *"errei por um acento"* | **desatenção pessoal** | *"prestar mais atenção"* — ou seja, nenhum |
+| *"a chave não sobrevive ao canal"* | **classe de conteúdo × meio** | **ASCII puro para o que será colado** |
+
+> ***"A primeira versão vira uma história sobre desatenção; a segunda é sobre uma classe de conteúdo
+> que não sobrevive ao meio — e essa tem conserto."***
+
+**Regra:** ao assumir um erro, **meça a atribuição com o mesmo rigor de qualquer afirmação**. Se o
+defeito é sistêmico e você o carimba como seu, **você acabou de destruir a única versão que tinha
+solução** — e a §7.218 (vergonha tira o dado do conjunto de evidências) ganha aqui a sua metade mais
+cara: **não é só o dado que sai, é o CONSERTO**.
+
+### E a chave certa deu o dado que a errada escondia
+
+O oitavo lead **não é órfão anônimo**: é de seed de ontem (24/07 21:07), **o título foi alterado hoje
+às 13:37 por edição que passou pelo produto** (`source_module=crm`, não inserção direta), e as três
+últimas notas nele são de sondas conhecidas. **Quem fez a edição das 13:37 não foi determinado — e
+não foi atribuído por semelhança.** Fica declarado assim.
