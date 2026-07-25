@@ -31,29 +31,53 @@ function versionados(padrao: string): string[] {
 }
 
 /**
- * Formatos que valem como prova. `.png` sozinho deixaria passar gravação de tela
- * (`gif`/`webm`), que o `§7` pede no cenário 23 — hoje ninguém cita, mas a vala
- * fica aberta para a wave 7 se o padrão não crescer junto.
- *
- * Duas constantes de propósito: a global serve para EXTRAIR (precisa de `g`), e a
- * simples serve para TESTAR — `RegExp` com `g` guarda `lastIndex` entre chamadas
- * e `.test()` passa a alternar resultado. Reaproveitar uma só aqui seria um bug
- * que só aparece a partir do segundo documento.
+ * Extensões que valem como prova. `.png` sozinho deixaria passar gravação de tela
+ * (`gif`/`webm`), que o `§7` pede no cenário 23.
  */
-const IMG_EXTRAI = /[\w./-]*[\w-]+\.(?:png|jpe?g|gif|webp|webm|svg)/gi;
-const IMG_TESTA = /[\w./-]*[\w-]+\.(?:png|jpe?g|gif|webp|webm|svg)/i;
+const EXT = /\.(?:png|jpe?g|gif|webp|webm|svg)$/i;
 
 /**
- * Os documentos são DESCOBERTOS, não listados.
+ * O texto sem os blocos de código cercados.
  *
- * A lista fixa anterior enunciava um princípio universal (*"citação morta é
- * citação morta em qualquer documento"*) e aplicava a sete arquivos escolhidos a
- * mão. Ficavam de fora `evidence/README.md` — dentro da própria pasta que o teste
- * protege — e `HANDOFF-wave1-devvivo.md`. Pior: a narrativa da wave seguinte
- * **nasceria descoberta**, e ninguém lembraria de editar a lista.
+ * Achado do `@MaestroConexoes`: o extrator anterior casava QUALQUER token
+ * terminado em extensão de imagem, em qualquer lugar — e por isso contava como
+ * "referência morta" pedaço de URL (`3030/api/files/abc.jpg`), rota em exemplo
+ * (`/api/files/gone.jpg`), chave de storage (`org1/conv1/msg1.jpg`) e até
+ * **elisão**, com os três pontos do texto virando caminho.
+ *
+ * **Ele não distinguia CITAÇÃO de MENÇÃO** — a mesma família do guard que travou
+ * o time ao ler a palavra proibida dentro do texto de uma mensagem: instrumento
+ * que casa por substring não separa *usar* de *mencionar*.
  */
-const DOCS = versionados("*.md").filter((d) =>
-  IMG_TESTA.test(fs.readFileSync(path.join(RAIZ, d), "utf8")),
+function semCodigo(texto: string): string {
+  return texto.replace(/```[\s\S]*?```/g, "");
+}
+
+/**
+ * Só o que é SINTATICAMENTE citação: `![alt](caminho)`, `[texto](caminho)` ou
+ * caminho entre crases. URL é descartada — quem cita prova aponta para arquivo do
+ * repositório, não para host.
+ */
+function referenciasBrutas(texto: string): string[] {
+  const limpo = semCodigo(texto);
+  const achados: string[] = [];
+  for (const m of limpo.matchAll(/!?\[[^\]]*\]\(([^)\s]+)\)/g)) achados.push(m[1]!);
+  for (const m of limpo.matchAll(/`([^`\n]+)`/g)) achados.push(m[1]!);
+  return achados.filter(
+    (r) =>
+      EXT.test(r) &&
+      !r.includes("://") &&
+      // Nem template nem glob: `evidence/wave-<n>-<cenario>.png` e
+      // `.../onda1-*.png` nomeiam um PADRÃO, não um arquivo. Citação de padrão
+      // não é citação de prova — é o achado do @MaestroConexoes um nível mais
+      // fundo: o extrator já lia sintaxe, e ainda assim tratava `<n>` e `*`
+      // como nome literal.
+      !/[<>*?{}]/.test(r),
+  );
+}
+
+const DOCS = versionados("*.md").filter(
+  (d) => referenciasBrutas(fs.readFileSync(path.join(RAIZ, d), "utf8")).length > 0,
 );
 
 
@@ -79,20 +103,14 @@ const DOCS = versionados("*.md").filter((d) =>
  */
 const LEGADO = new Set([
   ".claude/agents/gov-implementer.md",
-  "HANDOFF-harness-evolution.md",
   "HANDOFF-inbox-multimodal.md",
   "HANDOFF-operacao-visivel.md",
   "HANDOFF.md",
-  "docs/stories/epics/EPIC-03-inbox-messaging.md",
-  "docs/superpowers/handoffs/2026-07-17-webhooks.md",
   "docs/superpowers/plans/2026-07-21-onda0-fundacao-midia.md",
-  "docs/superpowers/plans/2026-07-21-onda2-composer-whatsapp.md",
-  "docs/superpowers/plans/2026-07-22-onda3-agente-multimodal.md",
   "docs/superpowers/plans/2026-07-24-harness-fase2-skills.md",
   "loop/checkpoints/G2-report.md",
   "loop/checkpoints/G4-report.md",
   "loop/checkpoints/G5-report.md",
-  "plan/progress.md",
 ]);
 
 /**
@@ -109,7 +127,7 @@ const LEGADO = new Set([
 function citadas(doc: string): string[] {
   const texto = fs.readFileSync(path.join(RAIZ, doc), "utf8");
   const dir = path.posix.dirname(doc);
-  const refs = texto.match(IMG_EXTRAI) ?? [];
+  const refs = referenciasBrutas(texto);
   return [
     ...new Set(
       refs.map((ref) => {
@@ -122,6 +140,20 @@ function citadas(doc: string): string[] {
 }
 
 describe("evidência citada", () => {
+  it("a quarentena não guarda documento que saiu da cobertura", () => {
+    // O anti-apodrecimento só dispara para documento que o teste ALCANÇA. Se um
+    // item da quarentena deixa de ter citação nenhuma (ou some do repo), ele
+    // nunca mais é verificado e a exceção fica lá para sempre — apodrecendo pelo
+    // outro lado. Foi o que aconteceu ao corrigir o extrator: sete itens viraram
+    // peso morto porque o que os segurava era artefato de medição.
+    const fantasmas = [...LEGADO].filter((d) => !DOCS.includes(d));
+    expect(
+      fantasmas,
+      `estes estão em LEGADO e não são mais alcançados pelo teste — REMOVA-OS:\n` +
+        fantasmas.map((f) => `  ${f}`).join("\n"),
+    ).toEqual([]);
+  });
+
   it("a descoberta de documentos não pode vir vazia", () => {
     // Sem esta guarda, um erro no `git ls-files` ou no filtro faria a suíte
     // inteira passar sem verificar nada — verde vácuo no nível do arquivo.

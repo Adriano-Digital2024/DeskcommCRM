@@ -2991,3 +2991,44 @@ do `§2` e no CORE 2, com a frase literal *"(inclusive as decisões de NÃO envi
 > Não foi só busca exata onde precisava ser aproximada: foi **procurar no banco o que estava no
 > documento que eu mesmo curei**. Quando alguém já escreveu onde a coisa mora, buscar por padrão é
 > o caminho mais longo **e** o menos confiável.
+
+### CORREÇÃO DE NÚMERO: eram 9, não 15 — e o motivo importa
+
+Ficou registrado antes que *"15 documentos de outras épicas citam evidência nunca versionada"*.
+**O número estava superestimado.** Achado do `@MaestroConexoes`, na segunda revisão do check:
+
+O extrator casava **qualquer token** terminado em extensão de imagem, em qualquer lugar do texto —
+**não distinguia CITAÇÃO de MENÇÃO**. Contava como dívida:
+
+| o que era | exemplo real |
+|---|---|
+| pedaço de URL, cortado no `:` | `3030/api/files/abc.jpg` |
+| rota num exemplo de código | `/api/files/gone.jpg` |
+| chave de storage num exemplo | `org1/conv1/msg1.jpg` |
+| **elisão** — os três pontos do texto virando caminho | `docs/superpowers/plans/...-inbox.png` |
+
+> É a mesma família do guard que travou o time pela manhã lendo a palavra proibida **dentro do
+> texto** de uma mensagem: **instrumento que casa por substring não separa *usar* de *mencionar*.**
+
+**E a consequência que ele achou é a que dói:** a quarentena exige que o item **ainda** tenha
+referência morta, para não apodrecer. Se o que segura o documento é **artefato do extrator**, a
+condição fica permanentemente verdadeira — o documento **nunca consegue sair da lista**, mesmo
+pagando a dívida real inteira. A exceção sobreviveria ao motivo que a criou: exatamente o que o
+desenho existia para impedir.
+
+**Corrigido:** o extrator lê **sintaxe de citação** (`![alt](caminho)`, `[texto](caminho)`, caminho
+entre crases), descarta blocos de código cercados, URLs e — um nível mais fundo, achado ao
+remedir — **templates e globs**: `evidence/wave-<n>-<cenario>.png` e `.../onda1-*.png` nomeiam um
+**padrão**, não um arquivo.
+
+**Remedido com a quarentena vazia: 9 documentos**, nenhum desta entrega. O `@MaestroConexoes` havia
+previsto *"perto de 8"*.
+
+#### E a quarentena ganhou o anti-apodrecimento que faltava: o REVERSO
+
+O primeiro só dispara para documento que o teste **alcança**. Ao corrigir o extrator, seis itens
+saíram da cobertura e viraram **peso morto invisível** — apodrecendo pelo outro lado. Agora um
+segundo teste exige que **todo item da quarentena continue alcançável**; item fantasma reprova.
+
+Ambos provados por mutação: documento limpo posto na lista acusa *"REMOVA-O"*; documento fora da
+cobertura acusa *"REMOVA-OS"*.
