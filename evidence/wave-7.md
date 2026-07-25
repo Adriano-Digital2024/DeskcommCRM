@@ -226,3 +226,28 @@ despercebida vira legenda falsa na próxima vez.
 A regra que fica: **sonda de wave fechada roda para verificar, nunca para
 sobrescrever.** Se a re-execução precisar virar prova, ela vira prova NOVA, com
 nome e legenda próprios — não por cima da antiga.
+
+---
+
+## A janela do worker — e o cenário 22 DESTRAVOU
+
+![o ciclo chegando à tela sozinho](wave7-janela-do-worker.png)
+
+O ciclo inteiro com a tela aberta e **ninguém tocando em nada**:
+
+```
+ANTES   o card diz "Sem resposta há 8 dias" — nenhuma ação oferecida
+WORKER  http 200 · 1 travessia · 1 esfriou · 1 proposta criada
+~60s    o card passa a oferecer "Retomar contato? · 24h  [Retomar] [Encerrar]"
+DEPOIS  sem reload, sem clique, sem interação
+```
+
+**Isto estava declarado como BLOQUEADO no fechamento**, e o bloqueio caiu por um
+caminho que não era o esperado: não foi o realtime que resolveu — foi a rede de
+segurança. O que dependia de uma investigação em disputa passou a depender de
+uma peça que **não pode mentir**, porque é requisição com resposta.
+
+Os ~60s são o polling declarado da lista de propostas, que não vem por canal —
+não há perda a curar ali, há latência. A primeira medição esperou 7s e concluiu
+"o ciclo não chegou à tela": estava medindo a minha impaciência, não o produto.
+O contrato pede **sem reload**, não instantâneo.
