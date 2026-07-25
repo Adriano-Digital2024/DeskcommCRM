@@ -6335,3 +6335,44 @@ resultado errado**.
 
 Aqui a saída foi tirar a dependência (agrupar por chave, preservando a ordem de aparição) —
 resultado idêntico na lista ordenada, sem a armadilha.
+
+## §7.193 — Preparação que falha CALADA produz a evidência da hipótese ERRADA
+
+O `delete` da assinatura anônima **falhou** — `claims_role` é `regrole`, não `text`, e `'anon'`
+levantou erro de oid. O DEPOIS foi medido por hábito, e a linha ainda estava lá.
+
+**Se o comando tivesse sido creditado sem conferir, a medição seguinte rodaria com o veneno no
+lugar** — e o resultado ("não chegou") é exatamente a evidência da hipótese concorrente: *"são dois
+defeitos independentes"*. A falha da preparação não produz ruído: **produz o laudo errado, coerente e
+convincente**.
+
+É o motivo profundo da §7.98 (encadear preparação com medição), dito com precisão: não se confere a
+preparação por zelo, e sim porque **o modo de falha dela mapeia exatamente sobre uma conclusão
+rival**. *"Medir o depois não é cerimônia."*
+
+**Regra:** toda etapa de preparação que altera estado tem verificação do EFEITO, não do comando. E
+quando a preparação falha calada, o experimento não fica sem resultado — fica com o resultado do
+outro lado.
+
+## §7.194 — A fronteira que você respeita tem de ser a que o OUTRO observa
+
+Houve promessa de não mexer enquanto uma medição corria, e o conserto foi aplicado **no disco**, sem
+commit. **"Não commitei" não protege nada** quando o dev server lê o disco e faz hot reload: o alvo
+da medição mudou por baixo dela.
+
+**A frase é a lei: *"não commitei" é uma afirmação sobre o REPOSITÓRIO, e o que o colega observa é o
+PROCESSO.*** Existem várias fronteiras — disco, índice, HEAD, banco, servidor em execução — e a
+promessa vale na que o outro está medindo, não na que é conveniente para quem promete.
+
+**Regra:** toda promessa de "não vou mexer" declara **EM QUE SUPERFÍCIE**. Sem isso, quem promete
+escolhe a fronteira depois do fato, sempre a seu favor — e sem má-fé, porque a fronteira do próprio
+trabalho é a que vem à cabeça.
+
+**E isto estende a decisão já tomada:** worktrees separados (marcados para o fim da wave 7) resolvem
+o índice **e não resolvem** o dev server nem o banco compartilhado. O isolamento completo precisa das
+três — árvore, porta e dados. Enquanto não houver, medição concorrente exige **janela declarada**:
+quem mede anuncia início e fim, e quem escreve espera.
+
+**Corolário sobre o resultado em curso:** medição que se sobrepôs à mudança de disco **não é
+inválida por suposição nem válida por otimismo** — é indeterminada até alguém comparar os horários.
+A pergunta certa não é "deu certo?", é "a sua janela cruzou a escrita?".
