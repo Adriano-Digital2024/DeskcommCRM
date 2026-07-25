@@ -20,6 +20,11 @@ import { BASE, CARD_ATTR, carimbar, login } from "./qa-helpers";
 
 const OUT = "evidence";
 const sufixo = carimbar([
+  // A PRÓPRIA SONDA entra na lista: instrumento não commitado produz veredito
+  // irreprodutível do mesmo jeito que produto não commitado. Declarar só as
+  // dependências do produto deixa o carimbo dizer "limpas" enquanto a régua
+  // muda debaixo do resultado.
+  "tests/sonda-proxima-acao.ts",
   "lib/leads/next-action.ts",
   "components/kanban/NextActionSlot.tsx",
   "hooks/kanban/useNextAction.ts",
@@ -148,7 +153,78 @@ async function main(): Promise<void> {
   const aindaPede = await card.getByRole("button", { name: /^Aprovar:/ }).count();
   console.info(`13d. a proposta sai de cena depois de decidida: ${aindaPede === 0}`);
 
-  const passou = mostraProposta && temAprovar && temDescartar && semSlotVazio && aprovou;
+  // IGNORAR também gera atividade — a recusa é sinal. Sem esta perna, "os dois
+  // geram atividade" ficaria pela metade e ninguém notaria: o caminho feliz
+  // sozinho passa igual.
+  await admin
+    .from("lead_state")
+    .update({ next_action: proposta.next_action })
+    .eq("organization_id", org)
+    .eq("contact_id", alvo.contact_id);
+  await page.reload({ waitUntil: "networkidle" });
+  await card.getByRole("button", { name: /^Ignorar:/ }).click();
+  await page.waitForTimeout(2_500);
+  await foto(page, "13-depois-de-ignorar");
+  const { data: apósIgnorar } = await admin
+    .from("crm_lead_activities")
+    .select("type, reason")
+    .eq("lead_id", alvo.id)
+    .eq("type", "next_action_dismissed");
+  const ignorou = (apósIgnorar ?? []).length > 0;
+  console.info(`13e. ignorar gerou atividade: ${ignorou}`);
+  if (ignorou) {
+    console.info(`     motivo: "${(apósIgnorar ?? [])[0]!.reason}"`);
+  }
+
+  // AUTORIZAÇÃO VENCIDA: o agente reescreve a proposta entre o render e o
+  // clique. O sistema não pode executar a NOVA em nome de quem leu a ANTIGA.
+  await admin
+    .from("lead_state")
+    .update({ next_action: proposta.next_action })
+    .eq("organization_id", org)
+    .eq("contact_id", alvo.contact_id);
+  await page.reload({ waitUntil: "networkidle" });
+  await card.getByRole("button", { name: /^Aprovar:/ }).waitFor({ timeout: 10_000 });
+  // ... e AGORA o agente muda de ideia, com a tela já renderizada.
+  await admin
+    .from("lead_state")
+    .update({ next_action: "enviar proposta comercial revisada" })
+    .eq("organization_id", org)
+    .eq("contact_id", alvo.contact_id);
+  const antesDaTrava = (
+    await admin
+      .from("crm_lead_activities")
+      .select("id", { count: "exact", head: true })
+      .eq("lead_id", alvo.id)
+  ).count ?? 0;
+  const resposta = page.waitForResponse((r) => r.url().includes("/next-action"), {
+    timeout: 15_000,
+  });
+  await card.getByRole("button", { name: /^Aprovar:/ }).click();
+  const status = (await resposta).status();
+  await page.waitForTimeout(1_500);
+  const depoisDaTrava = (
+    await admin
+      .from("crm_lead_activities")
+      .select("id", { count: "exact", head: true })
+      .eq("lead_id", alvo.id)
+  ).count ?? 0;
+  const travou = status === 409 && depoisDaTrava === antesDaTrava;
+  console.info(
+    `13f. autorização vencida recusada: ${travou} (HTTP ${status}, atividades ${antesDaTrava} → ${depoisDaTrava})`,
+  );
+  await foto(page, "13-autorizacao-vencida");
+
+  // Limpa o que escreveu: a sonda não pode deixar o banco diferente de como
+  // achou, senão a próxima execução mede outro produto.
+  await admin
+    .from("lead_state")
+    .update({ next_action: proposta.next_action })
+    .eq("organization_id", org)
+    .eq("contact_id", alvo.contact_id);
+
+  const passou =
+    mostraProposta && temAprovar && temDescartar && semSlotVazio && aprovou && ignorou && travou;
   console.info(passou ? "PASS   cenários 13 e 14" : "FALHA  ver linhas acima");
   if (!passou) process.exitCode = 1;
 
