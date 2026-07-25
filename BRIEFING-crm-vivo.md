@@ -1196,3 +1196,30 @@ Foi por isso que esta wave insistiu em três coisas que parecem excesso e não s
 **tentativa fracassada** (o `inset` que não sobreviveu ao contexto de pintura), registrar o que
 **não se deve consertar** (o `delete` de marca vencida, o avanço do `aberta`), e registrar **as três
 linhas do tempo** em vez de só a que venceu.
+
+## §7.22 — A premissa de tempo, na medição, vira ORDEM DE OPERAÇÕES
+
+O `@QAVivo` produziu dois vermelhos falsos ao remedir o pulso, e os dois são a mesma coisa que o
+`§7.17` descreve para simulação:
+
+1. **Fotografou logo após disparar.** A animação dura 320 ms e **o próprio screenshot consome parte
+   disso** — pegou o card já em repouso, e o pixel deu igual.
+2. **Passou a esperar o overlay nascer, mas começou a esperar DEPOIS do gatilho** — chegar atrasado
+   por construção; o disparo já tinha consumido a janela.
+
+> **Na simulação a premissa de tempo é implícita; na medição ela vira ORDEM DE OPERAÇÕES.**
+> Arme a espera **antes** do gatilho, sempre. Instrumento que só começa a observar depois de agir
+> mede o rastro, não o evento.
+
+### E o antídoto que ele nomeou é o mais barato que existe
+
+O que o salvou não foi releitura: foi rodar **a sonda do regente**, que deu `PASS` com repouso,
+durante e depois distintos. **A contradição entre duas ferramentas disse qual estava errada.**
+
+> **Ferramenta independente medindo a mesma coisa é o antídoto mais barato para vermelho falso.**
+> É o `§7.9` usado de forma construtiva: lá a contradição denunciou o instrumento; aqui ela foi
+> **provocada de propósito** para ter um segundo voto.
+
+E o fecho, nas palavras dele, que é a tese da última hora desta wave:
+
+> ***"Trabalho feito que não chega a quem clona não está entregue."***
