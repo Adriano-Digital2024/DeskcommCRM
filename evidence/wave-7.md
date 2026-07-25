@@ -116,11 +116,19 @@ que o sistema não obedeceu.
 
 ## O que ficou BLOQUEADO — e por quê
 
-Os dois estão presos ao **mesmo** veredito, e nenhum deles é trabalho pendente
-por falta de tempo:
+> ⚠️ **ATUALIZADO no fim da wave: eram dois, ficou um.** O cenário 22 destravou
+> — não pelo realtime, mas pela rede de segurança. Ver a seção final. Este
+> parágrafo fica como estava escrito, com a correção acima, porque apagá-lo
+> esconderia que o bloqueio existiu e como saiu.
 
-- **peça 3** — o board assinando `crm_lead_risk_states`;
-- **cenário 22 na tela** — o card mudando para "esfriando" sem reload.
+Os dois estavam presos ao **mesmo** veredito, e nenhum deles era trabalho
+pendente por falta de tempo:
+
+- **peça 3** — o board assinando `crm_lead_risk_states`; **segue bloqueada**, e
+  agora por um motivo menor: virou otimização de latência, não a única via —
+  com a rede, o board já se atualiza sozinho;
+- **cenário 22 na tela** — o card mudando sem reload. **DESTRAVADO**, provado na
+  janela do worker.
 
 Ambos exigem entrega em tempo real, e a entrega está em disputa entre dois
 aparatos: às 14:26 o CRM Vivo dava 0/2 com controle vivo; às 14:50 passou a dar
