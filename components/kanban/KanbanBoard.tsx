@@ -19,6 +19,15 @@ interface KanbanBoardProps {
   leads?: Lead[];
   pipeline?: Pipeline;
   selectedIds?: string[];
+  /**
+   * Ids que chegaram por evento remoto, quando o board recebe os dados de fora.
+   *
+   * Quem assina o realtime é quem chama `useBoard` com o pipeline — e nesta
+   * página é o _client, não este componente (aqui `useBoard(null)` fica
+   * desligado por causa do `useExternal`). Sem esta prop o pulso nasce no lugar
+   * certo e morre na fronteira: o dado vem por prop e o sinal ficava para trás.
+   */
+  pulseIds?: Set<string>;
   onSelectionChange?: (ids: string[]) => void;
 }
 
@@ -60,6 +69,7 @@ export function KanbanBoard({
   leads: leadsProp,
   pipeline: pipelineProp,
   selectedIds,
+  pulseIds: pulseIdsProp,
   onSelectionChange,
 }: KanbanBoardProps) {
   const useExternal = stagesProp !== undefined && leadsProp !== undefined;
@@ -212,6 +222,7 @@ export function KanbanBoard({
             pipelineId={pipelineId}
             ownerNames={ownerNames}
             coolingIds={coolingIds}
+            pulseIds={pulseIdsProp ?? queryResult.pulseIds}
             canonicalTags={canonicalTags}
             selectedLeadIds={selectedLeadIds}
             onSelect={handleSelect}

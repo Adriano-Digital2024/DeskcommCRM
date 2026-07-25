@@ -15,6 +15,8 @@ interface KanbanCardProps {
   index: number;
   pipelineId: string;
   isSelected?: boolean;
+  /** Chegou por evento REMOTO agora — pulsa uma vez e cessa (Wave 3). */
+  pulse?: boolean;
   onSelect?: (leadId: string, additive: boolean) => void;
 }
 
@@ -49,6 +51,7 @@ export function KanbanCard({
   index,
   pipelineId,
   isSelected,
+  pulse,
   onSelect,
 }: KanbanCardProps) {
   const value = formatBRL(card.valueCents, card.currency);
@@ -83,6 +86,7 @@ export function KanbanCard({
             "hover:border-border-strong",
             snapshot.isDragging && "rotate-1 shadow-md ring-1 ring-accent/40",
             isSelected && "ring-2 ring-accent",
+            pulse && "card-pulse",
           )}
         >
           {/* Borda de estado — 2px, a única cor do card. */}

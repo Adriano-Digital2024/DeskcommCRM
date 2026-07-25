@@ -35,7 +35,7 @@ export function PipelinePageClient({
   pipelineId: string;
   initialName: string;
 }) {
-  const { data, isLoading, error } = useBoard(pipelineId);
+  const { data, isLoading, error, pulseIds } = useBoard(pipelineId);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -85,6 +85,7 @@ export function PipelinePageClient({
           pipelineId={pipelineId}
           stages={data.stages}
           leads={filteredLeads}
+          pulseIds={pulseIds}
           pipeline={data.pipeline}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}

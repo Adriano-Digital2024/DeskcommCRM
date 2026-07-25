@@ -316,3 +316,30 @@
     border: 2px solid transparent;
   }
 }
+
+/* ---- Pulso de chegada no card do Kanban (CRM Vivo, Wave 3) --------------
+   Vivo é o que RESPONDE, não o que se agita: um pulso, uma vez, e cessa.
+   A animação não repete (sem `infinite`) — ficar animando é rejeição de review.
+
+   `prefers-reduced-motion: reduce` NÃO é o caminho degradado: o mesmo estado
+   continua legível, só que por fundo estático em vez de movimento. O card ainda
+   diz "acabei de mudar" para quem desligou animação. */
+@keyframes deskcomm-card-pulse {
+  from {
+    box-shadow: 0 0 0 2px var(--color-accent);
+  }
+  to {
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+.card-pulse {
+  animation: deskcomm-card-pulse var(--duration-slow) var(--ease-out) 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-pulse {
+    animation: none;
+    background-color: var(--color-accent-soft);
+  }
+}
