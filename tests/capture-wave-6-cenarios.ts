@@ -102,7 +102,25 @@ function vocabularioTemEdicaoHumana(): { tem: boolean; tipos: string[] } {
   return { tem, tipos };
 }
 
-async function montarCaso(): Promise<{ leadId: string; titulo: string; agenteId: string | null }> {
+/**
+ * DOIS LEADS, e a diferença entre eles é a variável do teste.
+ *
+ * Eu tinha UM, sem contato — porque o D26 é sobre o lead sem contato. Mas os
+ * outros critérios precisam de uma timeline POPULADA, e sem contato ela nunca
+ * carrega: eu estava medindo colapso, rótulo de ator e assinatura sobre uma tela
+ * que não tinha como mostrar nada.
+ *
+ * Reusar o caso de um critério para todos é o mesmo erro do alvo sorteado numa
+ * escala acima: o caso vira "o lead que eu tinha à mão" em vez de "o lead que
+ * este critério exige".
+ */
+async function montarCaso(): Promise<{
+  leadId: string;
+  titulo: string;
+  agenteId: string | null;
+  leadComContato: string;
+  tituloComContato: string;
+}> {
   const titulo = `${PREFIXO} ${RUN} — dossiê`;
   const { data: lead, error } = await admin
     .from("crm_leads")
@@ -172,7 +190,63 @@ async function montarCaso(): Promise<{ leadId: string; titulo: string; agenteId:
     } as never);
     if (e2) throw new Error(`criar atividade: ${e2.code} ${e2.message}`);
   }
-  return { leadId, titulo, agenteId };
+  // O IRMÃO COM CONTATO — mesmo conteúdo, e a única diferença é o eixo.
+  const { data: contato, error: eC } = await admin
+    .from("contacts")
+    .insert({
+      organization_id: ORG,
+      name: `${PREFIXO} ${RUN} contato`,
+      display_name: `${PREFIXO} ${RUN} contato`,
+      phone_number: `+5511${900_000_000 + (parseInt(RUN, 16) % 90_000_000)}`,
+      source: "manual",
+    } as never)
+    .select("id")
+    .single();
+  if (eC || !contato) throw new Error(`criar contato: ${eC?.code} ${eC?.message}`);
+  const contactId = (contato as { id: string }).id;
+
+  const tituloComContato = `${PREFIXO} ${RUN} — dossiê COM contato`;
+  const { data: lead2, error: e3 } = await admin
+    .from("crm_leads")
+    .insert({
+      organization_id: ORG,
+      pipeline_id: PIPELINE,
+      stage_id: STAGE,
+      contact_id: contactId,
+      title: tituloComContato,
+      status: "open",
+      source: "manual",
+      value_cents: 300_000,
+      currency: "BRL",
+      owner_kind: "user",
+      owner_user_id: DONO,
+      owner_agent_id: null,
+      position_in_stage: 6001,
+      last_activity_at: new Date().toISOString(),
+    } as never)
+    .select("id")
+    .single();
+  if (e3 || !lead2) throw new Error(`criar lead com contato: ${e3?.code} ${e3?.message}`);
+  const leadComContato = (lead2 as { id: string }).id;
+
+  for (const l of linhas) {
+    const { error: e4 } = await admin.from("crm_lead_activities").insert({
+      organization_id: ORG,
+      lead_id: leadComContato,
+      contact_id: contactId,
+      source_module: "qa",
+      type: l.type,
+      actor_kind: l.actor_kind,
+      actor_agent_id: l.actor_agent_id,
+      performed_by_user_id: l.actor_kind === "user" ? DONO : null,
+      reason: l.reason,
+      evidence: l.actor_kind === "ai" ? { run_ids: [randomUUID()] } : {},
+      performed_at: new Date(base - 600_000 + l.ms).toISOString(),
+    } as never);
+    if (e4) throw new Error(`atividade do irmão: ${e4.code} ${e4.message}`);
+  }
+
+  return { leadId, titulo, agenteId, leadComContato, tituloComContato };
 }
 
 async function limpar(): Promise<number> {
@@ -185,6 +259,7 @@ async function limpar(): Promise<number> {
   if (ids.length === 0) return 0;
   await admin.from("crm_lead_activities").delete().in("lead_id", ids);
   await admin.from("crm_leads").delete().in("id", ids);
+  await admin.from("contacts").delete().eq("organization_id", ORG).like("name", `${PREFIXO} %`);
   return ids.length;
 }
 
@@ -227,6 +302,11 @@ async function main(): Promise<void> {
     // dizer "todas limpas" enquanto a RÉGUA muda debaixo do resultado.
     "tests/capture-wave-6-cenarios.ts",
     "components/kanban/KanbanCard.tsx",
+    // O dossiê nasceu, então a prova passou a DEPENDER dele. Carimbo que declara
+    // uma cadeia incompleta diz "todas limpas" sobre um arquivo que nem está na
+    // lista — é o mesmo furo do caminho inexistente, pelo lado da omissão.
+    "components/kanban/LeadDossier.tsx",
+    "hooks/leads/useLeadTimeline.ts",
     "components/kanban/EditLeadDialog.tsx",
     "components/contacts/TimelineView.tsx",
     "lib/leads/activity-vocabulary.ts",
@@ -349,7 +429,10 @@ async function main(): Promise<void> {
     }
 
     // ---- 18: clicar no card abre o dossiê, na ORDEM certa -------------------
-    const { card } = await cardLocator(page, caso.titulo);
+    // O lead COM contato: os critérios de timeline exigem uma timeline que
+    // CARREGUE. Medir colapso e rótulo de ator no lead sem contato seria medir a
+    // ausência de eixo e chamá-la de defeito de apresentação.
+    const { card } = await cardLocator(page, caso.tituloComContato);
     await card.click();
     await page.waitForTimeout(1500);
     const painel = dossie(page);
@@ -478,7 +561,12 @@ async function main(): Promise<void> {
     // de EIXO se lê exatamente como uma timeline vazia por falta de ACONTECIMENTO.
     // O usuário vê "nada aconteceu neste negócio" sobre um negócio com histórico.
     // É a ausência com cara de aprovação, agora na frente do cliente.
-    const textoTimeline = ((await painel.innerText()) ?? "").replace(/\s+/g, " ");
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(800);
+    const { card: cardSemContato } = await cardLocator(page, caso.titulo);
+    await cardSemContato.click();
+    await page.waitForTimeout(1500);
+    const textoTimeline = ((await dossie(page).innerText()) ?? "").replace(/\s+/g, " ");
     const mostraAsAtividades = /a IA respondeu sobre prazo/i.test(textoTimeline);
     if (!mostraAsAtividades) {
       await shotPage(page, `wave-6-d26-timeline-vazia-por-eixo${sufixo}.png`, false);
