@@ -6436,3 +6436,53 @@ foi feita** — a janela não cruzou a escrita *por sorte, não por cuidado*.
 Minha instrução assumia um fato que não existia. **Antes de mandar descartar, confirme que há
 resultado** — instrução construída sobre premissa não verificada gasta a rodada de quem obedece e
 esconde o estado real: aqui, que o passo 1 da sequência nunca tinha começado.
+
+## §7.197 — Métrica de um sujeito não absorve informação sobre OUTRO sujeito
+
+Decisão 1 da reativação: proposta vencida **não piora o bucket de risco**. O argumento que vence é o
+do escopo do sujeito — **o bucket mede o SILÊNCIO DO CLIENTE**, e ninguém falou com ele. Inação
+interna é fato sobre o TIME, não sobre o negócio, e somar as duas corrompe a medida para as duas
+perguntas: deixa de responder *"o cliente sumiu?"* e continua não respondendo *"nós largamos?"*.
+
+**A informação não se perde** — a transição `pending → expired` emite atividade, e a timeline retém
+o histórico. E proposta vencendo repetidamente no mesmo negócio **é sinal de verdade**, só que sobre
+outra coisa: pertence a métrica de time, não à faixa do lead. **Escrever isso no ponto onde alguém
+consideraria o contrário** é o que impede o "conserto" futuro que piora a medida.
+
+**Regra geral:** antes de fazer um indicador reagir a um evento novo, pergunte **de quem é o evento**.
+Indicador que mistura sujeitos vira aquele que não decide nada — e a degradação é invisível, porque
+ele continua produzindo números.
+
+## §7.198 — O que a IA acrescenta nunca pode ser PRÉ-REQUISITO do que ela acrescenta a
+
+Decisão 2: **o worker propõe com rascunho vazio; o agente preenche depois.** Aprovado, e a razão é
+estrutural, não de robustez: **se a proposta só nascer com o LLM, uma indisponibilidade vira
+silêncio — e silêncio é a doença que a wave existe para curar.** Num produto com IA nativa, cada
+dependência do modelo é um lugar onde a falha dele reproduz exatamente o defeito que o produto
+combate.
+
+Duas condições, e as duas vêm do resto da doutrina:
+
+1. **"Sem rascunho" é ESTADO VISÍVEL, não string vazia.** Rascunho ausente que parece rascunho é o
+   desconhecido renderizado como normal (§7.151) — o card e a caixa dizem *"rascunho a caminho"* ou
+   equivalente, nunca um espaço em branco que se lê como "o agente não achou o que dizer".
+2. **A proposta é ACIONÁVEL sem o rascunho.** Aceitar sem texto significa que o humano escreve a
+   mensagem. Sem isso, preencher o rascunho vira uma segunda demanda que pode morrer — e teríamos
+   criado, um nível abaixo, exatamente a recursão que o Arquiteto barrou: a cura que precisa de outra
+   cura. **O realce da IA é melhoria; nunca porta de entrada.**
+
+### Sobre o PRAZO derivado da janela do estágio — aprovado, com uma nota escrita
+
+`prazo = coldHours` é a decisão certa: uma fonte, dois consumidores, tuning por estágio herdado de
+graça, e explicável na tela (*"você tem o mesmo tempo que o negócio levou para esfriar"*). Constante
+fixa daria a uma clínica e a um contrato o mesmo prazo — o defeito que `resolveStageWindow` existe
+para não ter.
+
+**Medido, para a decisão não ser cega:** as janelas reais são 24h, 48h, 72h e 96h, com fallback de
+24h. **O piso é um dia inteiro**, então o caminho do card não é decorativo — havia o risco de janelas
+curtas fazerem toda proposta virar item de caixa antes de alguém ver.
+
+**Nota a escrever no código:** o prazo é em horas de relógio, e a disponibilidade humana não é.
+Proposta nascida na sexta à noite vence no sábado. **Isso é aceitável e não é perda** — ela vira item
+de caixa, que é o mecanismo anti-morte — mas tem de estar escrito, senão alguém "descobre" isso daqui
+a seis meses como bug e conserta com um subsistema de horário comercial que ninguém pediu.
