@@ -5998,3 +5998,36 @@ mesma que derrubou o original — *o que mais mudou junto?*
 
 Isso não nomeia o mecanismo. Estreita onde ele **não** está — e a distinção entre "sei onde não
 está" e "sei o que é" continua sendo a diferença entre laudo e palpite.
+
+## §7.176 — Controle FABRICADO vence controle encontrado
+
+Diante de um par que nunca ficava limpo (pipeline sempre acompanhado de org, idade, dono ou
+estágio), a saída foi **criar um terceiro pipeline na mesma org só para a medição** — e a grade
+resultante mata cinco hipóteses de uma vez:
+
+| caso | entrega |
+|---|---|
+| lead existente · Pedidos · sem dono | 3/3 |
+| lead novo · **pipeline fabricado** · sem dono | 3/3 |
+| lead novo · **pipeline fabricado** · com dono | 3/3 |
+| lead novo · CRM Vivo · sem dono | **0/3** |
+| leads existentes · CRM Vivo · com dono | **0/3** |
+
+**Controle encontrado herda toda a história do dado** — quem o criou, quando, com que campos, sob
+qual configuração. Controle **fabricado** difere na dimensão que você escolheu e em nenhuma outra,
+porque você o construiu assim. Quando o par limpo não existe no acervo, **a resposta não é aceitar o
+par sujo com ressalva: é fabricar o par**.
+
+E o co-variante que apareceu no caminho prova a necessidade: os leads de um pipeline tinham
+`owner_user_id` e os do outro não — e a policy de leitura é `fn_can_view_lead(organization_id,
+owner_user_id)`. *"Ter dono"* muda visibilidade e vinha andando junto com o pipeline em todas as
+medições anteriores. **Um confundidor havia sido trocado por outro sem que ninguém notasse.**
+
+## §7.176-a — "Constante por construção" não é "medido"
+
+A organização já era a mesma nos seis leads — e foi **verificada mesmo assim**, em vez de afirmada de
+memória. A distinção é exatamente o erro que estava sendo retratado: *"já estava constante por
+construção"* descreve a INTENÇÃO de quem montou o caso; medir descreve o caso.
+
+**Onde a verificação custa um comando, a construção não é argumento.** E aqui pagou duas vezes: a
+verificação confirmou a org E revelou o co-variante do dono, que ninguém procurava.
