@@ -3664,3 +3664,34 @@ três.
 > Sem isso, **um bloco colapsado de ações do CLIENTE se lê igual a um bloco do TIME**. O agrupamento em
 > si está seguro (a tupla de ator inclui `actor_kind` e os dois nunca se fundem); **o risco mora só no
 > rótulo** — que é onde a informação chega ao usuário.
+
+---
+
+## §7.92 — O helper que recusa o caso degenerado: três propriedades, três falhas diferentes
+
+O @QAVivo pegou a própria frase (*"regra na cabeça compete com pressa; regra no código, não"*) e a
+aplicou a si mesmo: `escolherAlvo()` virou o **único caminho** para escolher alvo de sonda. Três
+propriedades, e cada uma mata uma falha distinta:
+
+| propriedade | falha que mata |
+|---|---|
+| lista **vazia falha alto** | alvo `undefined` e **critério pulado em silêncio** — foi assim que um elo inteiro da sonda do canal sumiu **enquanto o veredito "zero quadros" continuava sendo impresso** |
+| **ordenação explícita no helper** | alvo sorteado (§7.31): duas execuções escolhem o **mesmo** alvo ainda que o banco devolva em outra ordem |
+| **log de qual foi escolhido e entre quantos** | veredito sem sujeito (§7.89): *"reprodução começa por saber contra o que se mediu"* |
+
+> A primeira é a pior das três e vale nomear sozinha: **critério pulado em silêncio enquanto o placar
+> segue de pé** é o formato de erro mais caro que existe — não há vermelho para investigar **e** há um
+> verde para confiar.
+
+**E repare no movimento:** quem formulou a lei foi o primeiro a perceber que ainda dependia de lembrar
+dela. Doutrina aplicada ao próprio autor é o teste mais duro que ela sofre.
+
+### E o critério que afirma o comportamento BOM, não só a ausência do ruim
+
+No `D25` (âncora sem alvo vira texto, não link nem exceção) ele escreveu o **porquê junto**:
+
+> *"Critério que diz 'não pode quebrar' **sem dizer por que** vira, na próxima leitura, alguém
+> 'consertando' o caso legítimo."*
+
+É a §7.56 aplicada ao **teste**: o aviso tem de estar onde a pessoa vai estar olhando — e quem for
+"melhorar" um caso que parece defeito estará olhando **o critério**, não o handoff.
