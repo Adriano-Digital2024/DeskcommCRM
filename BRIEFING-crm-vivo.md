@@ -3800,3 +3800,46 @@ saberá exatamente o que eles garantiam, em vez de herdar uma confiança que nin
 *(E o falso positivo dele na própria checagem — casou uma palavra dentro de um **comentário** — é a
 §7.25 outra vez, em escala de cinco linhas. Instrumento que não distingue comentário de dado. Quarta
 ocorrência do casamento por substring nesta entrega.)*
+
+---
+
+## §7.97 — Não-ligação deliberada não se desenha, se DECLARA
+
+O mapa vivo do subsistema entrou no git (`504db12`) — escrito pelo @Arquiteto, **commitado por mim
+porque ele se recusou**, com o argumento certo: *"não vou ser a pessoa que escreve um mapa sobre não
+versionar coisas e o deixa fora do git"*. Enquanto estivesse não rastreado, seria a **quinta**
+ocorrência da §7.84.
+
+**Validado de forma independente:** 24 peças, 44 arestas, 6 faixas, 3 cards · **zero** referências
+quebradas · **zero** peças com menos de duas arestas — o DoD 13 cumprido **por construção**, não por
+inspeção.
+
+### O validador pegou um erro do próprio autor
+
+> Na primeira passada, o *"Filtro Responsável"* tinha **uma aresta só** — **uma ilha DENTRO do mapa que
+> existe para provar que não há ilhas.** A segunda aresta era real e ele não a tinha visto.
+
+**Melhor prova de que o validador serve do que qualquer verde de primeira.** Instrumento que só confirma
+o que o autor já acreditava não foi testado — foi consultado.
+
+### E a decisão de modelagem que dá nome à lei
+
+*"Score fora do realtime"* entrou como **card de invariante**, não como aresta:
+
+> **Não-ligação deliberada não se desenha, se declara.** Uma aresta ausente é indistinguível de uma
+> aresta **esquecida** — o desenho não tem como dizer *"aqui NÃO liga, de propósito"*.
+
+É a §7.86 na topologia: **ausência e decisão são afirmações diferentes**, e a notação as colapsa a menos
+que você seja explícito. Idem os outros três cards (*timeline registra estado e obrigação, não trabalho
+de máquina*; *checkpoint por diff, nunca por retrato*; *`crm_lead_id` é atalho com `SET NULL`,
+`owner_agent_id` é identidade com `RESTRICT`*): **a forma não mostra o que mais custou a descobrir.**
+
+### E a ressalva do autor sobre o próprio artefato
+
+> *"O mapa descreve o desenho **CONTRATADO** das oito waves. As waves 6, 7 e 8 **não existem em
+> código** — então ele é **planta, não fotografia**. **Plano não é estado, inclusive quando o plano é
+> meu.**"*
+
+Um mapa que não declara isso é lido como **inventário**, e quem chegar depois vai procurar no código
+peças que ninguém escreveu — perdendo tempo e concluindo que o mapa está errado, quando ele está
+**adiantado**.
