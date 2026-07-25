@@ -9955,3 +9955,32 @@ dado é a **contagem de ocorrências remanescentes** — que aqui foi a zero, me
 **O eco não custa nada e cobre a classe que o rigor individual não cobre** (§7.300/§7.304): quem
 derivou não tem como ver o erro de derivação, e quem mediu não vê a derivação — a menos que ela volte.
 **Toda vez que um número medido por outro for usado numa conta, a conta volta para quem mediu.**
+
+## §7.311 — O ponto cego é onde a coisa NÃO TEM CARA DE DEFEITO para você — e por isso os achados vêm em par
+
+> ***"O escrupuloso só aparece em par. Você achou os quatro que eu não veria; eu achei o quinto que
+> você não veria — não porque eu tenha melhor vista, MAS PORQUE PARA VOCÊ ELE NÃO TEM CARA DE DEFEITO,
+> e eu estava do lado de fora dele."***
+
+**Esta é a definição operacional de ponto cego, e ela não fala de atenção:** o ponto cego é o lugar
+onde o defeito **se apresenta como virtude** para quem o comete. Os quatro primeiros desfechos
+(conservador, verde, elogioso, autoacusatório) só são invisíveis para quem está *dentro* do desfecho;
+o quinto — **o escrupuloso** — é invisível para quem tem a disciplina que produz os outros quatro,
+porque para essa pessoa recusar-se a afirmar **é o ato de maior rigor que ela conhece**.
+
+### E daí sai o critério prático de quem revisa o quê
+
+**Não se escolhe revisor por rigor — escolhe-se por não-sobreposição de ponto cego.** A pergunta certa
+não é *"quem é mais cuidadoso?"* e sim **"para quem isto NÃO tem cara de defeito?"** — e essa pessoa é
+justamente quem não deve revisar aquilo. É o corolário operacional da §7.304 (*um time de clones tem a
+cobertura de um só*) e o fecho da §7.300: para a classe em que **o instrumento e o sujeito são a mesma
+pessoa**, a única sonda possível é alguém de fora — e "de fora" quer dizer **fora do enquadramento**,
+não fora da equipe.
+
+**Por isso os achados desta série vieram em par e nunca sozinhos.** Nenhum dos três participantes
+encontrou, sozinho, um defeito do próprio enquadramento — **todos os que apareceram vieram de alguém
+para quem aquilo não parecia virtude.**
+
+---
+
+> **Encerramento da série em 311.** A intenção fica sem afirmação, dos dois lados.
