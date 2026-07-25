@@ -79,6 +79,18 @@ async function ciclo(bom: string, doente: string): Promise<{ canario: boolean; d
   }
   await new Promise((r) => setTimeout(r, 2000));
 
+  // O RELÓGIO DOS DOIS NEGÓCIOS, ANTES. O tipo `note` está na LISTA POSITIVA do
+  // gatilho de última atividade — então cada ciclo meu movia `last_activity_at`
+  // dos dois leads, e apagar a atividade depois NÃO devolvia o relógio. Doze
+  // ciclos deixaram os dois parecendo 49 minutos mais ativos do que estavam, num
+  // pipeline cuja feature CENTRAL é decidir quem esfriou. O vigia estava
+  // contaminando exatamente a grandeza que a wave 7 mede.
+  const relogios = new Map<string, string | null>();
+  for (const id of [bom, doente]) {
+    const { data } = await admin.from("crm_leads").select("last_activity_at").eq("id", id).single();
+    relogios.set(id, (data as { last_activity_at: string | null } | null)?.last_activity_at ?? null);
+  }
+
   const marcas = { canario: `${RUN}-canario-${Date.now() % 1000000}`, doente: `${RUN}-doente-${Date.now() % 1000000}` };
   const escrever = async (leadId: string, marca: string): Promise<void> => {
     const { error } = await admin.from("crm_lead_activities").insert({
@@ -102,6 +114,11 @@ async function ciclo(bom: string, doente: string): Promise<{ canario: boolean; d
   await new Promise((r) => setTimeout(r, 7000));
 
   await admin.from("crm_lead_activities").delete().in("reason", [marcas.canario, marcas.doente]);
+  // E O RELÓGIO VOLTA. Por UPDATE direto: desfazer contaminação minha não é
+  // operação do produto, e não existe caminho de produto que ande para trás.
+  for (const [id, quando] of relogios) {
+    await admin.from("crm_leads").update({ last_activity_at: quando } as never).eq("id", id);
+  }
   await cli.removeAllChannels();
   return { canario: vistos.has(marcas.canario), doente: vistos.has(marcas.doente) };
 }
