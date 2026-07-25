@@ -1712,3 +1712,53 @@ ninguém sabe girar" que já rejeitamos nos pesos. O ruído é uniforme ao longo
 vale 8,75; a virada de vitalidade vale 10,5), então não há razão para uma fronteira ter mais atrito
 que a outra. Se um dia uma fronteira **provar** ser mais barulhenta, aí vira quatro — com a medição
 na mão.
+
+---
+
+## §7.37 — Âncora derivada do instrumento não vigia o instrumento
+
+O @QAVivo armou 14 âncoras contra a caminhada e escreveu **todas à mão a partir da régua declarada**.
+A tentação era gerá-las de `porDegrau` ou de `faixaCrua` — e é exatamente aí que a cerca morreria:
+
+> **Teste derivado da implementação concorda com a implementação por construção.** Ele reprova
+> mudanças acidentais e aprova qualquer erro que já esteja na fonte da derivação.
+
+E as âncoras são as **bordas**, onde conserto de um-a-mais quebra: o primeiro valor que confirma cada
+transição e o último que não confirma — `45/44` vindo de frio, `75/74` de morno, `65/66` de quente,
+`35/36` de morno. Mais as travessias reais e as leituras sem memória.
+
+**De pé HOJE, antes de qualquer conserto** — que é o que se pede de uma cerca de regressão: ela existe
+para dizer o que **não pode mudar**, e para isso precisa estar verde antes.
+
+## §7.38 — Cerca que nunca reprovou pode ser decoração: submeta-a ao conserto ERRADO
+
+Eu exigi *"depois do conserto, a varredura vai a 0/303 **e** os controles continuam de pé"*. Isso é
+uma exigência escrita — e exigência escrita não reprova ninguém. Ele a tornou **mecânica**:
+`SELFCHECK=1` aplica o conserto **errado que eu mesmo nomeei** (devolver sempre a régua crua) e mede
+quem reprova.
+
+| instrumento | veredito sobre o atalho |
+|---|---|
+| varredura de não-mentira | **0 violações** — *pareceria consertado* |
+| anti-pisca | **reprova** — 6 trocas na série oscilante (limite: 1) |
+| as 14 âncoras | **reprova** — 4/14 quebradas |
+
+Conferido de forma independente: o atalho quebra exatamente `44` de frio, `74` de morno, `66` de
+quente e `36` de morno — **4**, e a varredura vai a zero **por construção**, porque a régua crua está
+a distância zero dela mesma.
+
+> **O atalho passa na invariante nova e é barrado pelas outras duas.** É assim que uma exigência de
+> duas metades deixa de depender de boa-fé: existe quem reprove quem cumprir só a primeira.
+
+**Regra:** toda cerca nasce com o seu próprio anti-teste — o conserto errado **mais plausível**,
+aplicado de propósito, e a lista de quem o barra. Se ninguém barrar, a cerca é decoração.
+
+### Corolário — a disciplina de mutação tem uma fronteira: o arquivo do colega
+
+O caminho óbvio era mutar `lib/kanban/score-band.ts`, como fizemos no fixture do 4.5 e no produtor do
+`get-lead-context`. Ele **não** fez: o arquivo está **não rastreado** na árvore do @DevVivo — ou seja,
+está sendo escrito **neste minuto**. A régua alternativa ficou **local ao auto-teste**.
+
+> Mutação vale contra código commitado ou seu; **nunca contra arquivo que outra sessão tem aberto**.
+> Duas mãos no mesmo arquivo é a receita de dois trabalhos se destruírem — e o dano não aparece como
+> erro, aparece como resultado que ninguém consegue reproduzir.
