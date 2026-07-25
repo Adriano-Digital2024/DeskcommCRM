@@ -5355,3 +5355,54 @@ Uma vez explicado, o número muda de categoria na cabeça de quem explicou: vira
 ser evidência. Por isso a §7.136-a (exigir a explicação de todo número) **produz o dado e não produz
 a conclusão** — falta o segundo passo, e ele é obrigatório: **depois de explicar, confira se a
 explicação contradiz alguma outra coisa que você afirmou.** Explicação é dado, não encerramento.
+
+## §7.148 — A observação sobre um estado não pode ser INSTÂNCIA do que o estado mede
+
+`fn_update_last_activity_at` carimba `crm_leads.last_activity_at` para **qualquer** atividade —
+verificado, não há filtro de tipo. E `last_activity_at` é o relógio que decide esfriamento. Logo,
+emitir a atividade *"esfriou"* para que ela apareça na timeline **reseta o relógio do silêncio** e o
+lead volta a "em dia" no mesmo instante.
+
+**O produtor do estado apaga o próprio estado ao registrá-lo.** E o ciclo se repõe: 24h depois
+esfria, emite, apaga — uma linha de timeline por janela, para sempre, sem ninguém ter feito nada.
+**O sinal que a wave existe para criar seria destruído pelo ato de criá-lo.**
+
+Forma geral: toda métrica do tipo *"tempo desde o último X"* é aniquilada por registrar uma
+observação SOBRE ela, se o registro contar como X. **Constatar o silêncio não é quebrar o
+silêncio** — carimbar o relógio da ausência de conversa com a constatação de que não houve conversa
+é contradição escrita em SQL.
+
+**Detecção, para não depender de alguém ser esperto:** ao acrescentar um escritor novo numa tabela
+que alimenta métrica derivada, pergunte se as linhas novas são **instâncias do que a métrica conta**.
+Se forem, ou a métrica muda de definição, ou o escritor é excluído dela — e as duas exigem decisão
+explícita.
+
+### §7.148-a — Lista POSITIVA, não lista de exceções (a assimetria decide)
+
+O filtro que salva o ciclo tem duas formas, e elas não são equivalentes.
+
+- **Lista negativa** ("ignore `lead_cooled` e `lead_reactivated`"): um tipo novo de observação de
+  sistema, daqui a seis meses, **volta a carimbar o relógio**. O lead parece vivo estando morto —
+  **morte silenciosa**, que é a doença que o épico inteiro existe para curar.
+- **Lista positiva** ("só estes tipos contam como interação"): um tipo novo de interação real fica
+  de fora e o lead parece frio estando quente — **alarme falso**, visível e irritante.
+
+Pela assimetria que governa esta entrega, **a lista positiva vence**: o modo de falha dela é ruído
+que alguém reclama; o da negativa é silêncio que ninguém vê. O default para o que ainda não existe
+tem de ser o erro barulhento.
+
+## §7.149 — O acervo entra com o `since` VERDADEIRO, e o incômodo da primeira tela é a mensagem
+
+Aprovado o refinamento sobre a minha própria regência: o seed grava `since = last_activity_at` — **o
+instante em que de fato esfriou** — e não `now()`. Escrever `now()` seria um dado falso nascido junto
+com o mecanismo que existe para não mentir, e destruiria a resposta a *"há quanto tempo está
+esfriando"* logo na primeira linha gravada.
+
+Fica: **estado para todos com `since` real, evento de seed no `event_log` (rastro), zero atividades
+de timeline** (ninguém esfriou "agora"), **e UM item agregado com dono E AÇÃO NOMEADA** — "revise os
+48 e decida quais encerrar". Item de caixa sem ação nomeada é o ruído que a própria doutrina proíbe.
+
+**E a consequência visual é escolha consciente, não efeito colateral:** 48 de 66 cards nascerão com
+borda de alerta, e uma borda que aparece em 73% do quadro não destaca nada. **Mantém-se assim mesmo,
+porque é verdade** — suavizar para o quadro ficar bonito seria simulação de saúde, a mesma família da
+simulação de atenção que o Arquiteto barrou. O agregado é o que transforma alarme em trabalho.
