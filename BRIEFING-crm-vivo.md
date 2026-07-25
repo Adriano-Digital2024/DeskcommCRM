@@ -8962,3 +8962,54 @@ que se escreve para resolvê-lo**.
 | `guardaEvidencia` · `criarPlacar` | **passaram** nas quatro perguntas |
 
 **Nenhuma cerca do aparato está sem auditoria.**
+
+## §7.285 — Limpeza no CAMINHO FELIZ é anti-correlacionada com a necessidade
+
+Oito leads de sonda **vivos no board**, contando nas colunas como negócio de verdade. E a limpeza
+**existia** — estava **no fim do caminho feliz**.
+
+> ***"Limpeza no caminho feliz roda exatamente quando não fez falta, e falta exatamente quando teria
+> feito."***
+
+**Sonda de UI morre no meio o tempo todo** — timeout, seletor que não resolve, exceção, o operador
+interrompendo. **Cada morte deixava um lead.** E a limpeza só rodava nas execuções que terminaram
+bem, que são precisamente aquelas em que nada ficou pendurado.
+
+**A regra vale para toda finalização, não só de dados:** liberar recurso, fechar navegador, remover
+lock, devolver estado. **Vai no caminho que roda SEMPRE** — `finally`, `defer`, `trap` —, nunca ao
+final do fluxo de sucesso. **A necessidade da limpeza e a probabilidade de o fluxo feliz completar
+são inversamente proporcionais.**
+
+**E o achado veio de uma FOTO tirada para outra coisa:** os cinco cards apareceram na captura de uma
+prova sobre outro assunto (§7.252-a — o controle não planejado é o mais confiável, e às vezes é o
+único).
+
+## §7.286 — EXECUTAR a prova do conserto revela o defeito vizinho; raciocinar sobre ela não
+
+O segundo defeito **só existiu porque o primeiro foi testado de verdade**: a sonda foi sabotada com
+um `throw` após criar o lead, para ver se a limpeza aguentava. **Aguentou — e o processo não
+encerrou.** Travou **7 minutos** até um timeout externo matá-lo, porque `browser.close()` **também
+estava no caminho feliz** e o Playwright segura o event loop.
+
+> ***"Sonda que pendura em CI é pior que sonda que suja banco — e eu só descobri porque a prova do
+> primeiro conserto rodou de verdade em vez de ser raciocinada."***
+
+**Raciocinar sobre um conserto verifica o conserto; executá-lo verifica a VIZINHANÇA.** O `throw`
+injetado não testou só a limpeza: **colocou o programa inteiro num estado que ninguém tinha
+exercitado**, e o que estava quebrado ali apareceu de graça.
+
+**Medido nos dois lados:** antes, travava 7 min e deixava o lead; depois, `EXIT=1` em 10 segundos e
+zero leads. Caminho feliz: `EXIT=0` nos dois, com cura e denúncia.
+
+### E mais um instrumento descrevendo errado o que fez
+
+O log da sonda dizia *"lead criado com a ENTREGA MORTA (websocket bloqueado)"* **também na rodada de
+controle** — frase fixa. É o segundo do dia (o primeiro imprimia *"(replica identity FULL)"* com o
+banco em `DEFAULT`). **Rótulo fixo em instrumento é laudo que não depende do que aconteceu** — e nos
+dois casos o instrumento estava certo e a narração dele, falsa.
+
+### E a disciplina se manteve no último item
+
+Os 8 leads antigos **não foram apagados**: dois podem ser de outro autor, e *"apagar alvo que um
+colega está medindo seria repetir hoje de novo"*. **Pedido feito, resposta aguardada** — no fim do
+dia, com tudo pronto, e ainda esperando.
