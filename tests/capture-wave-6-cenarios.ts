@@ -120,6 +120,15 @@ async function montarCaso(): Promise<{ leadId: string; titulo: string; agenteId:
     { type: "ai_turn", actor_kind: "ai", actor_agent_id: agenteId, reason: `${RUN} · a IA respondeu sobre preço`, ms: 5_000 },
     { type: "ai_turn", actor_kind: "ai", actor_agent_id: agenteId, reason: `${RUN} · a IA confirmou o horário`, ms: 10_000 },
     { type: "note", actor_kind: "user", actor_agent_id: null, reason: `${RUN} · anotação do humano`, ms: 90_000 },
+    // TRÊS DO CLIENTE, também consecutivas. Existem porque `filled` cobre
+    // `user` E `contact`: um bloco colapsado de ações do CLIENTE tem de se ler
+    // diferente de um do TIME, e a forma não consegue fazer essa distinção —
+    // só o texto (`actorLabel` dá cinco rótulos onde a forma dá três).
+    // De passagem: `contact` tem ZERO linhas no banco real, então este é o
+    // primeiro caso do quinto ator, e ele é construído.
+    { type: "note", actor_kind: "contact", actor_agent_id: null, reason: `${RUN} · o cliente perguntou o prazo`, ms: 180_000 },
+    { type: "note", actor_kind: "contact", actor_agent_id: null, reason: `${RUN} · o cliente mandou o documento`, ms: 185_000 },
+    { type: "note", actor_kind: "contact", actor_agent_id: null, reason: `${RUN} · o cliente confirmou o endereço`, ms: 190_000 },
   ];
   for (const l of linhas) {
     const { error: e2 } = await admin.from("crm_lead_activities").insert({
@@ -130,6 +139,7 @@ async function montarCaso(): Promise<{ leadId: string; titulo: string; agenteId:
       actor_kind: l.actor_kind,
       actor_agent_id: l.actor_agent_id,
       performed_by_user_id: l.actor_kind === "user" ? DONO : null,
+      contact_id: null,
       reason: l.reason,
       // `crm_lead_activities_ai_needs_evidence`: atividade de IA sem run/trace/
       // llm_call NÃO grava. É a lei do porquê aplicada também ao registro — e a
@@ -218,9 +228,9 @@ async function main(): Promise<void> {
     mapa.contact !== mapa.ai,
     `mapa atual: ${ATORES.map((a) => `${a}→${mapa[a]}`).join(" · ")}` +
       (colisoes.length ? ` | pares que COMPARTILHAM forma: ${colisoes.join(", ")}` : "") +
-      ` | atenção ao plano de dar TRACEJADO ao contato: hoje tracejado significa "nem gente ` +
-      `nem agente" e é onde system e rule já moram — mover o contato para lá troca a colisão ` +
-      `com "user" (duas pessoas) por uma colisão com "system/rule" (uma pessoa e duas máquinas)`,
+      ` | as colisões são DELIBERADAS: o eixo da forma é gente/agente/máquina, e o cliente é ` +
+      `gente. Quem é especificamente vem do TEXTO (actorLabel dá cinco nomes para cinco atores) ` +
+      `— por isso o rótulo do bloco colapsado não pode sair da forma, e é o que o D19.rotulo mede`,
   );
 
   const sobras = await limpar();
@@ -252,8 +262,14 @@ async function main(): Promise<void> {
           "(EditLeadDialog segue como diálogo do menu de ações)",
         "BLOQUEADO",
       );
+      // A LISTA TEM DE CONTER TODOS. Quando eu acrescentei o D19.rotulo e o D25
+      // sem incluí-los aqui, eles sumiram do placar em silêncio pelo caminho do
+      // retorno antecipado — o mesmo formato que eu transformei em lei hoje de
+      // manhã: critério pulado sem vermelho para investigar e com o placar de pé.
       for (const [n, nome] of [
         ["D19", "CENÁRIO 19: timeline colapsa eventos consecutivos do mesmo ator"],
+        ["D19.rotulo", "o bloco colapsado nomeia o ATOR pelo texto — CLIENTE não se lê como TIME"],
+        ["D25", "âncora sem alvo vira TEXTO, não link nem exceção (LGPD, e não é defeito)"],
         ["D20", "CENÁRIO 20: editar campo salva E aparece na timeline com ator humano"],
         ["D21", "CENÁRIO 21: ação do agente na outra aba entra na timeline ao vivo"],
         ["D23", "o Sheet DESASSINA ao fechar — abrir e fechar N vezes não acumula canal"],
@@ -295,6 +311,23 @@ async function main(): Promise<void> {
         `· painel diz: "${texto.slice(0, 140)}"`,
     );
 
+    // ---- 19.rótulo: o bloco do CLIENTE não pode se ler como o do TIME -------
+    //
+    // `filled` cobre `user` E `contact` — de propósito, porque o eixo da forma é
+    // gente/agente/máquina e o cliente É gente. A consequência é que o rótulo do
+    // bloco colapsado NÃO pode sair da forma: tem de vir do texto, onde há cinco
+    // nomes para cinco atores. Sem isso, três ações do CLIENTE se leem como três
+    // do TIME, e o dossiê passa a mentir sobre quem fez o quê.
+    const dizCliente = /cliente/i.test(texto);
+    const dizTime = /você\/time|voce\/time|time/i.test(texto);
+    record(
+      "D19.rotulo",
+      "o bloco colapsado nomeia o ATOR pelo texto — CLIENTE não se lê como TIME",
+      dizCliente && dizTime,
+      `no painel: "Cliente"=${dizCliente} · "Você/time"=${dizTime} — a forma não distingue os ` +
+        `dois (ambos preenchidos), então o rótulo tem de vir de actorLabel`,
+    );
+
     // ---- 20: as duas metades, medidas separado -----------------------------
     const campoValor = painel.locator('input[name="value_cents"], #value_cents, input[name="title"]').first();
     if ((await campoValor.count()) === 0) {
@@ -310,15 +343,21 @@ async function main(): Promise<void> {
         .from("crm_lead_activities")
         .select("type,actor_kind")
         .eq("lead_id", caso.leadId);
-      const humana = ((ativs ?? []) as { type: string; actor_kind: string }[]).find(
-        (a) => a.actor_kind === "user" && a.type !== "note",
+      const humana = ((ativs ?? []) as { type: string; actor_kind: string; reason: string | null }[]).find(
+        (a) => a.actor_kind === "user" && a.type === "lead_edited",
       );
+      // O `reason` tem de dizer QUAIS campos mudaram. "Alterou" sem dizer o quê
+      // é a mesma frase vazia que a gente recusou no score: registro que não
+      // permite discordar não serve para auditar.
+      const dizOQueMudou = Boolean(humana?.reason && /t[íi]tulo|valor|est[áa]gio|dono/i.test(humana.reason));
       record(
         "D20",
-        "CENÁRIO 20: editar campo salva E aparece na timeline com ator humano",
-        persistiu && Boolean(humana),
-        `persistiu=${persistiu} · atividade humana de edição=${humana ? humana.type : "NENHUMA"} — ` +
-          `as duas metades falham separado: salvar pode funcionar e o registro não existir`,
+        "CENÁRIO 20: editar campo salva, registra como lead_edited e DIZ o que mudou",
+        persistiu && Boolean(humana) && dizOQueMudou,
+        `persistiu=${persistiu} · atividade lead_edited=${humana ? "sim" : "NENHUMA"} · ` +
+          `o motivo nomeia o campo alterado=${dizOQueMudou} ("${humana?.reason ?? "-"}") — ` +
+          `as três falham separado: salvar pode funcionar, o registro não existir, e o ` +
+          `registro existir sem dizer o que mudou`,
       );
     }
 
