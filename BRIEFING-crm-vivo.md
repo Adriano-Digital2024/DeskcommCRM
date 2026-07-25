@@ -2094,3 +2094,32 @@ que funciona.
 
 > Então a pergunta *"de que classe isto é?"* é obrigatória **justamente quando há só uma violação** —
 > é ali que ela custa esforço e é ali que ela paga. Com duas, qualquer um chega lá.
+
+---
+
+## §7.47 — Verde de suíte não é verde de tipo: cada gate fecha uma porta diferente
+
+Proposta do @DevVivo depois de quase commitar `typecheck` vermelho com `test:unit` em **939/939**.
+
+O runner **transpila sem checar tipo** — `esbuild` remove as anotações e segue. Um erro de tipo é
+**invisível** para a suíte: ela roda o código transpilado e ele funciona. Então `939 passed` não diz
+**nada** sobre `tsc`.
+
+| gate | fecha | **não vê** |
+|---|---|---|
+| `typecheck` | contratos entre módulos | comportamento em runtime |
+| `lint` | padrões e armadilhas conhecidas | tipos e comportamento |
+| `test` | comportamento em runtime | **tipos** (o runner os apaga) |
+
+> **Quem confunde os dois commita vermelho achando que mediu.** E o perigo não é o erro — é a
+> **sensação de cobertura**: um verde grande e vistoso ocupa o lugar mental da verificação que não foi
+> feita.
+
+**Regra:** os três rodam **separados**, cada um com o seu código de saída lido, e nenhum serve de
+procuração para o outro. Antes de dizer "está pronto", pergunte de cada verde: **que porta este
+fechou, e qual ficou aberta?**
+
+É a mesma pergunta da §7.38 (*o que este verde me autoriza a afirmar?*) aplicada ao conjunto de gates
+em vez de a um teste — e vale registrar que ele já rodava os três separados por **outro** motivo (nunca
+encadear ação e verificação, §7.3). O hábito o salvou antes de o entendimento chegar; o hábito certo
+pelo motivo errado protege até o dia em que alguém "simplifica" a rotina.
