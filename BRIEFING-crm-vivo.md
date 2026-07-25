@@ -3423,3 +3423,43 @@ diferença é o vazamento, em número.**
 **E a régua para "o dossiê mostra mais que o card" ficou operável:** *contradição é **a mesma grandeza
 com valor diferente*** (card diz 72%, dossiê diz 65%). Mostrar o que o card escondeu **por orçamento de
 espaço** é **mais informação**, não contradição — e não reprova.
+
+---
+
+## §7.84 — Entregável que mora fora do git não existe para o próximo
+
+**Quarta ocorrência do mesmo padrão nesta entrega**, achada pelo @Arquiteto e verificada por mim:
+
+```
+git ls-files docs/architecture/  →  agent-turn.html, agent-turn.workflow.json
+git ls-tree origin/main          →  os mesmos dois
+ocorrências de owner_kind, actor_kind, ai_probability, next_action,
+crm_lead_activities, agent_stage_hint no que ESTÁ rastreado  →  ZERO
+```
+
+O mapa vivo do sistema **existe no disco** (worktree principal) e **está fora do git**. O único mapa
+versionado é o do turno do agente — **ele nem cobre o lado CRM**.
+
+### E isso muda o diagnóstico do checklist, que é por que não é reclamação
+
+No worktree do CRM Vivo esses arquivos **não existem**. Então o item 7 do `sistema-vivo`
+(*"atualizei o mapa vivo?"*) **não foi negligenciado** nas waves 1–5 — **era inatendível**. E o DoD 13
+do `CLAUDE.md` está aberto pela mesma razão.
+
+> *"Não atualizado"* lê-se como **desleixo**. *"Inatendível"* é outro diagnóstico e aponta para outro
+> conserto. **Registrar a diferença é o que impede a próxima pessoa de procurar culpa onde havia
+> impossibilidade.**
+
+### O agravante, e é o que torna esta a pior da família
+
+> **A evidência local faz parecer cumprido.** Você olha a pasta, vê o arquivo, marca o item — e o
+> check passa **sobre um estado que só você enxerga**.
+
+É a §7.28 pelo outro lado: lá, *o guarda só tem poder sobre documento versionado*; aqui, **o entregável
+que não é versionado não existe** — e as duas frases são a mesma moeda. Nas outras três ocorrências de
+hoje (o `BRIEFING`, os dois `HANDOFF`, o aparato das sondas) a cura foi a mesma: **versionar primeiro e
+deixar o instrumento cobrar**.
+
+**Regra:** ao fechar qualquer item de DoD que aponte para um artefato, a pergunta não é *"o arquivo
+existe?"* — é **`git ls-files`**. Artefato é entregável; entregável mora no repositório; **o que mora
+só no disco é rascunho, por definição, independentemente de estar pronto.**
