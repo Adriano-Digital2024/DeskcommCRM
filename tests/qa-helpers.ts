@@ -440,6 +440,26 @@ export function criarPlacar(nome: string, esperados: string[]) {
  */
 let arvoreSuja = "";
 
+/** O conjunto fixo, enumerável à mão enquanto couber numa linha. */
+const INFRAESTRUTURA_COMPARTILHADA = ["tests/qa-helpers.ts"];
+
+/** Arquivos de `tests/` importados por 2+ aparatos e ausentes do conjunto. */
+function compartilhadosNaoDeclarados(): string[] {
+  const dir = path.join(process.cwd(), "tests");
+  const usos = new Map<string, number>();
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".ts"))) {
+    const src = fs.readFileSync(path.join(dir, f), "utf8");
+    for (const m of src.matchAll(/from "\.\/([a-z0-9-]+)"/g)) {
+      const alvo = `tests/${m[1]}.ts`;
+      if (alvo === `tests/${f}`) continue;
+      usos.set(alvo, (usos.get(alvo) ?? 0) + 1);
+    }
+  }
+  return [...usos.entries()]
+    .filter(([alvo, n]) => n >= 2 && !INFRAESTRUTURA_COMPARTILHADA.includes(alvo))
+    .map(([alvo]) => alvo);
+}
+
 export function carimbar(dependencias: string[]): string {
   const head = execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim();
 
@@ -466,11 +486,29 @@ export function carimbar(dependencias: string[]): string {
   // esperando acontecer. Não há entrada hostil aqui hoje — mas helper de teste
   // é justamente o código que alguém copia para outro lugar.
   // A MAQUINARIA COMPARTILHADA ENTRA SEMPRE, sem ninguém precisar lembrar.
+  //
+  // Hoje o conjunto é ENUMERÁVEL À MÃO — um módulo. A versão completa (ler os
+  // imports transitivos de cada aparato e acusar os não declarados) custa uma
+  // tarde e não se paga enquanto a lista couber numa linha. O GATILHO PARA
+  // TROCAR fica declarado aqui para não virar "depois": quando o conjunto passar
+  // de meia dúzia, OU quando a checagem abaixo acusar um módulo novo.
   // Todo aparato depende deste arquivo — placar, carimbo, seleção de alvo,
   // guarda de evidência — e uma mudança aqui muda o que TODOS eles medem. Deixar
   // que cada sonda lembre de declará-lo é regra de autoavaliação: quem esquece é
   // exatamente quem está com pressa. Declarar por construção custa uma linha.
-  const todas = [...new Set(["tests/qa-helpers.ts", ...dependencias])];
+  const todas = [...new Set([...INFRAESTRUTURA_COMPARTILHADA, ...dependencias])];
+  // E O CONJUNTO SE VIGIA: se algum arquivo de `tests/` passar a ser importado
+  // por dois ou mais aparatos sem estar na lista, ele é infraestrutura
+  // compartilhada nova — e ninguém vai reparar, porque "minhas dependências"
+  // exclui "as de todo mundo". Aqui o número que não bate denuncia sozinho, do
+  // mesmo jeito que o contador da lista de sujos denuncia truncamento.
+  for (const novo of compartilhadosNaoDeclarados()) {
+    console.info(
+      `[carimbo] ⚠ INFRAESTRUTURA COMPARTILHADA NÃO DECLARADA: "${novo}" é importado por 2+ ` +
+        `aparatos e não está em INFRAESTRUTURA_COMPARTILHADA. Enquanto não entrar, uma mudança ` +
+        `nele muda o que vários aparatos medem sem que o carimbo veja.`,
+    );
+  }
   const sujos = execFileSync("git", ["status", "--porcelain", "--", ...todas], {
     encoding: "utf8",
   })
