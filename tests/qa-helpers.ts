@@ -444,6 +444,23 @@ let arvoreSuja = "";
 /** O conjunto fixo, enumerável à mão enquanto couber numa linha. */
 const INFRAESTRUTURA_COMPARTILHADA = ["tests/qa-helpers.ts"];
 
+/** Sondas que inserem em `crm_lead_activities` sem passar pelo desfazer. */
+function sondasQueSujamORelogio(): string[] {
+  const dir = path.join(process.cwd(), "tests");
+  const fora: string[] = [];
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".ts"))) {
+    const src = fs.readFileSync(path.join(dir, f), "utf8");
+    const insere = /from\("crm_lead_activities"\)[\s\S]{0,40}\.insert\(/.test(src);
+    // O CRITÉRIO É "DEVOLVE O RELÓGIO", não "usa o meu helper". A primeira versão
+    // acusou o vigia — que restaura à mão, corretamente. Detector que exige a
+    // FORMA em vez do EFEITO é o falso vermelho por forma que me pegou sete
+    // vezes na wave 6, agora dentro do detector de dívida.
+    const devolve = src.includes("atividadeDeTeste") || /last_activity_at[\s\S]{0,200}\.update\(|\.update\([\s\S]{0,200}last_activity_at/.test(src);
+    if (insere && !devolve) fora.push(f);
+  }
+  return fora;
+}
+
 /** Arquivos de `tests/` importados por 2+ aparatos e ausentes do conjunto. */
 function compartilhadosNaoDeclarados(): string[] {
   const dir = path.join(process.cwd(), "tests");
@@ -459,6 +476,42 @@ function compartilhadosNaoDeclarados(): string[] {
   return [...usos.entries()]
     .filter(([alvo, n]) => n >= 2 && !INFRAESTRUTURA_COMPARTILHADA.includes(alvo))
     .map(([alvo]) => alvo);
+}
+
+/**
+ * INSERE ATIVIDADE DE TESTE E DEVOLVE COMO DESFAZÊ-LA POR INTEIRO.
+ *
+ * O tipo `note` — o que quase toda sonda usa — está na LISTA POSITIVA do gatilho
+ * de última atividade. Cada inserção move `crm_leads.last_activity_at`, e apagar
+ * a atividade depois NÃO devolve o relógio: apagar a causa não apaga o efeito.
+ * Num pipeline cuja feature central é decidir quem esfriou, isso contamina
+ * exatamente a grandeza sob medição — e foi assim que o meu próprio vigia deixou
+ * dois negócios parecendo 49 minutos mais ativos do que estavam.
+ *
+ * `desfazer()` remove a linha E devolve o relógio. A devolução é por UPDATE
+ * direto de propósito: o caminho de produção é o certo para CRIAR estado e o
+ * errado para desfazê-lo — os efeitos colaterais dele estão certos indo e
+ * errados voltando, e não existe caminho de produto que ande para trás.
+ */
+export async function atividadeDeTeste(
+  admin: { from: (t: string) => any },
+  leadId: string,
+  campos: Record<string, unknown>,
+): Promise<{ desfazer: () => Promise<void> }> {
+  const { data: antes } = await admin
+    .from("crm_leads")
+    .select("last_activity_at")
+    .eq("id", leadId)
+    .single();
+  const relogio = (antes as { last_activity_at: string | null } | null)?.last_activity_at ?? null;
+  const { error } = await admin.from("crm_lead_activities").insert({ lead_id: leadId, ...campos });
+  if (error) throw new Error(`[atividadeDeTeste] ${(error as { message: string }).message}`);
+  return {
+    desfazer: async () => {
+      await admin.from("crm_lead_activities").delete().match({ lead_id: leadId, reason: campos.reason });
+      await admin.from("crm_leads").update({ last_activity_at: relogio }).eq("id", leadId);
+    },
+  };
 }
 
 export function carimbar(dependencias: string[]): string {
@@ -503,6 +556,19 @@ export function carimbar(dependencias: string[]): string {
   // compartilhada nova — e ninguém vai reparar, porque "minhas dependências"
   // exclui "as de todo mundo". Aqui o número que não bate denuncia sozinho, do
   // mesmo jeito que o contador da lista de sujos denuncia truncamento.
+  // A DÍVIDA DE LIMPEZA, CONTADA EM VEZ DE LEMBRADA. Sonda que insere atividade
+  // sem usar `atividadeDeTeste` apaga a linha e deixa o relógio do negócio
+  // adiantado — apagar a causa não apaga o efeito. Retrofitar 17 aparatos ao
+  // fechar o épico seria churn com risco; deixar a dívida invisível seria pior.
+  // Aqui ela sobe quando alguém escreve mais uma, que é o número certo.
+  const semDesfazer = sondasQueSujamORelogio();
+  if (semDesfazer.length > 0) {
+    console.info(
+      `[carimbo] DÍVIDA DE LIMPEZA: ${semDesfazer.length} sonda(s) inserem atividade e NÃO ` +
+        `devolvem last_activity_at — apagam a linha e deixam o negócio parecendo mais ativo do ` +
+        `que está: ${semDesfazer.join(", ")}`,
+    );
+  }
   for (const novo of compartilhadosNaoDeclarados()) {
     console.info(
       `[carimbo] ⚠ INFRAESTRUTURA COMPARTILHADA NÃO DECLARADA: "${novo}" é importado por 2+ ` +
@@ -613,16 +679,25 @@ export async function mensagemDeSonda(
   const id = data.id;
   return {
     id,
-    apaga: async () => {
-      const { data: apagadas, error: erroDel } = await admin
-        .from("messages")
-        .delete()
-        .eq("id", id)
-        .select("id");
-      if (erroDel) throw new Error(`mensagemDeSonda.apaga: ${erroDel.message}`);
-      // Conta, porque delete que não confere pode ter casado com nada.
-      if ((apagadas ?? []).length !== 1)
-        throw new Error(`mensagemDeSonda.apaga: apagou ${(apagadas ?? []).length} linhas, esperava 1 (${id})`);
-    },
+    apaga: () => apagaExatamenteUm(admin, "messages", id),
   };
+}
+
+/**
+ * APAGA UMA LINHA E EXIGE TER APAGADO UMA.
+ *
+ * Delete que não confere pode não ter casado com nada: some do log como
+ * sucesso, e a linha fica no banco envenenando a próxima medição. Foi assim que
+ * duas mensagens de sonda sobreviveram a uma limpeza que "rodou" — e uma delas
+ * apareceu na tela do QA como defeito de produto.
+ */
+export async function apagaExatamenteUm(
+  admin: SupabaseClient,
+  tabela: string,
+  id: string,
+): Promise<void> {
+  const { data, error } = await admin.from(tabela).delete().eq("id", id).select("id");
+  if (error) throw new Error(`apagaExatamenteUm(${tabela}, ${id}): ${error.message}`);
+  if ((data ?? []).length !== 1)
+    throw new Error(`apagaExatamenteUm(${tabela}, ${id}): apagou ${(data ?? []).length} linhas, esperava 1`);
 }
