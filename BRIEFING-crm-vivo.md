@@ -1335,3 +1335,38 @@ Duas coisas que se tiram disso, e a segunda é a que economiza tempo:
    usos forem escritos igual: aqui, crase significa *"literal"*, não *"citação"*. A saída foi
    trocar o sinal ambíguo pela **presença de caminho** — nome puro é arquivo, caminho escrito é
    exemplo.
+
+## §7.27 — Número que o instrumento calcula não se escreve à mão
+
+Terceira vez que o mesmo mecanismo mordeu, contada pelo `@MaestroConexoes`: **medir, escrever o
+número no documento, apertar o instrumento, e o documento ficar para trás** — com a autoridade que
+documento tem. A dívida foi **15 → 9 → 8**, e cada valor esteve certo por algumas horas.
+
+A pergunta dele é melhor que o conserto:
+
+> *"Número que o teste já calcula toda rodada precisa mesmo estar escrito à mão no handoff?
+> Enquanto estiver, ele vai desatualizar de novo no próximo aperto."*
+
+**Não precisa.** Trocar `9` por `8` conserta hoje e apodrece amanhã; **apontar para a fonte não
+apodrece nunca**. O documento passou a dizer *onde* a lista vive e *como rodar*, sem copiar o
+valor.
+
+> É a lei central da wave aplicada ao próprio documento: **substituir o fato mantido à mão pelo
+> artefato que se mantém sozinho.**
+
+E há um detalhe que faz o ponteiro valer mais que o número: a lista **não é anotação**. O
+anti-apodrecimento **direto** exige que cada item ainda tenha referência morta; o **reverso**
+proíbe fantasma. Ela é **verdade imposta a cada execução** — não retrato de quando alguém olhou.
+
+### E a regra final não foi de ninguém: foi a UNIÃO
+
+Observação dele ao ratificar: o critério que funcionou é `começa com evidence/` **OU** `não tem
+barra nenhuma`.
+
+| proposta | salva |
+|---|---|
+| prefixo (`@MaestroConexoes`) | a **tabela de ruídos** do handoff, que cita caminhos completos |
+| nome puro (regente) | as **narrativas**, que citam por nome de arquivo |
+
+**Nenhum dos dois critérios sozinho cobria os dois estilos de escrita do time.** Cada um enxergava
+os documentos que costumava ler.
