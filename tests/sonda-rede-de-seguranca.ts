@@ -28,8 +28,17 @@ const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL!, env.SUPABASE_SERVICE_R
 const ORG = "6e567068-fd1c-4f94-ae1f-40e0334be190";
 const PIPE = "35bf4ac9-c5e0-4f7d-846a-99b1bcc92d69";
 
+/** O lead que esta rodada criou — lido pelo `finally` lá embaixo. */
+let leadCriado: string | null = null;
+/** O browser aberto. Sem fechá-lo no `finally`, uma sonda que morre no meio
+ *  NÃO ENCERRA: o Playwright segura o event loop e o processo pendura para
+ *  sempre. Medido — a sabotagem que provou a limpeza travou 7 minutos até o
+ *  timeout externo matá-la. */
+let browserAberto: import("@playwright/test").Browser | null = null;
+
 async function main(): Promise<void> {
   const browser = await chromium.launch();
+  browserAberto = browser;
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   const page = await ctx.newPage();
   await login(page, "manager");
@@ -69,6 +78,7 @@ async function main(): Promise<void> {
   const { data: st } = await admin
     .from("crm_stages").select("id").eq("pipeline_id", PIPE).order("position").limit(1).maybeSingle();
   const leadId = randomUUID();
+  leadCriado = leadId;
   await admin.from("crm_leads").insert({
     id: leadId, organization_id: ORG, pipeline_id: PIPE,
     stage_id: (st as { id: string }).id,
@@ -102,7 +112,33 @@ async function main(): Promise<void> {
   console.info(`3. a rede DENUNCIOU? divergências ${antes.divergencias} → ${depois.divergencias}`);
   await page.screenshot({ path: "evidence/wave7-rede-de-seguranca.png" });
 
-  await apagaExatamenteUm(admin, "crm_leads", leadId);
   await browser.close();
 }
-void main();
+/**
+ * A LIMPEZA RODA MESMO QUANDO A SONDA MORRE NO MEIO.
+ *
+ * Estava no fim do caminho feliz — e sonda de UI morre no meio o tempo todo
+ * (locator que não resolve, timeout, página que não hidrata). Cada uma dessas
+ * mortes deixava um lead no board do CRM Vivo: cinco tinham se acumulado, e eu
+ * só os vi porque APARECERAM na screenshot de uma evidência que eu estava
+ * tirando para outra coisa.
+ *
+ * Limpeza no caminho feliz não é limpeza: ela roda exatamente quando não fez
+ * falta, e falta exatamente quando teria feito.
+ */
+void main()
+  .catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    if (!leadCriado) return;
+    // `catch` aqui, e só aqui: se a sonda já está morrendo, a falha da limpeza
+    // não pode substituir a causa original no log.
+    await apagaExatamenteUm(admin, "crm_leads", leadCriado).catch((e: unknown) =>
+      console.error(`[limpeza] o lead ${leadCriado} ficou no banco: ${String(e)}`),
+    );
+  })
+  .finally(async () => {
+    await browserAberto?.close().catch(() => null);
+  });
