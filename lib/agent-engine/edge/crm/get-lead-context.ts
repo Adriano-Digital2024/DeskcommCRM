@@ -77,14 +77,14 @@ export interface LeadContext {
   /**
    * `null` quando nenhum humano decidiu nada sobre propostas deste contato.
    *
-   * OPCIONAL no tipo, e não por preferência: `tests/invariants/**` é congelado
-   * por hook de governança, e um campo obrigatório obrigaria a editar o
-   * `fakeLeadContext` de um invariante existente. A garantia que interessa não
-   * é fixture de teste declarar o campo — é o PRODUTOR sempre preenchê-lo, e
-   * isso está coberto por `get-lead-context-decisao.test.ts`, que reprova se
-   * `getLeadContext` devolver um contexto sem a chave.
+   * OBRIGATÓRIO, e a interrogação já foi tentada e revertida: com `?:` o
+   * compilador fica calado sobre um `LeadContext` que nasce cego, e o próximo
+   * a montar um esquece a decisão sem ninguém perceber — a cegueira silenciosa
+   * que esta wave existe para matar. `get-lead-context-decisao.test.ts` cobre o
+   * PRODUTOR; o tipo cobre todo mundo que constrói um contexto. São camadas
+   * diferentes, não alternativas.
    */
-  last_human_decision?: UltimaDecisaoHumana | null;
+  last_human_decision: UltimaDecisaoHumana | null;
   /** Últimas N mensagens, da mais antiga para a mais nova. */
   messages: LeadContextMessage[];
 }

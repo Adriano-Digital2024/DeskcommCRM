@@ -3232,3 +3232,93 @@ existisse mas caísse no corte de orçamento, o turno seguiria cego do mesmo jei
 A decisão usada na prova veio da **interface**, na sonda anterior — não de um insert de teste.
 
 `typecheck` 0 · `lint` 0 · `test:unit` 919/919 · `test:db` 330.
+
+---
+
+## Wave 4 — o item ambíguo se anunciava sem dizer de quê (`5141ddb`)
+
+**Como apareceu.** Não por review: o @DevVivo relatou ter revelado um bug pré-existente *errando*
+— montou a lista do `CHECK` lendo o **banco de dev**, que estava numa versão anterior da constraint
+e não aceitava `followup_dead`, enquanto `lib/followup/engine.ts:500` insere exatamente esse kind.
+Em dev, o aviso que existe para salvar um follow-up travado vinha sendo **rejeitado pelo banco, em
+silêncio**, num caminho fire-and-forget. Fui conferir se a lição dele tinha mais superfície. Tinha.
+
+**Três listas do mesmo vocabulário, e nenhuma batia.**
+
+| fonte | valores | faltava |
+|---|---|---|
+| banco (`CHECK` de `agent_inbox_items.kind`) | 11 | — |
+| `InboxKind` (`lib/agent-engine/db/repository.ts`) | 8 | `judge_unaligned`, `followup_dead`, `next_action_ambiguous` |
+| `KIND_LABEL` (`lib/ai/agent-inbox-copy.ts`) | 10 | `next_action_ambiguous` |
+
+**A consequência na tela.** `KIND_LABEL` era `Record<string, string>` — um tipo que aceita qualquer
+chave e **não exige nenhuma**, uma anotação que parece tipagem e é o oposto dela. Então
+`next_action_ambiguous`, criado nesta mesma wave, caía no genérico **"Aviso do assistente"**: o item
+cuja razão de existir é pedir uma escolha chegava ao usuário sem dizer de quê. Falha macia — a tela
+parecia certa, e é por isso que só apareceu quando alguém foi olhar.
+
+**O teste que deveria ter pego mentia pelo nome.** Chamava-se *"cobre todos os kinds do check
+constraint da migration 0050"* e comparava contra uma **cópia congelada** daquele `CHECK`. Três
+migrations depois a lista nunca cresceu: verde eterno afirmando ler uma fonte da verdade que já não
+lia. **Teste que copia aquilo que deveria conferir só verifica a si mesmo.**
+
+**O conserto é a corrente, não o rótulo.** Nenhum elo é cópia que possa envelhecer:
+
+```
+baseline.sql ──(Postgres descartável)──► invariante ──► InboxKind ──(compilador)──► KIND_LABEL
+```
+
+O invariante lê do Postgres que nasce do `baseline.sql` **versionado**, nunca do banco de dev — a
+lição do @DevVivo levada um passo adiante: *o banco de dev conta o que aconteceu com ele, não o que
+o sistema promete*. O elo do compilador é `as const satisfies Record<InboxKind, string>`. O genérico
+**continua existindo** e está certo: é a defesa para um clone cujo engine é mais novo que o build,
+não para cobrir esquecimento — esse agora quebra a compilação.
+
+**Provas, todas por mutação (o gate que nunca reprovou não é gate).**
+
+| mutação | resultado |
+|---|---|
+| tirar um rótulo de `KIND_LABEL` | `typecheck` **exit 2** — *"Property 'next_action_ambiguous' is missing"* |
+| tirar um valor do lado TS do par | `test:db` **exit 1**, nomeando os dois lados |
+| restaurar ambos | exit 0 · `test:db` **331** (era 330) |
+
+**Prova em tela** — `tests/sonda-ambiguo-na-caixa.ts`, carimbo limpo em `5141ddb`, 4/4, exit 0.
+Cria um **empate real** (segundo negócio aberto, mesmo pipeline, mesmo instante de atividade — a
+única condição em que `resolveActiveLeadForContact` se recusa a adivinhar), deixa o **GET do board**
+detectar pelo código de produção, lê a caixa e **desfaz tudo** no fim. Print:
+`evidence/wave-4-ambiguo-na-caixa.png` — a linha diz *"Próxima ação sem negócio definido — precisa
+da sua escolha"*.
+
+**Erro meu, corrigido no caminho.** A primeira asserção perguntava se *"Aviso do assistente"*
+aparecia em **qualquer lugar da página** — e reprovou o produto por um acerto dele: o kind `other`
+renderiza esse genérico porque é literalmente o que ele significa, e havia dois abertos. Propriedade
+local se mede no elemento local; a asserção passou a ser escopada à linha do item.
+
+**Quase-erro de higiene, registrado porque quase passou.** Ao commitar, o `git add` juntou o
+trabalho do @DevVivo que estava no index (bloco 4.5, em voo) e teria empacotado a entrega dele sob a
+minha mensagem. Quem barrou foi o hook de governança, não eu. Commitei com
+`git commit -- <paths>`, que usa só os caminhos nomeados e **preserva o index alheio** (conferido
+antes e depois). Em worktree compartilhada, `git add` sem caminhos é uma aposta.
+
+**Exceção de governança usada e justificada.** `tests/invariants/**` é congelado. O diff é
+**+30 −0** — adição de um terceiro par, zero linhas removidas, nenhum invariante existente tocado.
+`DESKCOMM_GOV_INVARIANTS_EDIT=1` com o motivo citado no commit, como o próprio hook exige.
+
+### Verificação do bloco 4.5 (o último salto, que a sonda dele não cobria)
+
+A sonda do @DevVivo prova `banco → payload` e **para no `getLeadContext`**. Conferi a metade
+restante: `inbound-turn.ts:505` faz `JSON.stringify(context)` sob *"## Contexto do lead"* — o valor
+chega ao **modelo**, não só ao objeto. Sonda dele: **PASS 3/3**, exit 0.
+
+### Dívida nomeada (nada disto entrou na wave)
+
+1. **`draft-reply.ts` é cego ao funil.** Monta o prompt com `agent.systemPrompt` + histórico de
+   mensagens, e só. Não recebe `last_human_decision`, nem `next_action`, nem `lead_state`. O humano
+   descarta uma proposta, pede um rascunho, e o rascunho pode sugerir **o que ele acabou de negar**.
+   Não é regressão — esse caminho sempre foi cego —, mas é o mesmo *evento sem consumer* num segundo
+   lugar. Conserto dimensionado: um bloco curto no `system`. Wave da correção: decisão pendente.
+2. **6 avisos `job_dead` críticos abertos há 22–23h** (`case_reply_turn`, `inbound_turn`,
+   `followup_turn`, `attempts=5`), vistos no print da caixa. Se for real e não lixo de dev, o
+   runtime esteve descartando turnos e ninguém agiu — sintoma, não ruído. Sob apuração do @QAVivo.
+3. **Jargão cru no corpo do aviso**: `kind=case_reply_turn; attempts=5` renderizado para usuário
+   leigo. Mesma doença do rótulo, outro lugar, pré-existente ao épico.
