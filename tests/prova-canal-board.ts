@@ -30,7 +30,7 @@ import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import * as fs from "node:fs";
 
-import { BASE, CARD_ATTR, CREDS, carimbar, gotoBoard, login } from "./qa-helpers";
+import { CARD_ATTR, CREDS, carimbar, gotoBoard, login } from "./qa-helpers";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
 const env: Record<string, string> = {};
@@ -136,7 +136,20 @@ async function main(): Promise<void> {
       : "  (nenhum token no corpo da resposta)",
   );
 
+  // ELO 3.5 — o que a TELA declara, ao lado do que o socket fez.
+  //
+  // `data-realtime-status` passou a ser exposto, e ele elimina "o canal caiu".
+  // NÃO elimina "o canal está autenticado": o defeito do 24b9ec2 era exatamente
+  // um canal que assinava como ANÔNIMO e reportava sucesso. Os dois valores
+  // juntos é que fecham — status diz que conectou, o JWT do join diz QUEM.
+  const statusNaTela = await page
+    .locator("[data-realtime-status]")
+    .first()
+    .getAttribute("data-realtime-status")
+    .catch(() => null);
+
   console.info("\n=== ELO 3 — os joins do socket ===");
+  console.info(`  a TELA declara: data-realtime-status=${statusNaTela ?? "(atributo ausente)"}`);
   for (const j of joins) {
     console.info(
       `  ${j.comToken ? "COM token" : "SEM token"} ${j.canal}` +
@@ -196,88 +209,17 @@ async function main(): Promise<void> {
     console.info(`  [restaurado] "${alvo.title.slice(0, 40)}" voltou ao estágio original`);
   }
 
-  // ---- elo 5: a mudança nascida na UI de OUTRA ABA -------------------------
-  // É a diferença entre a minha sonda e o aparato da wave 3: lá o movimento
-  // nasce de um arrasto por teclado, aqui de um UPDATE administrativo. Se o elo
-  // 4 passa e o 5 falha, o defeito está no caminho da AÇÃO (a rota do move, o
-  // eco local, a cascata de escritas) — não na entrega.
-  const paginaB = await browser.newContext({ viewport: { width: 1440, height: 900 } }).then((c) => c.newPage());
-  let quadrosB = 0;
-  paginaB.on("websocket", (ws) => {
-    if (!ws.url().includes("supabase")) return;
-    ws.on("framereceived", (f) => {
-      const t = String(f.payload);
-      if (/"postgres_changes"/.test(t) && /"type"\s*:\s*"(INSERT|UPDATE|DELETE)"/.test(t)) quadrosB++;
-    });
-  });
-  paginaB.setDefaultTimeout(60_000);
-  await login(paginaB, "manager");
-  await gotoBoard(paginaB);
-  await paginaB.waitForTimeout(3000);
-
-  if (alvo) {
-    const colunaBAntes = await paginaB.evaluate((id: string) => {
-      const c2 = document.querySelector(`[data-rfd-draggable-id="${id}"]`);
-      return c2?.closest("[data-rfd-droppable-id]")?.getAttribute("data-rfd-droppable-id") ?? "?";
-    }, alvo.id);
-
-    // A ação nasce na PÁGINA A, pela interface: foco no card, espaço, seta, espaço.
-    // A RESPOSTA DA ROTA DO MOVE. O card anda na tela por atualização OTIMISTA
-    // antes de qualquer resposta; se a mutação falhar, a aba que agiu pode
-    // continuar mostrando o card no lugar novo. Ler só a tela da aba que agiu é
-    // ler o próprio otimismo — por isso a rota entra na medição.
-    const respostasMove: string[] = [];
-    page.on("response", (r) => {
-      if (r.request().method() !== "GET" && /leads|move|pipelines/.test(r.url())) {
-        respostasMove.push(`${r.request().method()} ${r.status()} ${r.url().replace(BASE, "")}`);
-      }
-    });
-    const cardA = page.locator(`[${CARD_ATTR}="${alvo.id}"]`);
-    await cardA.scrollIntoViewIfNeeded();
-    await cardA.focus();
-    await page.keyboard.press("Space");
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("Space");
-    await page.waitForTimeout(9000);
-
-    // A AÇÃO ACONTECEU? Sem esta pergunta, "zero quadros na aba B" é o que se vê
-    // tanto quando a entrega falha quanto quando nada foi movido — e eu estaria
-    // reportando defeito de produto a partir de um arrasto que não engatou.
-    // O aparato da wave 3 tem essa guarda no 12.a; esta sonda não tinha.
-    const { data: depoisNoBanco } = await admin
-      .from("crm_leads")
-      .select("stage_id")
-      .eq("id", alvo.id)
-      .single();
-    const stageNoBanco = (depoisNoBanco as { stage_id: string } | null)?.stage_id ?? "?";
-    const acaoAconteceu = stageNoBanco !== alvo.stage_id;
-
-    const colunaBDepois = await paginaB.evaluate((id: string) => {
-      const c2 = document.querySelector(`[data-rfd-draggable-id="${id}"]`);
-      return c2?.closest("[data-rfd-droppable-id]")?.getAttribute("data-rfd-droppable-id") ?? "?";
-    }, alvo.id);
-
-    console.info("\n=== ELO 5 — mudança nascida na UI de outra aba ===");
-    console.info(
-      `  a ação da aba A chegou ao banco? ${acaoAconteceu ? "SIM" : "NÃO"} ` +
-        `(stage ${alvo.stage_id.slice(0, 8)} → ${stageNoBanco.slice(0, 8)})`,
-    );
-    const colunaADepois = await page.evaluate((id: string) => {
-      const c3 = document.querySelector(`[data-rfd-draggable-id="${id}"]`);
-      return c3?.closest("[data-rfd-droppable-id]")?.getAttribute("data-rfd-droppable-id") ?? "?";
-    }, alvo.id);
-    console.info(`  a TELA da aba A mostra o card em: ${colunaADepois.slice(0, 8)} (era ${alvo.stage_id.slice(0, 8)})`);
-    console.info(`  respostas da rota durante o arrasto: ${respostasMove.join(" | ") || "(NENHUMA — a rota nem foi chamada)"}`);
-    console.info(`  quadros recebidos na aba B: ${quadrosB}`);
-    console.info(`  coluna do alvo na aba B: ${colunaBAntes.slice(0, 8)} → ${colunaBDepois.slice(0, 8)}`);
-    console.info(
-      !acaoAconteceu
-        ? "  ==> INCONCLUSIVO: o arrasto não chegou ao banco, então não havia evento para entregar"
-        : colunaBAntes !== colunaBDepois
-          ? "  ==> a aba B acompanhou a ação da aba A"
-          : "  ==> a aba B NÃO acompanhou uma ação que CHEGOU ao banco — é a falha da wave 3",
-    );
-  }
+  // O elo "mudança nascida na UI de outra aba" VIVIA AQUI e saiu.
+  //
+  // Ele dependia de um arrasto por teclado escrito à mão nesta sonda, e o meu
+  // não engatava: a rota nem era chamada. "Zero quadros na aba B" é o que se vê
+  // tanto quando a entrega falha quanto quando nada foi movido — instrumento
+  // pior medindo a mesma coisa que `tests/capture-wave-3-realtime.ts` já mede
+  // com o helper que funciona, e com a guarda de que a ação PERSISTIU.
+  //
+  // Dois instrumentos para a mesma pergunta, um deles quebrado, é como se
+  // fabrica um vermelho falso. Esta sonda cobre a CONEXÃO; a travessia entre
+  // abas é lá.
 
   await browser.close();
 
@@ -286,7 +228,10 @@ async function main(): Promise<void> {
   console.info(`  1. endpoint do token .... ${tokenStatus === 200 ? `ok (${tokenMs}ms)` : `FALHA (${tokenStatus})`}`);
   console.info(`  2. token válido ......... ${c?.role === "authenticated" && (c.exp ?? 0) > agora ? "ok" : "FALHA"}`);
   console.info(
-    `  3. join com identidade .. ${boardJoin ? (boardJoin.comToken ? "ok" : "FALHA — canal ANÔNIMO") : "não achei o canal do board"}`,
+    `  3. join com identidade .. ${boardJoin ? (boardJoin.comToken ? `ok (role=${boardJoin.claims?.role})` : "FALHA — canal ANÔNIMO") : "não achei o canal do board"}`,
+  );
+  console.info(
+    `  3.5 status na tela ...... ${statusNaTela ?? "(ausente)"} — "subscribed" sozinho NÃO prova autenticado`,
   );
   console.info(`  4. entrega .............. ${quadrosDeMudanca > 0 ? "ok" : "FALHA — zero quadros"}`);
 }
