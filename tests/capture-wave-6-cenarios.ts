@@ -88,6 +88,7 @@ const CRITERIOS = [
   "D23",
   "D24",
   "D25",
+  "D26",
 ];
 const { record, fechar } = criarPlacar("WAVE 6", CRITERIOS);
 
@@ -371,6 +372,7 @@ async function main(): Promise<void> {
         ["D19", "CENÁRIO 19: timeline colapsa eventos consecutivos do mesmo ator"],
         ["D19.rotulo", "o bloco colapsado nomeia o ATOR pelo texto — CLIENTE não se lê como TIME"],
         ["D25", "âncora sem alvo vira TEXTO, não link nem exceção (LGPD, e não é defeito)"],
+        ["D26", "lead SEM contato mostra as PRÓPRIAS atividades na timeline"],
         ["D20", "CENÁRIO 20: editar campo salva E aparece na timeline com ator humano"],
         ["D21", "CENÁRIO 21: ação do agente na outra aba entra na timeline ao vivo"],
         ["D23", "o Sheet DESASSINA ao fechar — abrir e fechar N vezes não acumula canal"],
@@ -461,6 +463,35 @@ async function main(): Promise<void> {
           `registro existir sem dizer o que mudou`,
       );
     }
+
+    // ---- 26: o lead SEM contato — 25% deles, e 66% das atividades ------------
+    //
+    // A timeline é indexada por CONTATO: o hook filtra `contact_id=eq.<id>` e a
+    // rota busca as atividades diretas do contato mais as dos leads dele. Um
+    // lead sem contato não tem porta de entrada nenhuma.
+    //
+    // Medido no banco de teste: 13 de 53 leads não têm contato, e 117 das 177
+    // atividades pertencem a esses leads. Não é caso de canto — é a MAIORIA do
+    // que está registrado hoje.
+    //
+    // E o que torna isto caro é a leitura na TELA: uma timeline vazia por falta
+    // de EIXO se lê exatamente como uma timeline vazia por falta de ACONTECIMENTO.
+    // O usuário vê "nada aconteceu neste negócio" sobre um negócio com histórico.
+    // É a ausência com cara de aprovação, agora na frente do cliente.
+    const textoTimeline = ((await painel.innerText()) ?? "").replace(/\s+/g, " ");
+    const mostraAsAtividades = /a IA respondeu sobre prazo/i.test(textoTimeline);
+    if (!mostraAsAtividades) {
+      await shotPage(page, `wave-6-d26-timeline-vazia-por-eixo${sufixo}.png`, false);
+    }
+    record(
+      "D26",
+      "lead SEM contato mostra as PRÓPRIAS atividades na timeline",
+      mostraAsAtividades,
+      mostraAsAtividades
+        ? "o lead sem contato exibe as atividades ligadas a ele"
+        : "timeline VAZIA para um lead que TEM 4 atividades — e vazia por falta de eixo se lê " +
+          "igual a vazia por falta de acontecimento",
+    );
 
     // ---- 24: a FONTE devolve eventos; quem agrupa é a TELA -------------------
     //
