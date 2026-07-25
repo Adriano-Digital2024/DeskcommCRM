@@ -6741,3 +6741,47 @@ quando quem propõe é o regente**."*
 O peso da fonte funciona na mesma direção da coerência: os dois **reduzem** o escrutínio no momento
 em que ele mais importa. Uma hipótese vinda de quem coordena chega com autoridade emprestada, e a
 autoridade não mede nada.
+
+## §7.210 — O relógio do defeito se mede pelo RASTRO das observações, não por instrumento novo
+
+Não há registro de entregas passadas. Mas há registro **datado e versionado das observações**, e ele
+cerca o intervalo pelos dois lados:
+
+| carimbo | fato |
+|---|---|
+| **11:41:46** | wave 6 fecha 13/0/0 com o D21 **verde** — a timeline ganhou linha sem F5 num lead do CRM Vivo. **Entrega ao vivo OBSERVADA.** |
+| **12:13:10** | primeira falha registrada: *"medido: ZERO"*. |
+| 14:45 | agora |
+
+**Mudo há no mínimo 2h32 e no máximo 3h03** — e o início cabe numa janela de **31 minutos**.
+
+**E a inferência que sustenta o piso vai declarada, não escondida:** *"a linha apareceu sem F5"* só
+prova entrega se não houver refetch de segurança — medido hoje que não há. **O limite:** essa medição
+é do código de agora e o verde era do código das 11:41. O hook é o mesmo, mas isso é **raciocínio,
+não medição**.
+
+**O número que importa:** desde 12:13, aquele funil recebeu **9 atividades e 6 mudanças de negócio**,
+todas com `source_module=crm` — **origem conferida para não inflar com as próprias sondas**.
+**Quinze mudanças reais escritas, nenhuma entregue ao vivo, e ninguém com como saber.**
+
+## §7.211 — A contraprova vai junto com a correlação, ou a correlação não sai
+
+A única mudança de produção dentro da janela é a migration que cria `crm_lead_risk_states` **e a
+adiciona à publicação** (11:54:55) — mexe exatamente no mecanismo medido como quebrado.
+
+E a correlação foi entregue **com a contraprova no mesmo parágrafo**: das 68 linhas da tabela nova,
+51 são de leads do pipeline **saudável**, que entrega 3/3. **Se a mera existência de linha
+envenenasse, o saudável também estaria mudo.**
+
+**Medição adicional que fecha a questão** (leitura, sem colidir com ninguém): **todas as 68 linhas
+foram escritas entre 13:13 e 13:42 local** — ou seja, **DEPOIS da primeira falha observada às
+12:13**. As linhas não podem causar um defeito que as antecede.
+
+**Consequência direta, e ela poupa uma janela de trabalho:** o teste proposto (escrita concorrente na
+tabela) **está descartado sem precisar rodar** — nem a existência nem a escrita concorrente explicam
+uma falha anterior a qualquer linha. **Sobra a ALTERAÇÃO DA PUBLICAÇÃO em si, com a tabela vazia.**
+
+**Nota de régua, porque o par quase enganou:** os carimbos do banco estão em **UTC** e os do rastro em
+**local**. 16:13 UTC é 13:13 local. Comparar as duas séries sem converter teria posto as escritas
+*antes* da falha e invertido a conclusão — duas réguas no mesmo raciocínio, exatamente o que já
+custou uma investigação hoje.
