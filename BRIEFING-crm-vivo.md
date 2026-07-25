@@ -6124,3 +6124,47 @@ dentro do que existe, construir o que precisa existir.
 
 Quando o acervo não contém o contraste necessário, a conclusão não é *"a medição fica com
 ressalva"*. É que **a medição ainda não tem sujeito, e o sujeito se constrói**.
+
+## §7.182 — O TEXTO do vermelho envelhece, e relatório que sobrevive à investigação vira folclore
+
+O vermelho ainda dizia *"o defeito é a montante da tela"* e *"o silêncio é do socket"* — frases
+escritas enquanto se procurava no navegador. **O socket está vivo, responde e confirma a
+assinatura.** As frases sobreviveram à investigação que as corrigiu.
+
+**Quem ler amanhã acredita no TEXTO, não no commit.** Achado é documentação, e documentação escrita
+no meio da caçada carrega a hipótese daquele momento como se fosse conclusão.
+
+**E há uma segunda coisa que o texto tem de separar: vermelho NÃO acusa componente.** O critério
+segue vermelho — para quem usa o board, a timeline não anda sozinha, e essa é a promessa quebrada.
+Mas **a tela do dossiê está inocente**: não há quadro para ela aplicar. Sem essa frase escrita, o
+próximo leitor "conserta" a superfície certa pelo motivo errado.
+
+**Regra:** ao fechar uma investigação, reescreva o texto de todo vermelho que ela tocou. O laudo
+declara (i) a promessa quebrada, (ii) a raiz, e (iii) quem está inocente — os três, porque os três
+são lidos como acusação quando faltam.
+
+## §7.183 — Controle tem ciclo de vida; o custo acompanha a PERGUNTA
+
+O controle em processo irmão foi de **N=3 para N=1**: ele não investiga mais nada, só responde
+*"havia como chegar?"*. **Três rodadas eram o preço de uma pergunta já respondida.**
+
+Suítes só sabem crescer — um controle nasce caro porque a pergunta era difícil, e continua caro
+depois de a pergunta ficar trivial, porque baixar custo parece afrouxar. **Não é: é ajustar o preço
+à pergunta que sobrou.** Quando a função de um instrumento encolhe, o custo dele encolhe junto — e
+quem não faz isso paga a conta da investigação antiga em toda rodada futura.
+
+## §7.184 — Prática adotada por razão PRÁTICA é frágil; a lei a protege da própria justificativa
+
+O controle positivo dentro do teste de refutação (§7.180) **não foi posto por prever o buraco
+metodológico**: foi posto porque era preciso saber se o board tinha carregado antes de medir. A
+razão metodológica só apareceu depois, ao escrever o comentário.
+
+**Isso não diminui o acerto — muda a fragilidade dele.** Uma prática sustentada por conveniência
+operacional morre quando a conveniência muda: no dia em que o aparato ganhar uma espera global por
+"página pronta", aquela checagem vira redundante *por aquele motivo* e é removida — **levando junto
+a garantia que ninguém tinha escrito**.
+
+**É o argumento para nomear a lei mesmo quando o comportamento já acontece.** A lei não ensina a
+fazer o que já se faz; ela **protege a prática de perder a razão pela qual ela é indispensável**. E
+distinguir "eu previ" de "eu tropecei e depois entendi" é o que permite saber quais das nossas
+práticas ainda estão apoiadas em conveniência.
