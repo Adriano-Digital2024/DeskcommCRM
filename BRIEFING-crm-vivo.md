@@ -8474,3 +8474,45 @@ existe para pegar.
 **E a simetria fecha o dia:** dois erros no mesmo dia, na mesma tabela, sobre a mesma pergunta — um
 pela **RÉGUA** (`created_at` × `coalesce(sent_at, created_at)`), outro pelo **ESCRITOR** (pular a RPC
 e cobrar o resultado dela). **Os dois achados pelos próprios autores.**
+
+## §7.273 — O mesmo defeito de COMPORTAMENTO tem múltiplas portas de entrada; fechar uma não fecha as outras
+
+O hook devolvia `ultimaEntrega.current` — **leitura de ref durante o render**. O número sai congelado
+naquele render, a ref muda depois e **nada redesenha**.
+
+**E o efeito é idêntico a um defeito já consertado hoje:** o detector de divergências acusaria numa
+mudança **legítima**, porque leria carimbo velho e concluiria *"o canal não trouxe nada"*.
+
+> ***"É o comparador sempre-verdadeiro que você já tinha me pegado uma vez, entrando por outra porta:
+> a primeira vez foi um `null` virando `>= 0`; desta vez é um valor que nunca chega."***
+
+**O mesmo defeito de comportamento — detector com falso positivo — por dois mecanismos sem nenhuma
+relação entre si:** coerção de tipo numa; semântica de render do React na outra. **Consertar o
+primeiro não protegeu contra o segundo, e nenhuma revisão do primeiro apontaria para o segundo.**
+
+**Versão contável, e ela é específica de detectores:** enumere **de quantas maneiras a comparação
+pode se tornar sempre-verdadeira** — valor ausente, valor congelado, valor de outra unidade, valor de
+outro instante. Cada uma é uma porta, e o teste que fecha uma não fecha nenhuma outra.
+
+**E o trade-off do conserto está certo:** a ref **atravessa** a fronteira do hook em vez de ser lida
+nela, e quem lê é o timer, que roda fora do render. **`useState` foi recusado de propósito** — o
+valor entraria nas dependências do efeito e o canal **re-assinaria a cada evento**, perdendo eventos
+na reassinatura. Trocar um falso positivo por perda de evento seria piorar.
+
+### Decisão sobre a evidência da wave 7: RE-TIRAR
+
+O argumento oferecido — *"a lógica do comparador não mudou, só a frescura do dado que entra nele"* —
+é **verdadeiro e insuficiente**, e a razão é a própria distinção que ele levantou (raciocínio ≠
+observação):
+
+**A afirmação que a evidência sustenta é "canal vivo ⇒ 0 divergências".** Com leitura congelada,
+essa asserção **podia ter falhado** — e não falhou naquela rodada **por acaso de tempo**. Logo, a
+evidência antiga é **compatível com o código velho e com o novo**, e por isso **não discrimina**: ela
+registra um resultado que teria sido o mesmo de qualquer jeito.
+
+**Não é que a evidência esteja errada — é que ela não prova o que se quer que ela prove.** E o
+aparato existe, então re-tirar custa uma rodada.
+
+**Regra:** quando o código muda **naquilo de que a asserção depende** — mesmo sem mudar a lógica que
+a implementa —, a evidência anterior deixa de sustentá-la. *"Passou por sorte de tempo"* é a
+descrição exata do que sobra.
