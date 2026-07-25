@@ -4224,3 +4224,53 @@ restaura exatamente o que foi salvo. Registro para que a imunidade vire escolha.
 `lead_edited` **já existe** no vocabulário, com o rótulo *"Dados do negócio alterados"* — verificado. O
 bloco que era **estrutural** (§7.80: *o tipo não existe*) foi fechado, e o `D20.contrato` virou verde.
 Sobram as outras duas metades: **emitir** e **dizer o que mudou**.
+
+---
+
+## §7.111 — O precedente seguro pode ser inseguro no campo vizinho
+
+O @Arquiteto pegou um **vazamento de dado pessoal na minha decisão do cenário 20**, e chegou **antes**
+da implementação — depois seria o aviso-cicatriz que ele mesmo tinha acabado de reconhecer como falha
+(§7.101).
+
+Eu decidi que o `reason` da edição carrega *"quais campos mudaram"*. Duas implementações naturais, e
+**uma vaza**:
+
+| precedente | conteúdo | risco |
+|---|---|---|
+| `stageChangeReason` → *"Movido de X para Y"* | **nomes de estágio** = configuração do tenant | nenhum |
+| o mesmo padrão em campos de lead | `title`, `description`, `custom_fields` | **o título É o nome do cliente** |
+
+**Verificado:** o exemplo do próprio briefing (linha 143) é *"Clínica Vitalis — implantes"* — e o §9
+(linha 498) é explícito: **"nenhuma PII nova em log, `reason` ou `evidence`"**.
+
+> **O padrão parece inofensivo porque o PRIMEIRO caso era.** Precedente seguro cria confiança que
+> atravessa para o campo vizinho — onde o mesmo formato carrega outro tipo de dado.
+
+**Ruling: o `reason` NOMEIA CAMPOS, NUNCA VALORES.** *"Dados do negócio alterados: título, valor e
+etiquetas"* cumpre o propósito — o humano vê **o quê** mudou e vai ao lead ver o conteúdo, que está a
+um clique **e é onde ele deve estar**.
+
+### E a exceção tem de ser dita JUNTO, senão a regra quebra a Wave 4
+
+A atividade de **autorização vencida** mostra antes-e-depois **de propósito**: ali o texto é **a
+proposta do próprio agente**, escrita por máquina e **livre de PII por contrato**, e o antes-e-depois é
+**a informação inteira** — sem ele o humano reaprova às cegas.
+
+> A regra **não** é *"reason nunca mostra antes e depois"*. É **"reason nunca mostra VALOR DE CAMPO DO
+> LEAD"**. Duas regras que parecem opostas e não são, porque **a origem do texto é diferente**.
+
+**Regra geral:** ao proibir um formato, verifique se o que você está proibindo é **a forma** ou **a
+procedência**. Proibir a forma pega casos legítimos; proibir a procedência pega o que importa.
+
+### E o argumento que fecha: duplicar em superfície mais exposta
+
+Os valores **já existem** em `api_audit_log` (verificado: `audit()` nas linhas 309, 451 e 622 do
+handler), **sob o controle de acesso do audit** — que é onde esse dado deve morar.
+
+> Duplicar valor de campo na timeline criaria **um segundo lugar com o mesmo dado e MENOS proteção** —
+> e a timeline é a superfície que aparece em **captura de tela, exportação e ticket de suporte**. É a
+> superfície **mais compartilhada** do produto.
+
+**Dado sensível não se copia para onde é mais fácil de ver. A pergunta não é "quem pode acessar?", é
+"onde esta tela vai parar?".**
