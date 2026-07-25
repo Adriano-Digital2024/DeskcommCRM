@@ -7053,3 +7053,54 @@ falha**. Uma peça, três papéis — e a que sustenta as outras duas.
 **Regra:** nenhuma superfície nova depende de realtime para estar CORRETA. Realtime decide se ela é
 *imediata*; o refetch decide se ela é *verdadeira*. Quem inverte isso constrói uma tela que mente
 quando o transporte falha — e o transporte falha.
+
+## §7.217 — CORRIGIDA: conte as explicações que a tese precisou para sobreviver
+
+A §7.217 mandava *"releia a própria série procurando a linha que a contradiz"*. **Não teria
+funcionado**, e a correção é de quem cometeu o erro:
+
+> *"Eu não ignorei a linha que me contradizia — **EU A EXPLIQUEI**. Quando o Pedidos chegou e o CRM
+> Vivo não, li como 'a ordem importa, os de Pedidos foram lidos antes de o lote abortar'. **A tese
+> absorveu a exceção em vez de morrer nela.**"*
+
+Reler não salva, porque na releitura a explicação continua disponível. **Não foi desatenção: foi uma
+explicação a mais — e explicação boa é exatamente o que faz uma tese sobreviver ao dado que devia
+matá-la.**
+
+**A cerca que funciona é contável:** *"releia a série e desconfie de toda linha que eu precisei
+EXPLICAR para manter a tese de pé."* **Cada explicação de resgate é um dado que tentou matar a tese.**
+Uma tese com três resgates é quase certamente falsa, e o número é fácil de acompanhar enquanto se
+investiga — ao contrário da qualidade das explicações, que é justamente o que não se consegue julgar
+por dentro.
+
+É a §7.168 (explicação plausível arquiva um número) apontada para outro alvo: lá a explicação
+arquivava o dado, aqui **resgata a tese**.
+
+## §7.225 — Precisão que veio de SORTE DE REGISTRO não se repete
+
+O intervalo de 31 minutos que fechou o início do defeito **saiu de sorte**: havia, por acaso, um
+verde datado (a wave 6 fechando) e um vermelho datado meia hora depois. **Se o defeito tivesse
+começado numa hora sem medição em curso, o piso seria "desde ontem".**
+
+**Teste para qualquer precisão obtida:** *que procedimento reproduziria isto?* Se a resposta é *"eu
+tinha uma observação datada por acaso"*, a precisão é **irrepetível** — e reportá-la sem essa
+ressalva promete uma capacidade que não existe.
+
+**E a correção é estrutural, não de disciplina:** um vigia periódico (14 ciclos de 4 min, assinatura
+sem filtro, log versionado, controle intercalado entre os dois pipelines) **troca a sorte por
+relógio**. Se o defeito voltar, a transição sai **com hora** — e as sondas negativas já versionadas
+rodam em cima, na mesma janela.
+
+## §7.226 — Prefira o achado que depende do EFEITO, não da CAUSA
+
+Explicação de por que o raio do silêncio atravessou **três retratações intacto**: ele não depende de
+nenhuma causa. Mede **o que a tela faz quando a entrega morre** — e a morte foi **fabricada**, com
+proxy e controle positivo.
+
+> **Achado que depende de "por que morreu" morre junto com a hipótese da causa; achado que depende só
+> de "morreu" sobrevive a todas elas.**
+
+É estratégia de investigação, não só de método: **quando a condição pode ser FABRICADA, não é preciso
+saber por que ela ocorre naturalmente** — e o achado resultante é imune a toda a cadeia de
+retratações que costuma acompanhar a caça à causa. Num dia com três teses derrubadas, foi o único
+resultado que nunca precisou ser corrigido.
