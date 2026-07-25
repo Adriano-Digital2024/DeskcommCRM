@@ -9554,3 +9554,42 @@ time que só troca vereditos não alcança nenhuma delas.
 
 > *Encerra-se a série em 300. Das oito correções do dia final, a última não foi de medição nem de
 > instrumento: foi de **atribuição** — e chegou de fora.*
+
+## §7.301 — Operação que não confere a própria CARDINALIDADE reporta sucesso nos dois casos
+
+A §7.298 tratou "não é este o código que roda" como acidente. A generalização, feita por quem cometeu
+o erro, é sobre o **método**, e é a parte que vale:
+
+> ***"Eu edito arquivo o dia inteiro por SUBSTITUIÇÃO PROGRAMÁTICA DE TEXTO. Esse método cria duplicata
+> em silêncio sempre que a âncora aparece duas vezes, ou quando uma edição anterior mudou a âncora e a
+> nova bate noutro lugar. Então 'não é este o código que roda' NÃO FOI AZAR — é um modo de falha
+> PREVISÍVEL do jeito como eu trabalho."***
+
+E vem sem sintoma porque **o comando sempre "funciona"**: o arquivo salva, o script roda, a saída sai.
+
+### A unificação com o `delete` — são o mesmo defeito em ferramentas diferentes
+
+> ***"Delete que não confere quantas linhas apagou e edição que não confere quantas vezes casou são o
+> mesmo defeito em ferramentas diferentes — e os dois somem do log como sucesso."***
+
+**A forma geral: toda operação que não verifica a própria cardinalidade reporta sucesso tanto quando
+acertou um alvo quanto quando acertou zero ou três.** O `delete` que apagou 0 linhas e o que apagou
+40.000 emitem o mesmo "ok"; o `replace` que casou duas âncoras e o que casou a errada, também. **A
+cerca é a mesma dos dois lados: exigir que a âncora case EXATAMENTE UMA VEZ**, e falhar alto quando não.
+
+Isto explica retroativamente por que o defeito é tão comum e tão invisível: **a ferramenta foi
+projetada para não ter opinião sobre quantos**, e "quantos" era a única coisa que importava.
+
+### E ele MEDIU o estrago em vez de supor
+
+Varreu os 63 arquivos de `tests/` atrás de função definida duas vezes no mesmo arquivo: **zero**, e o
+`tsc` concorda (zero `TS2393`). A duplicata foi única e já saiu. **Não há dívida escondida desta
+classe** — e isso é um número, não um alívio: a ansiedade virou varredura, e a varredura virou zero.
+
+### O número final ganhou uma subdivisão que muda o que ela significa
+
+**42 sondas abrem navegador · 28 sem bloco que rode em caso de erro · e destas, 15 SÓ sujam o banco
+sem pendurar.** As 13 que penduram **se anunciam**: estouram um timeout, alguém investiga, alguém
+conserta. **As 15 nunca aparecem em lugar nenhum** — terminam verdes, deixando estado no banco
+compartilhado para o próximo teste encontrar. **O modo de falha barulhento é o que se conserta; o
+silencioso é o que fica** — e é o silencioso que envenena o vizinho.
