@@ -7104,3 +7104,60 @@ proxy e controle positivo.
 saber por que ela ocorre naturalmente** — e o achado resultante é imune a toda a cadeia de
 retratações que costuma acompanhar a caça à causa. Num dia com três teses derrubadas, foi o único
 resultado que nunca precisou ser corrigido.
+
+## §7.227 — Antes de declarar um LIMITE CONHECIDO, leia a API: o limite pode ter conserto de uma palavra
+
+A regência foi *"declare a dúvida residual, não a persiga"* — e a exceção declarada era *"a menos que
+exista sinal de conexão que a remova por construção"*. Ao ir escrever o comentário do limite, a
+resposta apareceu **na assinatura da função**:
+
+```ts
+setAuth(token?: string | null): Promise<void>   // é ASSÍNCRONO — e era chamado SEM await
+```
+
+A flag "autenticou" virava `true` quando **a chamada saía**, não quando o token era **aplicado ao
+socket**. A promessa memoizada resolvia antes disso — e é ela que os hooks esperam para assinar.
+**Mesmo sintoma da memo por outro caminho:** lá a memo guardava a falha; aqui a promessa **resolvia
+cedo demais**.
+
+**E o achado veio de LER, não de rodar.**
+
+**Limite declarado é dívida permanente:** entra no comentário, é lido como fato por todo mundo depois,
+e ninguém volta a verificá-lo. **Verificar se é mesmo limite custa quase sempre menos que escrever o
+comentário que o declara** — e aqui custava uma palavra.
+
+**Regra:** *"limite conhecido"* só se escreve depois de conferir a superfície da API que o
+resolveria — tipo de retorno, opções, eventos. É a última coisa a fazer antes de desistir, não a
+primeira depois de tentar.
+
+## §7.228 — DESTRAVAMENTO não é conserto, e a marca é não saber dizer por quê
+
+Sobra um candidato para *"o que mudou entre 14:26 e 14:50"*, e é o ciclo de `ALTER TABLE` (aplicar
+`REPLICA IDENTITY FULL` e reverter) — **a única mudança de estado no banco naquela janela**, e a
+ironia é ter sido o teste da hipótese que os dois lados já haviam descartado.
+
+A hipótese que isso abre: **o problema não estava nos DADOS, e sim em cache/estado do lado do
+Realtime**, e o ciclo de ALTER forçou uma releitura da publicação que **destravou**.
+
+**E a distinção é o que importa: destravamento ≠ conserto, porque destravamento VOLTA A TRAVAR.** O
+sintoma some, o time comemora, e a causa continua lá — com o agravante de que agora existe um ritual
+("é só aplicar e reverter") que mascara o defeito toda vez que ele reaparece.
+
+**A marca que separa os dois é simples e implacável: no conserto você sabe dizer POR QUÊ funcionou.**
+Se a explicação é *"mexemos e melhorou"*, é destravamento — mesmo quando o sintoma desaparece por
+completo.
+
+**E o plano certo já está escrito para quando voltar:** medir **antes e depois de CADA METADE** do
+ciclo, para saber se destrava o `FULL` ou o **retorno** ao `DEFAULT`. Sem isso, nem o destravamento
+se entende.
+
+### O que a hora do delete respondeu: a raiz NÃO é única
+
+O delete da assinatura anônima caiu **entre ~14:06 e 14:15** — **antes** das 14:26. Ancoragem
+declarada e honesta: *delete não deixa rastro*, então a hora saiu da **ordem das ações, que é
+commitada** (consulta → delete → aviso → conserto da memo → commit `65674a0` às 14:15:25, anterior às
+14:05:48). Limite superior duro por construção da sequência; inferior pelo commit anterior.
+
+**Consequência: quando o `0/2` foi medido, a anônima já não existia há uns 15 minutos. O veredito de
+DOIS defeitos continua de pé pelo dado que existia** — e a esperança de raiz única morre com
+ancoragem, não com opinião.
