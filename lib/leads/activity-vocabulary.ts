@@ -50,23 +50,20 @@ export function activityLabel(type: string): string {
 }
 
 /** Como o marcador do ator é desenhado (BRIEFING §5: forma, nunca cor). */
-export type ActivityActorShape = "filled" | "ring" | "square" | "dashed";
+export type ActivityActorShape = "filled" | "ring" | "dashed";
 
 /**
- * Humano = disco PREENCHIDO; agente = círculo VAZADO COM ANEL (a mesma
- * geometria do OwnerBadge no card); sistema/regra = QUADRADO (BRIEFING §5 §2 da
- * timeline); autor NÃO REGISTRADO = TRACEJADO, reusando o desenho de "sem dono"
- * que o OwnerBadge já tem.
+ * TRÊS desenhos, os mesmos do card: preenchido = gente, anel = agente,
+ * tracejado = nem um nem outro.
  *
- * A separação entre "sistema" e "não sei quem foi" é o ponto: sistema é um ator
- * conhecido — o produto agiu — e merece o quadrado do briefing; `actor_kind`
- * null (a coluna é nullable) é ausência de informação, e desenhar quadrado nos
- * dois casos fazia a tela afirmar autoria que ninguém registrou.
+ * A forma carrega a leitura GROSSA (foi gente / foi agente / não foi nenhum dos
+ * dois); a distinção fina entre "Automação" e "Autor não registrado" já está no
+ * TEXTO, que fica ao lado. Um quarto desenho obrigaria o usuário a decorar um
+ * alfabeto no kanban e outro na timeline, para dizer o que a palavra já diz.
  */
 export function actorShape(actorKind: string | null): ActivityActorShape {
   if (actorKind === "user" || actorKind === "contact") return "filled";
   if (actorKind === "ai") return "ring";
-  if (actorKind === "system" || actorKind === "rule") return "square";
   return "dashed";
 }
 

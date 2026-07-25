@@ -271,7 +271,6 @@ export function CRMSidePanel({ conversation }: Props) {
                       actorShape(a.actor_kind) === "filled" && "rounded-full bg-accent",
                       actorShape(a.actor_kind) === "ring" &&
                         "rounded-full border border-accent bg-surface",
-                      actorShape(a.actor_kind) === "square" && "rounded-[2px] bg-text-muted/50",
                       actorShape(a.actor_kind) === "dashed" &&
                         "rounded-full border border-dashed border-border-strong",
                     )}
@@ -281,7 +280,7 @@ export function CRMSidePanel({ conversation }: Props) {
                 </div>
                 {a.reason && <div className="mt-0.5 truncate text-muted-foreground">{a.reason}</div>}
                 <div className="text-muted-foreground">
-                  {actorLabel(a.actor_kind) || a.source_module} · {shortDate(a.performed_at)}
+                  {actorLabel(a.actor_kind)} · {shortDate(a.performed_at)}
                 </div>
               </li>
             ))}

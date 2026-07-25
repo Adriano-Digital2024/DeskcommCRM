@@ -122,9 +122,10 @@ export function TimelineView({ contactId, types }: Props) {
                         "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center text-accent",
                         forma === "filled" && "rounded-full bg-accent-soft",
                         forma === "ring" && "rounded-full border border-accent bg-surface ring-1 ring-inset ring-accent/40",
-                        forma === "square" && "rounded-md border border-border bg-surface-muted",
-                        // Autor não registrado: mesmo tracejado do "Sem
-                        // responsável" no card — um desenho por fato, nas duas telas.
+                        // Sistema, automação ou autor não registrado: o mesmo
+                        // tracejado do "Sem responsável" no card. Três formas nas
+                        // duas telas — quem distingue "automação" de "não sei
+                        // quem" é o texto ao lado, não um quarto desenho.
                         forma === "dashed" && "rounded-full border border-dashed border-border-strong",
                       )}
                       aria-hidden
