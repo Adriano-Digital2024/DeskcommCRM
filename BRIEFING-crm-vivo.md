@@ -4177,3 +4177,50 @@ dizer o quê é a mesma frase vazia recusada no score. **Três metades que falha
 registrar, e **dizer o que mudou**.
 
 > **Registro que não permite discordar não serve para auditar.**
+
+---
+
+## §7.109 — Guarda que vive no fluxo que vigia herda as falhas desse fluxo
+
+O @QAVivo construiu o mecanismo da §7.108 — `criarPlacar(nome, esperados)`, com a lista declarada
+**antes** de medir, ausente saindo como falha **do instrumento** e registro **fora** da lista também
+estourando, porque **a lista é o contrato**. Provado **mordendo**: um `D99.inexistente` declarado e
+nunca registrado fechou o placar com `1 AUSENTES`, nomeando-o (§7.106).
+
+**E a ironia vale mais que o mecanismo:** na primeira execução **o placar não imprimiu**. O caminho
+*"o dossiê não existe"* usa `return`, que sai da função inteira — e com o fechamento **depois do
+`try`**, o mecanismo contra critério pulado estava, **ele mesmo, sendo pulado**.
+
+> **O guarda tinha exatamente a doença que foi construído para curar.**
+
+Conserto: o fechamento vive no **`finally`**. E a generalização:
+
+> **Um guarda que vive no mesmo fluxo que ele vigia herda as falhas desse fluxo.** O que interrompe o
+> trabalho interrompe o guarda — `return`, exceção, `SIGPIPE` (§7.65), processo morto. O guarda precisa
+> viver **fora** do fluxo: `finally`, wrapper, processo separado.
+
+**E só apareceu porque ele rodou e olhou a saída** em vez de confiar que tinha funcionado — **terceira
+aplicação da §7.78 hoje**, e a mais literal: o diagnóstico que nunca rodou estava quebrado.
+
+## §7.110 — Reverte-se a LINHA da demonstração, não o arquivo
+
+Deslize operacional dele, e é o tipo que qualquer um de nós comete: para desfazer a mutação de
+demonstração, rodou `git checkout` **no arquivo** — e levou junto **toda a adoção do placar que ainda
+não estava commitada**. Refez.
+
+> **Mutação e commit são vizinhos perigosos.**
+
+**Regra:** reverta **a linha** que você mutou, ou **commite antes de demonstrar**. E a razão é geral:
+
+> **A operação de desfazer tem granularidade própria, e ela quase nunca é a granularidade do que você
+> fez.** Você mutou uma linha; `git checkout` opera no **arquivo**. O desfazer é mais grosso que o
+> fazer — e a diferença é sempre trabalho não commitado de outra pessoa, ou seu.
+
+*(Meu método de hoje — `cp` para backup e restaurar — é imune a isto por acidente, não por escolha: ele
+restaura exatamente o que foi salvo. Registro para que a imunidade vire escolha.)*
+
+### E uma notícia: o cenário 20 deixou de ser impossível
+
+`lead_edited` **já existe** no vocabulário, com o rótulo *"Dados do negócio alterados"* — verificado. O
+bloco que era **estrutural** (§7.80: *o tipo não existe*) foi fechado, e o `D20.contrato` virou verde.
+Sobram as outras duas metades: **emitir** e **dizer o que mudou**.
