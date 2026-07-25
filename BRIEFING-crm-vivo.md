@@ -4709,3 +4709,63 @@ EXATAMENTE equivalente a filtrar só por lead (porque o conjunto é vazio), pres
 comentário teme perder se algum dia aparecer, e exclui o irmão por construção.
 
 **Quando uma linha compra as duas hipóteses, medir qual delas está certa é trabalho jogado fora.**
+
+## §7.124 — Critério que exige a FORMA reprova o melhor com o mesmo vermelho do pior
+
+Um critério exigia a string `"Você/time"`. O produto escreve o NOME da pessoa (`"E2E Manager"`),
+que é mais específico. O critério reprovaria um acerto.
+
+O que torna isto perigoso não é errar — é que **o vermelho é idêntico nos dois casos**. "O produto
+fez pior" e "o produto fez MELHOR do que eu imaginei" produzem exatamente a mesma falha, com a
+mesma mensagem. O critério não tem como distinguir, porque ele só sabe comparar com a única
+resposta que já estava na cabeça de quem o escreveu.
+
+**Consequência operacional:** vermelho de critério-por-forma não significa "defeito". Significa
+**"vá olhar a tela"**. Quem trata o vermelho como veredito conserta o produto para caber no
+instrumento — e o conserto torna o produto pior, com um verde para provar.
+
+### §7.124-a — E a forma exigida era REAL. Estava no caminho degradado.
+
+Aqui está a parte que salva a lei de virar "não invente strings": `"Você/time"` **existe no
+produto**, em `actorLabel`. O critério não foi inventado — foi calibrado contra um texto de
+verdade. Só que esse texto é o **último recurso**, o que aparece quando o nome FALTA (usuário sem
+`full_name`, agente apagado).
+
+Então conferir que a string existe no código **não teria salvado ninguém**: ela existe. O critério
+estava certo sobre a forma e errado sobre o CASO — mirado no caminho degradado, disparado no
+caminho feliz. E a direção do erro é a cara: o caminho degradado produz a saída mais pobre, então
+o critério cobrava do produto que ele **piorasse**.
+
+**A pergunta que separa não é "esta string existe?", é "existe NESTE caso, e este é o caso que eu
+quero provar?".**
+
+## §7.125 — O conjunto de critérios não é revisado por ninguém
+
+Dois critérios do mesmo lote disputavam o mesmo comportamento em direções opostas: um exigia que a
+timeline AGRUPASSE atividades do mesmo ator; o outro ancorava sua medição no texto de uma
+atividade individual — que só existe se **não** houve agrupamento. Não é possível os dois passarem.
+
+Cada um, lido sozinho, é razoável. **A incoerência não está em nenhum dos dois — está no par.** E o
+par é justamente o que ninguém lê: revisão de critério é sempre item a item, e a lista inteira só
+é olhada como contagem ("10 critérios, 6 verdes").
+
+É a §7.123 cometida no INSTRUMENTO em vez de no produto: peças corretas isoladamente, defeito na
+JUNÇÃO — o único lugar sem dono. Vale a mesma detecção: **dois critérios que tocam o mesmo
+comportamento têm de ser lidos JUNTOS**, e se um exige X enquanto o outro depende de não-X, o
+defeito é o par, independentemente de qual dos dois esteja "certo".
+
+## §7.125-a — Um caso por critério; reusar o caso é o alvo sorteado uma escala acima
+
+O lote inteiro rodava sobre UM lead — o lead sem contato, porque um dos critérios é sobre
+exatamente isso. Os outros precisam de timeline POPULADA, e sem contato ela nunca carrega: mediam
+colapso e rótulo numa tela que não tinha como mostrar nada, e chamariam de defeito de apresentação
+o que era ausência de eixo.
+
+**O caso vira "o lead que eu tinha à mão" em vez de "o lead que este critério exige"** — e isso é a
+lei do alvo sorteado subindo um nível: não é mais a LINHA escolhida sem ordem, é o CENÁRIO inteiro
+herdado por conveniência. O sintoma é o mesmo e é o pior possível: o critério mede o que quer sobre
+um sujeito que não pode exibi-lo, e o vermelho aponta para a superfície errada.
+
+**E trocar o caso tem custo, que precisa ser pago na hora:** todo critério que nomeava uma linha
+específica passa a apontar para o lugar errado, e **nada avisa quais**. Trocou o fixture, releia a
+lista inteira — não os que você lembra de ter mexido.
