@@ -5777,3 +5777,23 @@ commits de produto dentro dele. "Árvore limpa" entra como complemento, nunca co
 assinando** é candidato imediato para *"o evento saiu e a tela não aplicou"*. Antes de declarar
 regressão de produto, o discriminador é trivial — **reconectar e repetir**. Se voltar a passar, o
 vermelho foi transitório de migração, não defeito.
+
+## §7.166 — Recusar-se a escolher entre hipóteses é metade da disciplina; a outra é PARTIR o espaço
+
+Com três candidatos sobrando (filtro do canal, RLS do assinante, momento da escrita), a recusa em
+eleger um está certa — *"escolher agora seria trocar uma acusação errada por outra"*. Mas parar aí
+transforma rigor em paralisia.
+
+**A saída não é escolher: é achar a medição que corta o conjunto ao meio.** Aqui ela é trivial —
+**assinar o mesmo canal SEM filtro**. Chegando quadro, o problema está no filtro e as outras duas
+hipóteses morrem juntas; não chegando, o filtro está inocente e sobra o par
+autenticação/entrega. Um teste, três hipóteses viram uma ou duas.
+
+**Regra:** ao ficar com N hipóteses e nenhuma evidência para eleger, não pergunte *"qual é a certa?"*
+— pergunte **"que observação teria resultado DIFERENTE conforme o subconjunto?"**. Investigação boa
+não é sortear melhor; é **desenhar o corte**.
+
+**E o candidato que não estava na lista:** o único commit de produto no intervalo altera a publicação
+de replicação (§7.165). Assinatura viva na hora de um `alter publication` é explicação chata e
+verificável — **reconectar e repetir** custa um minuto e não foi feito. Hipótese ausente da lista não
+é hipótese descartada.
