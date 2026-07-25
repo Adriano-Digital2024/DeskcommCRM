@@ -1,26 +1,21 @@
 # Wave 5 — CORE 3 · score com evidência, e a faixa que não pode piscar · 2026-07-25
 
-**Placar: 15 verdes · 0 vermelhos · 3 BLOQUEADOS.**
+**Placar final: banco 18 verdes · 0 vermelhos · 0 bloqueados · tela 8 verdes · 0 vermelhos.**
 
-> ## A wave 5 NÃO está pronta — e este documento existe para dizer isso
->
-> Dos três cenários do briefing, **um** está feito:
+> ## Os três cenários do briefing, e o que cada rótulo prova
 >
 > | cenário do briefing | estado |
 > |---|---|
-> | **15** — card mostra medidor + número; hover revela as 3 evidências | **não começou** |
-> | **16** — gravar score sem `reason` é rejeitado pelo banco | **FEITO**, 10/10 |
-> | **17** — lead sem sinal não mostra score inventado | **não começou** |
->
-> Falta a fórmula determinística (worker calculando score, razão e evidência) e
-> falta o card exibindo. **A fundação está pronta; a wave não.**
+> | **15** — card mostra medidor + número; o porquê a um gesto | **FEITO** (`T15.*`) |
+> | **16** — gravar score sem lastro é rejeitado pelo banco | **FEITO** (`C16.*`) |
+> | **17** — lead sem sinal não mostra score inventado | **FEITO** (`T17`) |
 >
 > Meus rótulos internos eram `15.a..15.j` e provavam o cenário **16** — ler
 > "15 verdes, cenários 15.a–15.j" levava direto a concluir que o cenário 15
-> estava pronto. Renumerados para `C16.*` (a constraint), `H.*` (a histerese, que
-> é condição acrescentada ao contrato e não cenário do briefing) e `S15`/`S17`
-> (o que falta). **Placar que parece cobrir o que não cobre é pior que placar
-> ausente: ninguém vai atrás do que já parece feito.**
+> estava pronto quando ele não tinha começado. Renumerados para `C16.*` (a
+> constraint), `H.*` (a histerese, que é condição acrescentada ao contrato e não
+> cenário do briefing) e `T15`/`T17` (a tela). **Placar que parece cobrir o que
+> não cobre é pior que placar ausente: ninguém vai atrás do que já parece feito.**
 
 | | |
 |---|---|
@@ -46,7 +41,51 @@ A asserção agora exige o código **`23514`** — violação de CHECK. Qualquer
 código significa que o caso está mal montado, e isso é falha do instrumento, não
 do produto. **"Recusou" não é a pergunta; "recusou pelo motivo certo" é.**
 
-## O que falta está MEDIDO, não omitido
+## O defeito dos dois vocabulários — e por que a cerca dele fica barata
+
+Durante a wave, o `CHECK` contava `activity_ids`/`message_ids`/`checkpoint_ids` e
+o board lia `evidence.factors`. **Interseção vazia**: um score gravado como a
+constraint exigia mostrava *"Sem evidências registradas"* na tela, e um gravado
+como a tela lia era recusado pelo banco. A lei do porquê estava sendo cobrada
+numa chave que a UI nunca lia — e o score podia nascer *com* evidência para o
+banco e *sem* evidência para o humano, que é a pessoa para quem a lei existe.
+
+Provado por A/B com par de controle: sem o segundo lead, o vermelho teria duas
+explicações — "a tela não sabe mostrar evidência" e "a tela lê outra chave" — e
+nenhuma conclusão.
+
+**O conserto não corrigiu o defeito: tornou-o inescrevível.** A constraint passou
+a exigir `factors` não vazio **com a âncora dentro**
+(`evidence @? '$."factors"[*]."ancora"'`). Os dois vocabulários viraram um, e a
+âncora deixou de poder existir sem a frase que a explica.
+
+### A pergunta que decide a permanência de cada cerca
+
+*Depois do conserto, alguém ainda consegue escrever o estado ruim?*
+
+| cerca | o estado ruim ainda é escrevível? | consequência |
+|---|---|---|
+| `C16.l` / `C16.m` — âncora fora de `factors`, factor sem âncora | **não** — o banco recusa | guarda a **eliminação**: existe para o dia em que alguém afrouxar a constraint |
+| `T15.d2` — as evidências gravadas aparecem | **não**, pela mesma trava | virou cerca: perdeu a pergunta original e ganhou a guarda |
+| `H.c` / `H.d` — a faixa nunca fica a duas da régua crua | **sim** — é código, e código volta | guarda **comportamento**: tem de continuar rodando sempre |
+| `T15.b` — a faixa exibida é a persistida | **sim** — derivar do número é uma linha | guarda comportamento |
+
+Cercas que guardam eliminação são baratas e raras; as que guardam comportamento
+precisam rodar sempre. **São durabilidades diferentes, e por isso custos
+diferentes.**
+
+## As capturas da tela
+
+| prova | imagem |
+|---|---|
+| card com score 72 e faixa `morno` persistida | ![card com score](wave-5-tela-com-score-CASO-CONSTRUIDO.png) |
+| o par: um card com score ao lado de um sem | ![o par](wave-5-tela-par-com-e-sem-score-CASO-CONSTRUIDO.png) |
+
+As duas nasceram de **caso construído**, e o nome do arquivo diz isso: o dado
+real não tem o par zero/ausente, e prova fabricada sem o rótulo sugere um fluxo
+que ninguém exercita.
+
+## O que faltava está MEDIDO, não omitido
 
 Gravei um score de 72 num lead da demo, abri o board e olhei o card: nenhum
 número, nenhum medidor. O card continua dizendo apenas título, valor, dono e
