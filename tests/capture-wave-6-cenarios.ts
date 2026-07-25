@@ -863,15 +863,85 @@ async function main(): Promise<void> {
       joins === 0 ? "BLOQUEADO" : undefined,
     );
 
-    // ---- 21: ao vivo, com pré-condição de capacidade -----------------------
-    record(
-      "D21",
-      "CENÁRIO 21: ação do agente na outra aba entra na timeline ao vivo",
-      false,
-      "a montar quando o dossiê existir: exige segunda aba, ação remota e a pré-condição " +
-        "de que a entrega funciona para quem DEVIA receber",
-      "BLOQUEADO",
-    );
+    // ---- 21: ao vivo, e a pré-condição vem primeiro -------------------------
+    //
+    // O cenário é: dossiê aberto numa aba, ação em OUTRA, e a linha entra sem F5.
+    // Três coisas podem produzir "não entrou", e só uma é o defeito:
+    //   (a) a ação não aconteceu — intenção não é efeito, foi o que me pegou no
+    //       12.a da wave 3, onde eu lia a tela de quem AGIU e chamava de ação;
+    //   (b) a entrega está morta para todo mundo — e aí "não chegou" não prova
+    //       nada sobre esta tela;
+    //   (c) chegou e a tela não aplicou — o defeito.
+    // Por isso a ação é confirmada NO BANCO antes de julgar a tela.
+    const ctxB = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const abaB = await ctxB.newPage();
+    abaB.setDefaultTimeout(60_000);
+    try {
+      await login(abaB, "manager");
+      await gotoBoard(abaB);
+
+      // A aba A precisa estar com o dossiê ABERTO — é a condição do cenário.
+      const { card: cardA } = await cardLocator(page, caso.tituloComContato);
+      await cardA.click();
+      await page.waitForTimeout(1200);
+      // A CONTAGEM DA TIMELINE, não o texto do painel. A edição muda o TÍTULO, e
+      // o cabeçalho do dossiê mostra o título — então "o painel mudou" seria
+      // verdade mesmo que a timeline não recebesse nada, pelo canal do board.
+      // Teste confundido: duas variáveis mudando e uma conclusão só.
+      const contarLinhas = async (p2: Page): Promise<number> => {
+        const t = ((await dossie(p2).innerText()) ?? "").replace(/\s+/g, " ");
+        const blocos = [...t.matchAll(/·\s*(\d+)\s+(?:ações|eventos|atividades)/gi)].reduce(
+          (soma, m) => soma + Number(m[1]),
+          0,
+        );
+        const soltas = (t.match(/\d{2}:\d{2}/g) ?? []).length;
+        return blocos + soltas;
+      };
+      const antesA = await contarLinhas(page);
+
+      // A ação nasce na OUTRA aba, pela interface: editar um campo emite
+      // `lead_edited`, que é atividade de verdade no mesmo eixo da timeline.
+      const cardB = abaB.locator(`[data-rfd-draggable-id="${caso.leadComContato}"]`).first();
+      await cardB.scrollIntoViewIfNeeded();
+      await cardB.click();
+      await abaB.waitForTimeout(1200);
+      const painelB = dossie(abaB);
+      const campoB = painelB.locator('input[name="title"], #title').first();
+      const marca = `${RUN}-AOVIVO`;
+      await campoB.fill(`${caso.tituloComContato} ${marca}`);
+      await painelB.getByRole("button", { name: /salvar|guardar/i }).first().click().catch(() => null);
+      await abaB.waitForTimeout(2500);
+
+      // (a) A AÇÃO ACONTECEU? Confirmado no banco, não na tela de quem agiu.
+      const { data: novas } = await admin
+        .from("crm_lead_activities")
+        .select("id,type,performed_at")
+        .eq("lead_id", caso.leadComContato)
+        .eq("type", "lead_edited");
+      const acaoPersistiu = ((novas ?? []) as unknown[]).length > 0;
+
+      // (c) A ABA A recebeu, SEM F5?
+      await page.waitForTimeout(6000);
+      const depoisA = await contarLinhas(page);
+      const mudou = depoisA > antesA;
+
+      record(
+        "D21",
+        "CENÁRIO 21: ação na OUTRA aba entra na timeline aberta, sem F5",
+        acaoPersistiu && mudou,
+        !acaoPersistiu
+          ? "INCONCLUSIVO: a edição da outra aba não chegou ao banco — sem evento não há entrega " +
+            "a julgar, e culpar o realtime aqui seria acusar a superfície errada"
+          : mudou
+            ? `a timeline aberta ganhou linha sozinha: ${antesA} → ${depoisA} atividades`
+            : `a timeline aberta seguiu com ${antesA} atividades e a ação PERSISTIU — o evento ` +
+              `saiu e esta tela não aplicou`,
+        acaoPersistiu ? undefined : "BLOQUEADO",
+      );
+    } finally {
+      await ctxB.close();
+    }
+
   } finally {
     await browser.close();
     console.info(`[limpeza] ${await limpar()} lead(s) de teste removidos`);
