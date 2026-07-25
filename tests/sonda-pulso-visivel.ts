@@ -46,7 +46,17 @@ async function main(): Promise<void> {
   if (!lead) throw new Error("sem lead para provocar");
 
   const browser = await chromium.launch();
-  const page = await browser.newContext({ viewport: { width: 1440, height: 900 } }).then((c) => c.newPage());
+  // REDUCED=1 troca o contexto para movimento reduzido: é o caminho que o §5
+  // promete ser IGUAL, não degradado, e a única promessa da wave que ninguém
+  // tinha medido na tela.
+  const reduzido = process.env.REDUCED === "1";
+  const page = await browser
+    .newContext({
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: reduzido ? "reduce" : "no-preference",
+      colorScheme: "light",
+    })
+    .then((c) => c.newPage());
   await login(page, "admin");
   await page.goto(`${BASE}/app/pipelines/${lead.pipeline_id}`, { waitUntil: "networkidle" });
 
