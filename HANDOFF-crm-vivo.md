@@ -3021,8 +3021,20 @@ entre crases), descarta blocos de código cercados, URLs e — um nível mais fu
 remedir — **templates e globs**: `evidence/wave-<n>-<cenario>.png` e `.../onda1-*.png` nomeiam um
 **padrão**, não um arquivo.
 
-**Remedido com a quarentena vazia: 9 documentos**, nenhum desta entrega. O `@MaestroConexoes` havia
-previsto *"perto de 8"*.
+**Remedido com a quarentena vazia:** a lista vive em `LEGADO`, em
+`tests/unit/evidencia-citada.test.ts` — **e não é copiada para cá de propósito.**
+
+O número já foi 15, depois 9, depois 8, e mudou a cada aperto do extrator. Três vezes o mesmo
+mecanismo mordeu: medir, escrever o número no documento, apertar o instrumento, e o documento
+ficar para trás — **com a autoridade que documento tem.**
+
+> **Número que o teste calcula toda rodada não se escreve à mão.** O `LEGADO` não é anotação: o
+> anti-apodrecimento **direto** exige que cada item ainda tenha referência morta, e o **reverso**
+> proíbe fantasma. A lista é, portanto, *verdade imposta a cada execução* — não um retrato de
+> quando alguém olhou.
+
+Nenhum item é desta entrega. Para saber quantos são agora:
+`npx vitest run tests/unit/evidencia-citada.test.ts`.
 
 #### E a quarentena ganhou o anti-apodrecimento que faltava: o REVERSO
 
