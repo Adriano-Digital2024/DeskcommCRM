@@ -3463,3 +3463,60 @@ deixar o instrumento cobrar**.
 **Regra:** ao fechar qualquer item de DoD que aponte para um artefato, a pergunta não é *"o arquivo
 existe?"* — é **`git ls-files`**. Artefato é entregável; entregável mora no repositório; **o que mora
 só no disco é rascunho, por definição, independentemente de estar pronto.**
+
+---
+
+## §7.85 — O mesmo mecanismo pode ser errado como política e certo como última linha
+
+Eu disse que *"falhar baixo não pode ser `console.error`"*. O @DevVivo implementou com um cuidado que
+eu não tinha especificado, e ele está certo:
+
+> O `console.error` **não sumiu — desceu de política para segunda linha**. Se até o `event_log`
+> falhar, o log do processo é tudo o que sobra — **e aí ele está certo, porque o próprio canal de aviso
+> morreu**.
+
+> ***"A diferença entre 'primeira linha' e 'última linha' é exatamente o que faltava: antes, a única
+> linha era a que não conta."***
+
+**Banir o mecanismo teria removido a única coisa que sobrevive quando tudo mais falha.** A regra não é
+*"nunca use X"* — é **"X não pode ser a política; X é o que resta quando a política falha"**. Um
+anti-pattern costuma ser um mecanismo **na posição errada**, não um mecanismo ruim.
+
+## §7.86 — Campo ausente lê-se como "não tentou"; campo nulo lê-se como "tentou e não sei"
+
+Caso que só aparece em runtime, e ele cobriu: `undefined` **some do JSON**, então o alerta chegaria
+**sem o campo** — *"como se ninguém tivesse tentado descobrir a causa"*. Virou `null` **explícito**
+(`erro: f.erro ?? null`).
+
+> **Ausência e desconhecido são afirmações diferentes, e o JSON as colapsa** a menos que você seja
+> explícito. Quem lê um alerta sem o campo de causa conclui que **o diagnóstico não foi feito**; quem
+> lê `causa: null` sabe que **foi feito e não achou** — e a segunda leitura muda o que a próxima
+> pessoa vai investigar.
+
+É a mesma distinção que o épico já paga em outro lugar: `score = null` significa *"não sei"* e
+`score = 0` significa *"calculei e deu zero"* (§Wave 5). **A lição repete porque a linguagem esconde a
+diferença por padrão.**
+
+### E o bulk era o pior dos três, por um motivo que os outros não têm
+
+`N` leads movidos, e **uma** falha de atividade sumia junto com as `N−1` que deram certo. Não é só
+*"não contava"*:
+
+> **O buraco na timeline não tinha nem TAMANHO CONHECIDO**, porque a operação inteira reportava
+> sucesso.
+
+Falha parcial dentro de um lote que reporta sucesso **colapsa "algumas falharam" em "todas
+funcionaram"** — e a perda deixa de ser mensurável, não só de ser vista.
+
+### Emenda à §7.76 — encerramento por ausência de evidência fica provisório
+
+Nota dele, e ela é melhor que a minha formulação:
+
+> O valor prático da §7.76 **não é** saber que o Sentry estava com `429`. É que ***"sem causa
+> encontrada"* passa a significar coisas diferentes conforme a telemetria esteja de pé ou não.**
+> Enquanto o `429` não for entendido, **todo encerramento por ausência de evidência neste board fica
+> provisório.**
+
+Isso **reclassifica um incidente já arquivado** (§7.71) sem reabri-lo: ele continua fechado, e o
+fechamento carrega uma ressalva escrita. **Fechar com ressalva é diferente de fechar** — e a diferença
+só existe se estiver registrada.
