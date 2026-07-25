@@ -41,6 +41,11 @@ export interface UseRealtimeChannelOpts {
  *   if (!res.ok) return            → 401/500: memo FICAVA, setAuth nunca corria
  *   if (token) setAuth(token)      → corpo sem token: memo FICAVA, idem
  *
+ * E havia uma SEGUNDA janela, achada depois pelo tipo de retorno: `setAuth`
+ * é assíncrono, e chamá-lo sem `await` fazia a promessa memoizada resolver
+ * antes de o token estar no socket. Quem assinasse nesse intervalo assinava
+ * anônimo — o mesmo sintoma, por outro caminho.
+ *
  * Ou seja: UM ÚNICO 401 transitório — sessão ainda estabelecendo, cookie em
  * renovação — deixava TODOS os canais criados depois anônimos pelo resto
  * daquele carregamento. E a recuperação estava escrita justamente para o
@@ -70,7 +75,18 @@ export function authenticateRealtime(supabase: ReturnType<typeof createClient>):
         const body = (await res.json()) as { data?: { access_token?: string } };
         const token = body.data?.access_token;
         if (token) {
-          supabase.realtime.setAuth(token);
+          // ⚠️ O `await` NÃO É DECORATIVO: `setAuth` devolve `Promise<void>`.
+          //
+          // Sem ele, `autenticou` virava true quando a CHAMADA saía, não quando
+          // o token era APLICADO ao socket — e a promessa memoizada resolvia
+          // antes disso. Como quem assina espera essa promessa, o `subscribe`
+          // podia correr com o socket ainda anônimo, e uma assinatura anônima
+          // com RLS por `auth.uid()` recebe ZERO linhas em silêncio.
+          //
+          // A dúvida era: "o conserto garante que setAuth seja CHAMADO, não que
+          // tenha EFEITO". O tipo de retorno respondeu — havia mesmo uma janela,
+          // e esperar por ela custa uma palavra. É cerca, não medição.
+          await supabase.realtime.setAuth(token);
           autenticou = true;
         }
       }
