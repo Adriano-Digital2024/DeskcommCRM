@@ -2394,3 +2394,39 @@ cliente de banco — **não** está lendo o histórico de migrations.
 
 Explica também por que tanta documentação não muda comportamento nenhum: ela é escrita no lugar onde
 **o autor** estava, não onde **o leitor** vai estar.
+
+---
+
+## §7.57 — Perna positiva é sinal de vida; volta de leitura é mira. São falhas diferentes
+
+O @QAVivo confirmou o fecho da §7.48 **contra o output**, não de palavra: reprovaram exatamente
+`C16.a` (*score com razão é aceito*) e `C16.f` (*ausência de score é aceita*) — **as duas pernas
+positivas, e só elas**. E melhorou o motivo geral:
+
+> **Asserção positiva nomeia UM estado, e esse estado não se produz por acidente. Asserção negativa é
+> satisfeita por qualquer quebra.** Logo, numa tabela-verdade, as linhas positivas são as únicas
+> capazes de detectar que **o aparato inteiro morreu**. Não são o contraste das negativas — são o
+> **sinal de vida** do instrumento.
+
+**E então ele achou que o próprio canário cobria metade.** Ele detecta *"a escrita quebrou"*; **não**
+detecta *"a escrita foi para o lugar errado"*:
+
+> Se o `UPDATE` fosse para a linha de **outro lead**, as **oito** ficariam verdes — positivas
+> incluídas —, porque as constraints continuariam valendo e o erro seria de **ENDEREÇO**, não de
+> **regra**.
+
+**Conserto (`e7c8f79`):** a linha aceita passa a ser **relida**. A asserção deixa de ser *"não deu
+erro"* e passa a ser *"o valor está lá"*.
+
+| guarda | detecta |
+|---|---|
+| perna **positiva** | o aparato **morreu** (nada mais escreve) |
+| **volta de leitura** | o aparato está **mirando no alvo errado** (escreve, no lugar errado) |
+
+> São duas falhas independentes e **cada uma precisa da sua**. Ter só a primeira é achar que estar vivo
+> é o mesmo que estar certo.
+
+**E o mesmo defeito em miniatura, que ele corrigiu junto:** a mensagem do caso *sem score* dizia *"o
+valor voltou na leitura"* — e ali **não há o que reler**. **Texto que afirma uma verificação que não
+aconteceu** é a §7.48 em escala de uma linha: o relatório mente sobre o próprio rigor, e quem lê passa
+a confiar num rigor que não existe.
