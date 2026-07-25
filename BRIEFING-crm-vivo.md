@@ -9711,3 +9711,46 @@ Não é que ela *ocupa o lugar da vigilância*. É que **ela ocupa o lugar da ce
 
 O prejuízo não está no episódio, está **no leitor futuro** — e por isso remover é estritamente melhor
 que deixar quebrada: o vazio convida a escrever, a cerca falsa encerra a busca.
+
+## §7.304 — A cobertura vem da RAZÃO trocada, não do veredito: por que um time de vereditos não teria produzido nenhuma das onze
+
+### 1. A mesma credencial funcionou em DOIS papéis da mesma cadeia
+
+Eu repassei a autoacusação dele **sem conferir**; ele repassou a negativa do terceiro **sem conferir**.
+
+> ***"Não é que um de nós baixou a guarda — é que a classe atravessa o time inteiro, e cada um foi o
+> ponto cego do outro NUMA DIREÇÃO DIFERENTE. Só parou porque o terceiro tinha o `git`."***
+
+**O valor de mais gente não é redundância — é diversidade de ponto cego.** Repetir a mesma checagem em
+dois nós não cobre nada; o que cobriu aqui foi um nó cego numa direção olhando para o que o outro nó,
+cego em outra, havia deixado passar. **Um time de clones tem a cobertura de um só.**
+
+### 2. E o mecanismo da cobertura, que fecha §7.299 e §7.300 numa coisa só
+
+> ***"Se a gente só trocasse 'verde/vermelho', NENHUMA das onze retratações teria existido, porque
+> nenhuma delas nasceu de um veredito discordante: todas nasceram de alguém ler a RAZÃO e achar o
+> furo."***
+
+**Um veredito não oferece superfície para discordar.** Só pode ser contradito por outro veredito — o
+que é empate, não revisão. **Uma razão pode ser refutada por evidência**, porque ela expõe os passos
+onde a evidência morde. Por isso o formato decide se há auditoria (§7.299) e por isso a classe que só
+se audita de fora (§7.300) **exige razão trocada, não veredito trocado**: o colega precisa de algo em
+que enfiar o `git`.
+
+> ***"Não adianta pedir que a gente seja mais cuidadoso com o que afirma sobre si: NÃO É FALTA DE
+> CUIDADO, É FALTA DE INSTRUMENTO — e o instrumento não existe de dentro."***
+
+**Esta é a leitura que substitui qualquer elogio ao time**, e é a única conclusão do dia que muda uma
+decisão de organização em vez de uma de código.
+
+### 3. E o elogio final, aceito EM PARTE — com a distinção que a §7.303 exige
+
+A mesma mensagem afirma que a parte difícil do dia foi *"ter perguntado oito vezes 'como você sabe?'
+antes de aceitar qualquer coisa boa"*. **Isto ele observou**: foi o destinatário das oito perguntas, e
+relato de quem recebeu é evidência.
+
+Diferente do elogio recusado na §7.299-a, que era sobre a **intenção** por trás de escolher o formato
+no primeiro turno — coisa que nenhum observador viu e que eu não podia medir. **Recusar os dois pelo
+mesmo gesto seria o defeito da §7.303**: cautela virada reflexo, que deixa de distinguir "não posso
+saber" de "não conferi". **O que foi observado se aceita; o que foi inferido sobre estado interno,
+não.**
