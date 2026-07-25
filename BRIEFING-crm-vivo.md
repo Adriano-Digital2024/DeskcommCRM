@@ -1615,3 +1615,44 @@ na fronteira** de propósito (`<= 45`, `>= 65`, e não `<`/`>`). É um guarda co
 reconstrução exata da transição — a transição exata é trabalho do TypeScript. Um CHECK apertado
 demais rejeitaria escrita **legítima** (`numeric(5,2)` põe 44,99 e 45,00 dos dois lados de um limiar
 inteiro), e guarda que reprova o certo é pior que guarda ausente: ensina a desligá-lo.
+
+---
+
+## §7.34 — Falha que não mostra a FORMA do defeito custa uma rodada
+
+A varredura exaustiva achou **9 violações**; os exemplos escolhidos à mão tinham achado **4** — menos
+da metade. Isso já era o esperado (exemplo acha o que quem escreveu já suspeitava). O que **não** era
+esperado é que o ganho maior não estivesse na contagem, e sim no **formato da saída**.
+
+| saída | o que entrega |
+|---|---|
+| nove linhas soltas | nove casos, e a forma fica para quem lê **adivinhar** |
+| `70-74 vindo de 'frio'` · `36-39 vindo de 'quente'` | duas faixas **contíguas**, só na zona do meio — a **causa** aparece sozinha |
+
+A segunda forma **mostra o defeito**: a banda morta do limiar **distante** bloqueando a transição
+inteira em vez de um degrau. Quem vai consertar lê a causa direto da falha, sem gastar uma rodada de
+investigação para reconstruí-la.
+
+> **Regra:** asserção sobre domínio varrido **comprime** as violações (faixas, agrupamento por
+> entrada), nunca despeja caso a caso. O teste não termina no veredito — ele termina quando entrega
+> a **forma**.
+
+**Corolário que salvou este achado de ser confundido com instrumento quebrado:** rode também os
+**controles** — casos que devem **passar**. `75+` vindo de frio, `≤35` vindo de quente, `45-69` vindo
+de frio e `40-65` vindo de quente **acertam**. Um achado que reprova tudo não distingue defeito de
+sonda furada; um achado com **forma precisa e bordas certas** distingue.
+
+## §7.35 — Duas invariantes independentes apontando o mesmo conjunto
+
+O defeito da faixa foi apontado por dois caminhos que não se falam:
+
+- **não-mentira** — a faixa exibida nunca fica a mais de um degrau da régua crua → **9/303**
+- **fidelidade ao contrato** — a função concorda com a régua escrita no comentário acima dela →
+  **os mesmos 9/303**
+
+Uma compara com o **comportamento esperado**; a outra compara com a **especificação escrita**.
+Chegarem ao **mesmo conjunto** é evidência de que o defeito é **um só** — e não dois problemas
+sobrepostos que exigiriam dois consertos.
+
+> Quando instrumentos independentes **divergem** no conjunto, há mais de um defeito (ou um dos
+> instrumentos está errado) — e essa é a hora de parar de consertar e voltar a medir.
