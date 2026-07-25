@@ -4854,3 +4854,52 @@ Uma regra ancorada na forma ("a frase mostra antes-e-depois?") proibiria o caso 
 aqui uma regra por FORMA proibiria um acerto. **Mesma doença, superfícies opostas: confundir a
 aparência com a coisa.** Quando aparecer dúvida sobre uma regra, pergunte de que ela depende de
 verdade — quase nunca é do formato.
+
+## §7.129 — Critério mal escrito não só reprova errado: EMPURRA para o defeito
+
+Um critério exigia o nome do campo dentro do `reason`. A implementação põe os nomes no payload —
+seria mais um acerto reprovado. Mas o falso vermelho era o menor dos problemas.
+
+**O título do lead É o nome do cliente.** Um critério exigindo os campos no texto empurraria alguém
+a escrever o VALOR ali para fazer o vermelho virar verde — e o log de auditoria, que **sobrevive à
+anonimização**, viraria vazamento permanente. O critério teria criado o defeito que a wave inteira
+existe para impedir, e entregue um verde como prova.
+
+O mecanismo: **critério é especificação com autoridade, inclusive quando está errado.** A única
+maneira de apagar um vermelho é mudar o produto, e o critério diz em qual direção. Quem escreve
+critério está escrevendo produto — com a diferença de que ninguém revisa critério como revisa
+código.
+
+**Ao escrever um critério, pergunte o que aconteceria se alguém o fizesse passar do jeito mais
+direto.** Se a resposta é um produto pior, o critério é um defeito esperando executor — e o teste
+que o denuncia não existe, porque ele PASSARIA.
+
+## §7.130 — Localize pelo que o próprio teste não pode alterar
+
+Dois critérios sumiram do placar como AUSENTE porque um critério anterior **edita o título**, e os
+localizadores seguintes procuravam o nome antigo. Não é fixture trocado por um humano (§7.125-a) —
+é a **suíte mutando o próprio caso como efeito de um critério fazendo o trabalho dele**.
+
+E nada avisa: o localizador não encontra, o critério não roda, e sem placar declarado ele
+desapareceria em silêncio — no mesmo dia em que o placar foi construído exatamente para isso.
+
+**Regra:** localize pelo atributo que a funcionalidade sob teste não toca — o ID, não o texto. Se o
+produto sabe editar aquilo, o teste não pode depender daquilo para se achar.
+
+## §7.131 — Critério nascido antes da peça só pode citar a forma imaginada
+
+Sete critérios reprovaram acertos do produto num único turno, todos da mesma doença: exigir a forma
+em vez da coisa. Sete é muito — e não são sete descuidos, são **uma consequência estrutural**.
+
+O critério foi escrito ANTES da peça existir. Nesse momento não há produto a que se referir: a
+única coisa disponível para citar é a forma que quem escreve imaginou. **Escrever critério antes da
+implementação continua certo** — é o que impede racionalizar o resultado depois. Mas o preço é que
+a forma citada é sempre um palpite, e o palpite entra no critério com a mesma aparência de
+requisito que o resto.
+
+**As duas saídas, e são baratas:** escreva o critério sobre o **fato observável** ("o leitor
+consegue saber quem agiu") em vez do **desenho** ("aparece a string `Você/time`"); e quando a forma
+for inevitável, **marque-a como palpite no próprio critério**, para que o vermelho seja lido como
+"confira se o produto fez diferente" e não como "o produto errou".
+
+Pergunta padrão antes de reportar: **"estou exigindo a coisa, ou a forma dela que eu imaginei?"**
