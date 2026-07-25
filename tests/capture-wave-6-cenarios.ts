@@ -428,6 +428,12 @@ async function main(): Promise<void> {
     // não o servidor calado. Já me pegou hoje com o contador de assinatura.
     let quadrosDeAtividade = 0;
     const respostasTimeline: string[] = [];
+    // O JOIN do canal da timeline leva IDENTIDADE? Um assinante privilegiado
+    // recebe o mesmo evento (medido em tests/prova-canal-timeline.ts), então a
+    // publicação e o filtro estão inocentes e sobra o assinante. Restam duas:
+    // canal ANÔNIMO (join sem access_token) ou autenticado com RLS negando.
+    // O quadro de join separa as duas.
+    let joinDaTimeline = "";
     page.on("websocket", (ws) => {
       if (!ws.url().includes("supabase")) return;
       ws.on("framesent", (f) => {
@@ -437,6 +443,7 @@ async function main(): Promise<void> {
         if (/phx_join/.test(t)) {
           assinatura.joins++;
           reg.j++;
+          if (/timeline-/.test(t) && !joinDaTimeline) joinDaTimeline = t;
         }
         if (/phx_leave/.test(t)) {
           assinatura.leaves++;
@@ -992,6 +999,40 @@ async function main(): Promise<void> {
         .eq("lead_id", caso.leadComContato);
       const totalDepois = ((novas ?? []) as unknown[]).length;
       const acaoPersistiu = totalDepois > totalAntes;
+
+      // O lead_id DA ATIVIDADE CRIADA contra o lead que o canal filtra. O canal
+      // assina `lead_id=eq.<leadId>`; se a atividade nascer com outro lead (ou
+      // órfã), o filtro a exclui CORRETAMENTE e o vermelho é do CASO, não do
+      // canal. Um quarto do espaço de hipóteses eliminado por uma consulta.
+      const { data: ultima } = await admin
+        .from("crm_lead_activities")
+        .select("id,type,lead_id,contact_id,created_at")
+        .eq("lead_id", caso.leadComContato)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const linhaNova = ((ultima ?? [])[0] ?? null) as
+        | { type: string; lead_id: string | null; contact_id: string | null }
+        | null;
+      const leadBate = linhaNova?.lead_id === caso.leadComContato;
+      const tokenNoJoin = /"access_token":"([^"]+)"/.exec(joinDaTimeline);
+      let papel = "(sem join capturado)";
+      if (joinDaTimeline) {
+        papel = tokenNoJoin ? "(jwt ilegível)" : "SEM access_token — canal ANÔNIMO";
+        if (tokenNoJoin) {
+          try {
+            const corpo = JSON.parse(Buffer.from(tokenNoJoin[1]!.split(".")[1]!, "base64").toString());
+            papel = `role=${corpo.role} sub=${String(corpo.sub ?? "-").slice(0, 8)}`;
+          } catch {
+            /* mantém ilegível */
+          }
+        }
+      }
+      console.info(`[D21 diag] identidade do canal da timeline: ${papel}`);
+      console.info(
+        `[D21 diag] atividade mais recente: type=${linhaNova?.type} lead_id=${linhaNova?.lead_id?.slice(0, 8)} ` +
+          `contact_id=${linhaNova?.contact_id?.slice(0, 8) ?? "null"} · canal filtra ` +
+          `${caso.leadComContato.slice(0, 8)} · bate=${leadBate}`,
+      );
 
       // (c) A ABA A recebeu, SEM F5?
       await page.waitForTimeout(6000);
