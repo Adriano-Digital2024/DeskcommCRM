@@ -189,6 +189,8 @@ gritasse sempre seria desligado na primeira semana.
 | dossiê · entrega **morta** | não | sim | 0 → **1** |
 | dossiê · entrega **viva** | sim | sim | 0 → 0 |
 
+![o dossiê recuperando com a entrega morta — a linha entrou sem reload, e o contador de divergências subiu para 1](wave7-rede-dossie.png)
+
 ### Três aparatos descartados antes de um funcionar
 
 Matar a entrega parecia trivial e não era. Cada tentativa media outra coisa:
@@ -234,6 +236,28 @@ despercebida vira legenda falsa na próxima vez.
 A regra que fica: **sonda de wave fechada roda para verificar, nunca para
 sobrescrever.** Se a re-execução precisar virar prova, ela vira prova NOVA, com
 nome e legenda próprios — não por cima da antiga.
+
+### A exceção que esta regra não previu — e que eu descobri violando-a
+
+As duas capturas da rede (`wave7-rede-de-seguranca.png` e `wave7-rede-dossie.png`)
+**foram sobrescritas**, em 25/07, por ordem do orquestrador. Isso contradiz o
+parágrafo acima na letra, e não no espírito — a diferença é **o que mudou**:
+
+| | mudou | a prova antiga… |
+|---|---|---|
+| as quinze | o **banco** viveu; o código não mudou | …ainda sustentava seu veredito. Regenerar troca a prova por outra foto do mundo. |
+| as duas da rede | o **código** mudou (`9d5b1f5`) naquilo de que a asserção depende | …deixou de sustentar veredito nenhum. |
+
+A asserção é "canal vivo ⇒ 0 divergências". Com a leitura de ref congelada, ela
+**podia ter falhado** e não falhou por acaso de tempo — então a captura antiga
+era compatível com o código velho *e* com o novo: registrava um resultado que
+teria sido o mesmo de qualquer jeito. **Não havia veredito antigo a preservar**,
+e é por isso que sobrescrever foi o certo aqui.
+
+O critério que separa os dois casos: *a prova antiga ainda discrimina entre o
+mundo em que a afirmação é verdadeira e o mundo em que ela é falsa?* Se sim,
+preserve. Se não, ela já não é prova — e manter uma não-prova pelo nome do
+arquivo é pior que substituí-la.
 
 ---
 
