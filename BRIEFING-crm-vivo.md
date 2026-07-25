@@ -4036,3 +4036,52 @@ do `role="group"` explica o nested-interactive **ali**, e não num handoff.
 
 **Sem esse comentário, a decisão de duas waves atrás teria sido desfeita hoje sem ninguém perceber** —
 e o defeito voltaria com o nome de "melhoria de acessibilidade".
+
+---
+
+## §7.104 — Instrumento que percorre o sistema por caminho diferente do usuário mede outro sistema
+
+O @QAVivo mediu o vazamento de assinatura no inbox: **8 tópicos assinados, 8 saíram, zero órfãos**. E o
+que decidiu a medição foi **uma escolha de método**, sem a qual a sonda teria dito o **contrário do
+certo**:
+
+> **Navegação por CLIQUE, nunca por `goto`.** O `goto` recarrega a página, destrói o contexto de JS e
+> **mata os canais junto** — sob recarga, **vazamento nenhum é observável**.
+
+> *"Eu teria escrito 'não vaza' sobre uma tela que vazasse em todo uso real. **O vazamento só existe na
+> navegação client-side, que é a que o usuário faz.**"*
+
+**Regra:** o instrumento tem de percorrer o sistema **pelo caminho do usuário**. Um atalho de
+navegação que o usuário não usa **muda o sistema medido** — e o defeito que só existe no caminho real
+fica **estruturalmente invisível**, sem que nada no resultado indique isso. É a §7.70 (*intenção não é
+efeito*) na camada de navegação: **atalho de teste não é uso**.
+
+## §7.105 — Agregado que você não sabe ler não é dado
+
+**O instrumento esteve errado duas vezes antes de estar certo — e ele não mandou o primeiro número.**
+
+**1.** *"Entradas menos saídas"* **não significa nada aqui**: o `supabase-js` manda um `phx_leave`
+**antes** do `phx_join` do mesmo tópico (derrubando a instância anterior) e outro na desmontagem —
+**2 entradas e 4 saídas por visita**. A primeira versão relatou **diferença negativa**, um número que
+ele **não sabia ler**. A conta certa é **por TÓPICO**: *entrou e nunca saiu?*
+
+**2.** O regex do uuid casava 36 caracteres **a partir de qualquer ponto**, deixando um dígito solto no
+nome (`inbox<id>0`). **"Nome deformado num relatório é ruído que parece dado."**
+
+> *"Se eu tivesse mandado, vocês teriam recebido **'saídas maiores que entradas' como se fosse
+> achado**."*
+
+**Regra:** número que você não consegue **interpretar** não é resultado — é sinal de que o modelo do
+instrumento está errado. **Pare e vá aos dados crus**; reportar o agregado incompreendido transfere a
+confusão para quem lê, **com a autoridade de quem mediu**.
+
+### E o achado de passagem, verificado: duas assinaturas por visita
+
+Confirmado: `InboxLayout.tsx:106` **e** `ConversationList.tsx:32` chamam `useConversationsRealtime`
+com os mesmos argumentos — **duas assinaturas `postgres_changes` sobre as mesmas tabelas**, ou seja
+**o dobro de trabalho por evento** do lado do servidor.
+
+**Não é defeito de correção — é de custo**, e ninguém sentiria hoje. Fica como **dívida nomeada com
+conserto dimensionado**: içar a assinatura para o layout e deixar a lista consumir só o cache da query.
+E ele a trouxe **como pergunta, não como acusação** — que é a forma certa para algo que **pode ser
+deliberado**.
