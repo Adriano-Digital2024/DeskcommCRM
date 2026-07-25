@@ -6486,3 +6486,54 @@ curtas fazerem toda proposta virar item de caixa antes de alguém ver.
 Proposta nascida na sexta à noite vence no sábado. **Isso é aceitável e não é perda** — ela vira item
 de caixa, que é o mecanismo anti-morte — mas tem de estar escrito, senão alguém "descobre" isso daqui
 a seis meses como bug e conserta com um subsistema de horário comercial que ninguém pediu.
+
+## §7.199 — Consertar o consumidor de um sinal que não responde à pergunta cria DESINFORMAÇÃO
+
+A dívida dizia *"7 de 9 consumidores de realtime ignoram o status do canal"*, e o conserto implícito
+era *"faça-os ler o status"*. **Medido, o conserto seria pior que a dívida.**
+
+Board e dossiê **leem** o status e ele diz `subscribed` **com a entrega morta** — porque descreve a
+ASSINATURA, não a ENTREGA. Fazer as telas exibirem esse valor trocaria **ausência de informação por
+afirmação confiante e errada**. Silêncio vira mentira, e mentira com selo de instrumento.
+
+**Não é "ninguém lê o status": é "o status disponível não responde à pergunta".** O conserto real é
+produzir o sinal que falta — *houve entrega recente?* — e não distribuir melhor o que existe.
+
+**Regra:** antes de mandar consumir um sinal, pergunte **que pergunta ele responde**. Sinal que
+responde a outra coisa é pior distribuído do que ignorado — ignorado deixa o usuário desconfiado;
+exibido, o convence.
+
+**E o número herdado estava errado e otimista:** medido são **10 usos**, 8 descartam o status e os 2
+que capturam depositam num atributo `data-*` **que existe para teste**. Zero mostram algo a um
+humano — na prática **10 de 10 invisíveis**, não 7 de 9.
+
+## §7.200 — Intermitência ensina CONFIANÇA ERRADA, e por isso é pior que falha determinística
+
+Quatro rodadas idênticas no inbox deram **três resultados diferentes**: 2/4 nunca recupera, 1/4 só ao
+voltar à aba, 1/4 sozinha em ~4s.
+
+**Com "nunca", o usuário aprende a apertar F5. Com "às vezes", ele aprende que confia — e erra
+exatamente quando importa.** Falha determinística treina um contorno correto; falha intermitente
+treina uma expectativa que falha sob carga, que é quando o custo é máximo.
+
+**E só a REPETIÇÃO revelou:** a primeira rodada deu "recupera em ~10s", e o laudo seria *"o inbox é o
+único saudável"* — o oposto da verdade. **Rodada única sobre comportamento intermitente não mede o
+comportamento, sorteia um dos seus valores.**
+
+## §7.201 — Validar o conserto contra o caso QUEBRADO não distingue conserto de defeito novo na mesma direção
+
+O contador de quadros foi consertado duas vezes, e **a primeira correção também estava errada**:
+trocou-se casamento por substring por exigir `"event":"postgres_changes"` — e o quadro do Phoenix é
+um **array** `[join_ref, ref, topic, event, payload]`, sem chave `event`. **Falso positivo virou falso
+NEGATIVO: zero sempre, inclusive onde a entrega funciona.**
+
+E a lição que ele extraiu é a mais afiada do dia, e não é sobre substring: **o conserto foi validado
+contra o caso que estava quebrado — onde zero era o resultado esperado.** Nesse caso, "consertado" e
+"quebrado de outro jeito, na mesma direção" produzem **a mesma observação**.
+
+**Regra:** a validação de um conserto tem de incluir **o caso onde o defeito NÃO estava**. É o único
+lugar onde um defeito novo na mesma direção fica visível — e é o caso que ninguém roda, porque
+"aquele já funcionava".
+
+É a lei do par (§7.196) num terceiro eixo: não basta medir com/sem o conserto; é preciso medir
+também **onde não havia o que consertar**.
