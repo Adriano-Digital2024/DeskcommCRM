@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/types/leads";
 import { resolveCardState, stageAgeLabel, type CardInput } from "@/lib/kanban/card-state";
 import { KanbanCardActions } from "./KanbanCardActions";
+import { NextActionSlot } from "./NextActionSlot";
 import { OwnerBadge } from "./OwnerBadge";
 
 interface KanbanCardProps {
@@ -149,7 +150,16 @@ export function KanbanCard({
           {/* ③ a linha do agente — um slot, três estados, nunca três blocos. */}
           <div className="mt-1.5 flex h-6 items-center gap-2 text-xs">
             {state.slot.type === "awaiting" && (
-              <span className="truncate text-accent">Propõe: {state.slot.label}</span>
+              // A proposta do agente é a ÚNICA linha do card com ação: é o
+              // ponto onde a decisão do humano entra. Sem os botões aqui, o
+              // texto seria só mais um aviso — e a wave existe porque avisar
+              // sem poder decidir é o que já acontecia (o dado ficava no banco).
+              <NextActionSlot
+                label={state.slot.label}
+                leadId={card.id}
+                approvedText={lead.next_action?.approved_text ?? state.slot.label}
+                pipelineId={pipelineId}
+              />
             )}
             {state.slot.type === "cooling" && (
               // -fg é a variante de TEXTO do token (o -warning puro dá 3.7:1 em

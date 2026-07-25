@@ -22,7 +22,9 @@ export type ActivityType =
   | "note"
   | "ai_turn"
   | "send_vetoed"
-  | "handoff_triggered";
+  | "handoff_triggered"
+  | "next_action_approved"
+  | "next_action_dismissed";
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   stage_changed: "Mudou de estágio",
@@ -30,6 +32,11 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   ai_turn: "Atendimento da IA",
   send_vetoed: "Envio bloqueado",
   handoff_triggered: "Passou para humano",
+  // A RECUSA é sinal, não ausência de sinal: "o humano viu e disse não" é o que
+  // impede o agente de repropor o mesmo. Ignorar sem registro faz a IA insistir
+  // no que já foi negado — por isso os dois lados geram atividade.
+  next_action_approved: "Próxima ação aprovada",
+  next_action_dismissed: "Próxima ação descartada",
 };
 
 /** Quando o tipo é legado/desconhecido, a linha ainda é honesta — sem jargão. */
