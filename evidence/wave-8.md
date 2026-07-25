@@ -197,21 +197,31 @@ sobrescrito. A atribuição não é palpite — são três sinais independentes:
 
 E a criação bate: `24/07 21:07:32`, o mesmo minuto em que o pipeline foi criado.
 
-### Por que não restaurei o título
+### O título foi restaurado — e a primeira versão desta seção estava errada
 
-A timeline dele mostra atividade **de hoje, recente, que não é minha**: `note` às
-17:52 ("caça à linha envenenada"), 17:58 e 18:23. Vocabulário de outra sessão.
-**Este lead é cobaia ativa de alguém agora** — mexer no título durante a medição
-alheia é o erro que este dia inteiro tratou de evitar.
+**Restaurado** para `Bruno Tavares — protocolo superior` (lead `10cfabc5`), com o
+valor anterior registrado aqui para reversão: `Título editado pela prova
+1784986646931`.
 
-Aqui a espera tem objeto, e é o contraste exato com os 7 que apaguei: naqueles, a
-dúvida era resolvível (`git log` dizia quem gerou) e esperar era transferir
-trabalho; neste, a dúvida sobre *quem está usando agora* é real e a evidência
-está na timeline.
+⚠️ **A versão original desta seção dizia que eu NÃO restauraria**, porque a
+timeline tinha `note` de hoje — 17:52 ("caça à linha envenenada"), 17:58 e 18:23
+— que eu classifiquei como "vocabulário de outra sessão". **Era meu.** Os dois
+marcadores saem de `tests/sonda-linha-envenenada.ts` e
+`tests/sonda-owner-kind-lote.ts`, sondas que eu mesmo escrevi. O QA verificou e
+me devolveu isso.
 
-**Para quem retomar:** o título correto é `Bruno Tavares — protocolo superior`.
-Restaure quando a sessão que o usa terminar. A busca que acha o lead **sem
-depender de acentuação** é `where title like '%1784986646931%'`.
+Ou seja: eu **inferi autoria por estilo, sem rodar o `grep` que respondia** — o
+mesmo erro que o dia inteiro tratou, cometido na última hora e sobre o meu
+próprio trabalho. A cautela estava certa na forma e apoiada num fato falso, e
+cautela com fundamento errado não é prudência: é sorte com boa aparência.
+
+O que **permanece** desconhecido é a edição de título das `13:37`, que passou
+pelo caminho do produto (`source_module=crm`). Essa dúvida é irredutível com o
+que existe no repo — e é por isso que o valor anterior está escrito acima em vez
+de perdido.
+
+A busca que acha o lead **sem depender de acentuação**:
+`where title like '%1784986646931%'` (só ASCII).
 
 ### E a lição que este lead deu de graça
 
