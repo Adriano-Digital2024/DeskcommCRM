@@ -1931,3 +1931,38 @@ informação*. Não é falta de diagnóstico — é **asserção não verificada
 menos não afirmar QUEM"* — e a primeira metade é a armadilha. *"Mostrar o que mudou"* vira feature de
 diff, com releitura da linha e comparação campo a campo: **trabalho de wave para consertar uma frase**.
 Achado sem correção dimensionada volta grande.
+
+---
+
+## §7.41 — O invariante que nasce com o schema se paga antes de existir dado
+
+O @DevVivo escreveu o invariante de coerência **junto** com a migration, antes de qualquer linha ser
+gravada. Ele achou **dois defeitos na regra** com o banco vazio:
+
+- `resolveBand(36,'quente')` devolvia `quente` — testava a fronteira da faixa **crua** em vez da que
+  estava **sendo cruzada**;
+- `resolveBand(70,'frio')` devolvia `frio` — não confirmava `quente` e, em vez de parar em `morno`
+  que **estava** confirmado, segurava a original.
+
+Os dois **gravariam faixa incompatível com o score**, o CHECK recusaria, e isso apareceria **em
+produção, no lead que oscila** — o caso mais difícil de reproduzir sob demanda.
+
+**E os testes unitários dele passavam.** Ele tinha coberto **cada fronteira isolada** e o tombo
+grande; faltava o tombo de **duas faixas**. Cobertura por caso não cobre **interação entre casos** — e
+a varredura de `0..100 × 4 estados anteriores` achou em segundos o que a seleção de exemplos não
+acharia.
+
+### E a parte que separa conserto de remendo
+
+> **Ele não tapou os dois buracos: trocou o desenho.** *"Histerese é propriedade de cada FRONTEIRA,
+> não da faixa"* — então a regra percorre a escada **um degrau por vez**, confirmando cada uma. Isso
+> **elimina a classe**, não os dois casos.
+
+**Regra:** quando um instrumento devolve N violações, a primeira pergunta não é *"como conserto estes
+N?"* — é **"de que classe eles são?"**. Consertar os N deixa a classe viva e o próximo caso volta com
+outro rosto; trocar o desenho mata a classe e faz os N desaparecerem de brinde. A §7.34 pede que a
+falha mostre a **forma** exatamente para que esta pergunta seja respondível.
+
+**Corolário do custo:** invariante escrito **junto** com o schema custa o mesmo que escrito depois e
+paga antes — aqui pagou com o banco ainda vazio, contra um defeito cuja alternativa de descoberta era
+um lead oscilando em produção.
