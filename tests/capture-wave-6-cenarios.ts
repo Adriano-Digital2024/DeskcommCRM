@@ -919,6 +919,18 @@ async function main(): Promise<void> {
     //       nada sobre esta tela;
     //   (c) chegou e a tela não aplicou — o defeito.
     // Por isso a ação é confirmada NO BANCO antes de julgar a tela.
+    // O ELO QUE FALTAVA no relato do D21: "a tela não aplicou" e "o quadro não
+    // chegou" produzem o MESMO resultado, e mandam gente para lugares
+    // diferentes. Conto os quadros de atividade que a aba A recebe na janela.
+    let quadrosDeAtividade = 0;
+    page.on("websocket", (ws) => {
+      if (!ws.url().includes("supabase")) return;
+      ws.on("framereceived", (f) => {
+        const t = String(f.payload);
+        if (/"postgres_changes"/.test(t) && /crm_lead_activities/.test(t)) quadrosDeAtividade++;
+      });
+    });
+
     const ctxB = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const abaB = await ctxB.newPage();
     abaB.setDefaultTimeout(60_000);
@@ -980,8 +992,12 @@ async function main(): Promise<void> {
             "a julgar, e culpar o realtime aqui seria acusar a superfície errada"
           : mudou
             ? `a timeline aberta ganhou linha sozinha: ${antesA} → ${depoisA} atividades`
-            : `a timeline aberta seguiu com ${antesA} atividades e a ação PERSISTIU — o evento ` +
-              `saiu e esta tela não aplicou`,
+            : `a timeline aberta seguiu com ${antesA} atividades e a ação PERSISTIU. ` +
+              `Quadros de crm_lead_activities recebidos pela aba A na janela: ${quadrosDeAtividade} — ` +
+              (quadrosDeAtividade > 0
+                ? "o quadro CHEGOU e a tela não aplicou"
+                : "o quadro NÃO chegou: o defeito é a montante da tela, e acusá-la aqui mandaria " +
+                  "alguém procurar no lugar errado"),
         acaoPersistiu ? undefined : "BLOQUEADO",
       );
     } finally {
