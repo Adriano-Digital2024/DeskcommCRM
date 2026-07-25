@@ -139,3 +139,51 @@ describe("fórmula do score", () => {
     expect(um).toEqual(dois);
   });
 });
+
+describe("a razão é DERIVADA do cálculo, e isso é verificável", () => {
+  /**
+   * A C1 exige `reason` derivado, e o @Assistente notou que olhando o RESULTADO
+   * uma frase gerada é indistinguível de uma derivada. Este teste desfaz o
+   * empate: ele RECONSTRÓI o score a partir da frase.
+   *
+   * Se a frase citar parcela que não entrou na conta, ou omitir uma que entrou,
+   * ou trouxer número diferente do que somou, a reconstrução não fecha. Uma
+   * frase gerada por modelo passaria no olho e falharia aqui — que é
+   * exatamente a distinção que a lei precisa.
+   */
+  function somaDaFrase(reason: string): number {
+    // As parcelas são escritas como "+12 ..." / "−8 ..." (menos tipográfico).
+    const parcelas = [...reason.matchAll(/([+−])(\d+)/g)];
+    return parcelas.reduce(
+      (soma, m) => soma + (m[1] === "+" ? 1 : -1) * Number(m[2]),
+      0,
+    );
+  }
+
+  const BASE_DA_FORMULA = 30;
+
+  it("somar os números da frase reproduz o score (fora do clamp)", () => {
+    const casos: SinaisDoLead[] = [
+      sinais({ commitments: ["a"], risco: "em_dia" }),
+      sinais({ objections: ["x"], risco: "critico" }),
+      sinais({ commitments: ["a", "b"], objections: ["x"], qualification: { n: "1" }, risco: "em_risco" }),
+      sinais({ qualification: { a: "1", b: "2", c: "3" }, risco: "em_voo" }),
+    ];
+    for (const caso of casos) {
+      const r = calculaScore(caso);
+      expect(r.score).not.toBeNull();
+      expect(
+        BASE_DA_FORMULA + somaDaFrase(r.reason),
+        `a frase "${r.reason}" não reconstrói o score ${r.score}`,
+      ).toBe(r.score);
+    }
+  });
+
+  it("a frase não cita parcela que a conta não usou", () => {
+    // Um "+5 itens de qualificação" numa frase de lead sem BANT seria a marca
+    // de texto gerado ao lado do número em vez de derivado dele.
+    const r = calculaScore(sinais({ commitments: ["fecha"], risco: "em_dia" }));
+    expect(r.reason).not.toMatch(/qualificação|objeç/);
+    expect(BASE_DA_FORMULA + somaDaFrase(r.reason)).toBe(r.score);
+  });
+});
