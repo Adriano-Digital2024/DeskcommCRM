@@ -1864,6 +1864,16 @@ frio 0..45 · morno 35..75 · quente 65..100 — bordas INCLUSIVAS
 > **Reprovar por ambiguidade de especificação é reprovar o produto por defeito do texto.** Quando a
 > spec não fixa a borda, o instrumento mede a borda e a **reporta**, em vez de arbitrar.
 
+**E a razão dele é melhor que a minha leitura.** Eu havia registrado que ele não reprovou por
+deferência ao texto. Não foi: ele **não conseguiu escrever a asserção** — tinha dois números
+defensáveis e nenhum critério para escolher.
+
+> **"Asserção que eu não consigo justificar sem chutar não é asserção, é preferência."** — @QAVivo
+
+Isso é um teste de bolso melhor que a regra: antes de fixar um número num teste, tente **justificá-lo**.
+Se a justificativa for "parece razoável", o número é preferência disfarçada de critério — e vai
+reprovar alguém, um dia, por não compartilhar o seu gosto.
+
 **E a ambiguidade se desfaz assim** — os dois números descrevem **conjuntos diferentes**, e o erro foi
 meu por não dizer qual era qual:
 
