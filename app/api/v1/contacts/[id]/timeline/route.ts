@@ -20,8 +20,23 @@ import type { TimelineItem } from "@/lib/types/contacts";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * As colunas que a timeline entrega. **Tem que acompanhar `TimelineItem`**
+ * (`lib/types/contacts.ts`) — e essa concordância não é vigiada por nada: isto
+ * é uma string, o `.select()` aceita qualquer coisa, e o resultado é convertido
+ * para `TimelineItem` sem o compilador conferir.
+ *
+ * Já custou uma vez: a `0071` criou `reason`/`actor_kind`, o tipo passou a
+ * declará-los, a tela passou a lê-los — e esta lista ficou para trás. Como os
+ * campos são **opcionais** no tipo, `it.reason` virava `undefined`, o corpo da
+ * linha caía no resumo do payload (JSON de UUID na cara do usuário) e todo ator
+ * virava "não registrado". Tudo isso compilando verde: a interrogação do
+ * opcional é que cala o compilador.
+ *
+ * Campo novo em `TimelineItem` → campo novo AQUI, no mesmo commit.
+ */
 const TIMELINE_COLS =
-  "id, organization_id, lead_id, contact_id, source_module, source_id, type, payload, metadata, performed_at, performed_by_user_id";
+  "id, organization_id, lead_id, contact_id, source_module, source_id, type, payload, metadata, performed_at, performed_by_user_id, actor_kind, actor_agent_id, reason, evidence";
 
 interface Cursor {
   performed_at: string;
