@@ -5012,3 +5012,19 @@ mostram o motivo normalmente ("Movido de Avaliação para Proposta enviada"), co
 O achado só existiria se o detalhe **não voltasse ao expandir** — e isso já está medido. Critério
 que verifica que o colapso colapsa não separa nenhuma hipótese: passa sempre, e o verde não
 autoriza nada.
+
+## §7.135 — Mensagem com buraco: generalize o que falta, não reconstrua
+
+O canal entre terminais come crases e `$` em silêncio, e uma mensagem chegou sem os identificadores
+técnicos: *"a primeira versão selecionava ␣ e AFIRMAVA sobre ␣"*.
+
+**Mensagem com buraco que ainda faz SENTIDO é a mais perigosa.** Se virasse ruído, alguém
+perguntaria; como o texto continua legível, responde-se — e os buracos caem justamente onde
+adivinhar é pior: nos nomes de campo, tabela e função.
+
+**A prática:** responda ao que sobrou no nível em que ele é verdadeiro — *"selecionava um conjunto
+de campos e afirmava sobre outro"* — em vez de preencher com o nome provável. Reconstrução acertada
+e conhecimento real ficam **indistinguíveis** depois, inclusive para quem reconstruiu, e a próxima
+decisão se apoia nela como se tivesse sido medida.
+
+E o inverso, para quem envia: identificador técnico vai no heredoc, ou não vai.
