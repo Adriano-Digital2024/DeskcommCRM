@@ -511,13 +511,20 @@ async function main(): Promise<void> {
   await moverPorTeclado(abaA, ALVO);
   await abaA.waitForTimeout(3000);
   const pulsosLocais = await lerPulsos(abaA);
+  // PRÉ-CONDIÇÃO DE CAPACIDADE: "não pulsa" só significa alguma coisa se o
+  // produto SABE pulsar. Com o mecanismo morto, zero pulsos na aba local seria
+  // verdade por ausência — e no dia em que o pulso nascesse, este critério
+  // pararia de proteger justamente por já vir verde. O 12 acima é a prova de que
+  // a capacidade existe.
   record(
     "12.c",
     "ação LOCAL não pulsa (o pulso anuncia o que vem de FORA)",
-    pulsosLocais === 0,
-    pulsosLocais === 0
-      ? "nenhum início de animação na aba que agiu"
-      : `${pulsosLocais} pulso(s) na própria aba — ruído com cara de novidade`,
+    pulsou && pulsosLocais === 0,
+    !pulsou
+      ? "inconclusivo: nada pulsou nesta rodada nem por evento remoto — silêncio local não prova nada"
+      : pulsosLocais === 0
+        ? "nenhum início de animação na aba que agiu"
+        : `${pulsosLocais} pulso(s) na própria aba — ruído com cara de novidade`,
   );
 
   // ---- 12.d: duas mudanças remotas = DOIS pulsos ---------------------------
@@ -697,11 +704,17 @@ async function main(): Promise<void> {
   // outro tenant denuncia assinatura mal filtrada mesmo sem mostrar o dado.
   const cardC = ((await abaC.locator(`[${CARD_ATTR}]`).first().textContent()) ?? "").slice(0, 40);
   const pulsoC = await amostrarPulso(abaC, cardC.trim().slice(0, 20), 3000);
+  // Mesma pré-condição do 12.c, e aqui o risco é maior: houve um dia nesta
+  // entrega em que o canal do board estava morto para TODO MUNDO. Naquele dia,
+  // "o outro tenant não pulsa" teria passado — provando isolamento a partir de
+  // um produto que não entregava nada a ninguém.
   record(
     "12-neg",
     "card do outro tenant NÃO pulsa por evento alheio",
-    pulsoC.transicoes === 0,
-    `${pulsoC.transicoes} transição(ões) no board do outro tenant`,
+    pulsou && pulsoC.transicoes === 0,
+    !pulsou
+      ? "inconclusivo: o pulso não funcionou nem no tenant certo — silêncio alheio não prova filtro"
+      : `${pulsoC.transicoes} transição(ões) no board do outro tenant`,
   );
   await shotPage(abaC, "wave-3-c12-outro-tenant.png", false);
 

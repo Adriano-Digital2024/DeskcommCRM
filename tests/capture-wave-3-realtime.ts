@@ -131,14 +131,27 @@ async function main(): Promise<void> {
 
   const colunaAntesA = await colunaDoCard(abaA, ALVO);
   const colunaAntesB = await colunaDoCard(abaB, ALVO);
-  const vazouAntes = (await abaC.locator(`[${CARD_ATTR}]`).allTextContents()).some((t) =>
-    t.includes(ALVO),
-  );
+  const cardsDeC = await abaC.locator(`[${CARD_ATTR}]`).allTextContents();
+  const vazouAntes = cardsDeC.some((t) => t.includes(ALVO));
   console.info(`[estado] A="${colunaAntesA}"  B="${colunaAntesB}"  C vê o lead da org A? ${vazouAntes}`);
+  // PERNA POSITIVA: "não enxerga o lead alheio" é trivialmente verdade num board
+  // que não renderizou NADA. A capacidade de exibir cards é pré-condição para a
+  // afirmação de ausência significar isolamento em vez de tela vazia.
+  record(
+    "aba C renderizou o board DELA — pré-condição do isolamento",
+    cardsDeC.length > 0,
+    cardsDeC.length > 0
+      ? `${cardsDeC.length} card(s) do tenant B na tela`
+      : "board do tenant B VAZIO — qualquer afirmação de isolamento aqui passa por ausência, não por acerto",
+  );
   record(
     "isolamento inicial: aba C não enxerga lead de outra org",
-    !vazouAntes,
-    vazouAntes ? "VAZOU — o board do tenant B mostra lead da org A" : "board do tenant B só com dados dele",
+    cardsDeC.length > 0 && !vazouAntes,
+    cardsDeC.length === 0
+      ? "inconclusivo: board do tenant B vazio"
+      : vazouAntes
+        ? "VAZOU — o board do tenant B mostra lead da org A"
+        : "board do tenant B só com dados dele",
   );
 
   await shotPage(abaB, "wave-3-aba-b-antes.png", false);
@@ -167,10 +180,19 @@ async function main(): Promise<void> {
   const vazouDepois = (await abaC.locator(`[${CARD_ATTR}]`).allTextContents()).some((t) =>
     t.includes(ALVO),
   );
+  // A pré-condição é a ENTREGA estar viva. Este foi o furo real: houve um dia em
+  // que o canal do board estava morto para TODO MUNDO — e, naquele dia, "o outro
+  // tenant não recebeu" teria passado por o produto não entregar a ninguém. Uma
+  // afirmação de que o evento NÃO atravessa a fronteira só vale se o evento
+  // atravessa alguma coisa.
   record(
     "isolamento: aba C NÃO recebeu o evento da org A",
-    !vazouDepois,
-    vazouDepois ? "VAZOU entre tenants" : "nada do tenant A chegou no tenant B",
+    r.chegou && !vazouDepois,
+    !r.chegou
+      ? "inconclusivo: a aba B também não recebeu — com a entrega morta, o silêncio do tenant B não prova isolamento"
+      : vazouDepois
+        ? "VAZOU entre tenants"
+        : "a entrega funcionou para o tenant A e nada chegou no tenant B",
   );
   await shotPage(abaC, "wave-3-aba-c-outro-tenant.png", false);
 
