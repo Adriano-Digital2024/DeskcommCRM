@@ -1209,7 +1209,7 @@ async function main(): Promise<void> {
       // ambiente e o navegador segue sem julgamento — que é o resultado honesto
       // e o que eu ia perder tratando o meu próprio zero como veredito.
       const quadrosNavegadorAntes = quadrosDeAtividade;
-      const controleExterno = await new Promise<string>((resolve) => {
+      let controleExterno = await new Promise<string>((resolve) => {
         execFile(
           "npx",
           ["tsx", "tests/prova-taxa-de-entrega.ts"],
@@ -1220,13 +1220,24 @@ async function main(): Promise<void> {
           (_e, saida) => resolve((saida.match(/TAXA DE ENTREGA: (\d+\/\d+)/) ?? [])[1] ?? "(não mediu)"),
         );
       });
+      // SELFCHECK_D21=1 finge que o controle irmão não recebeu, para exercitar o
+      // ramo BLOQUEADO. Ramo que nunca rodou não está provado — e este só roda
+      // naturalmente quando a entrega está morta, que é justamente o dia em que
+      // ninguém tem tempo de descobrir que a cerca não mordia.
+      if (process.env.SELFCHECK_D21 === "1") controleExterno = "0/1 (SELFCHECK)";
       const placarDoEspiao =
         `MESMO lead, MESMA janela · controle em processo IRMÃO=${controleExterno} · ` +
         `navegador=${quadrosDeAtividade - quadrosNavegadorAntes} quadro(s) da atividade do controle`;
       console.info(`[D21 diag] ${placarDoEspiao}`);
 
       const depoisA = await contarLinhas(page);
-      const mudou = depoisA > antesA;
+      // O SELFCHECK precisa sabotar AS DUAS coisas. Na primeira tentativa eu
+      // forcei só o controle a zero e o critério continuou PASS — corretamente,
+      // porque o ramo BLOQUEADO só vale quando a tela NÃO mudou. Sabotar uma
+      // condição de um `&&` e concluir que a cerca não morde é o mesmo erro de
+      // ler um `&&` como `||`: eu teria "provado" um defeito que não existia no
+      // meu próprio instrumento.
+      const mudou = process.env.SELFCHECK_D21 === "1" ? false : depoisA > antesA;
 
       record(
         "D21",
@@ -1238,7 +1249,11 @@ async function main(): Promise<void> {
             `seria acusar a superfície errada`
           : mudou
             ? `a timeline aberta ganhou linha sozinha: ${antesA} → ${depoisA} atividades`
-            : `a timeline aberta seguiu com ${antesA} atividades e a ação PERSISTIU. ` +
+            : controleExterno.startsWith("0/")
+              ? `a entrega de postgres_changes está morta NESTE ambiente — o controle em processo ` +
+                `irmão (${controleExterno}) também não recebeu. Sem quadro possível, este critério ` +
+                `não julga o dossiê: seria reprovar a tela por uma pré-condição que faltou.`
+              : `a timeline aberta seguiu com ${antesA} atividades e a ação PERSISTIU. ` +
               `Quadros de crm_lead_activities recebidos pela aba A DEPOIS da ação: ` +
               `${quadrosDeAtividade - quadrosAntes} (${quadrosDeAtividade} desde o carregamento) — ` +
               (quadrosDeAtividade - quadrosAntes > 0
@@ -1256,7 +1271,21 @@ async function main(): Promise<void> {
                       "confirma a assinatura). O que morre é a ENTREGA deste pipeline"
                     : [...porCanal.keys()].join(" | ") +
                       " — outro canal entrega e o do dossiê não, o que isola na configuração dele")),
-        acaoPersistiu ? undefined : "BLOQUEADO",
+        // O TERCEIRO ESTADO PELA PRÉ-CONDIÇÃO DE AMBIENTE, e não pela ação.
+        // Hoje este critério ficou vermelho por horas porque a entrega de
+        // postgres_changes estava morta para este pipeline — medição correta,
+        // veredito falso: o vermelho parecia acusar o dossiê e acusava o
+        // ambiente. Vermelho por pré-condição ausente é indistinguível de
+        // vermelho por defeito para quem lê o placar, e só quem foi ler o
+        // mecanismo separa. Agora o controle em processo irmão decide: se NEM
+        // ELE recebeu, não havia como o navegador receber, e o veredito é
+        // BLOQUEADO com a causa. Se ele recebeu e o navegador não, aí sim a
+        // acusação é da tela.
+        !acaoPersistiu
+          ? "BLOQUEADO"
+          : !mudou && controleExterno.startsWith("0/")
+            ? "BLOQUEADO"
+            : undefined,
       );
     } finally {
       await ctxB.close();
