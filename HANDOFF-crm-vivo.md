@@ -3485,3 +3485,29 @@ A decisão é do Rafael, com as duas leituras na mesa: pode estar certo (uma dec
 proposta é mais urgente que o número) ou exatamente o contrário — o score é **mais** útil na hora
 de decidir a proposta, porque a pergunta do vendedor é "vale a pena fazer o que a IA propôs?", e
 saber se o lead está quente muda essa resposta.
+
+### O canal de realtime deixou de morrer calado
+
+`useRealtimeChannel` já calculava `SUBSCRIBED` / `CHANNEL_ERROR` / `TIMED_OUT` / `CLOSED` e
+devolvia em `{ status }`; `useBoard` o chamava **sem atribuir o retorno**. O valor era calculado e
+descartado na linha seguinte.
+
+O que isso custava: se o canal cai, o board fica **mudo até remontar**, e nem o produto nem o
+teste conseguem distinguir *"a assinatura morreu"* de *"nada aconteceu"* — as duas coisas têm
+exatamente a mesma aparência, que é silêncio. O único valor capaz de separar duas famílias
+inteiras de causa estava sendo jogado fora.
+
+Agora o status sobe até o container do board em `data-realtime-status`. Quem investiga olha
+**durante** a rodada que falha: `subscribed` manda procurar a montante (entrega, filtro, ou o
+evento nunca saiu); `channel_error` / `timed_out` / `closed` já é a resposta.
+
+**Provado que o atributo REFLETE o canal, não que ele existe:** com o board aberto, `subscribed`;
+cortando a rede do contexto, virou `channel_error` após ~50 s (o heartbeat do websocket leva esse
+tempo — uma primeira tentativa com 9 s foi inconclusiva e está registrada como tal). Sem essa
+segunda metade, "expus o status" seria afirmação sobre código.
+
+> **Dívida nomeada, com o enquadramento do `@Arquiteto`:** assinatura que morre em silêncio é
+> **peça sem sinal de vida** — o "log morto" do checklist do sistema vivo, na versão mais cara,
+> porque a tela continua parecendo certa enquanto o board já não escuta mais nada. **Religar não
+> foi feito de propósito**: religação é desenho e merece bloco próprio. Isto aqui é só parar de
+> descartar o que já era calculado.

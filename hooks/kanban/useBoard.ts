@@ -110,7 +110,16 @@ export function useBoard(pipelineId: string | null) {
     [qc, queryKey],
   );
 
-  useRealtimeChannel({
+  // O STATUS DO CANAL NÃO PODE SER DESCARTADO. `useRealtimeChannel` calcula
+  // SUBSCRIBED / CHANNEL_ERROR / TIMED_OUT / CLOSED e, sem atribuir o retorno,
+  // esse valor morria na linha seguinte — enquanto ele é o único que separa
+  // DUAS FAMÍLIAS INTEIRAS de causa: "a assinatura morreu" e "nada aconteceu"
+  // têm exatamente a mesma aparência na tela, que é silêncio.
+  //
+  // Assinatura que morre calada é peça sem sinal de vida: o "log morto" do
+  // checklist do sistema vivo, na versão cara, porque a tela continua parecendo
+  // certa enquanto o board já não escuta mais nada.
+  const { status: realtimeStatus } = useRealtimeChannel({
     name: pipelineId ? `kanban-${pipelineId}` : "kanban-disabled",
     postgresChanges: pipelineId
       ? {
@@ -134,5 +143,5 @@ export function useBoard(pipelineId: string | null) {
     };
   }, []);
 
-  return { ...query, pulses };
+  return { ...query, pulses, realtimeStatus };
 }
