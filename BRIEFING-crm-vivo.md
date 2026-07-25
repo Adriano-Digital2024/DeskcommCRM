@@ -7003,3 +7003,53 @@ forma disponível é a que já falta por outro motivo: **o refetch de segurança
 **Regra:** antes de escolher um sinal para detectar uma falha, verifique se ele **muda de valor**
 quando a falha ocorre. Sinal que permanece igual nos dois estados não é detector — é decoração com
 aparência de instrumento.
+
+## §7.222 — Construir o mecanismo revela a POPULAÇÃO que ele não pode servir
+
+O envio da reativação usa `cron_jobs`, que é indexado por **contato**. E **26 dos 68 negócios abertos
+não têm contato**. Uma proposta de *"retomar contato"* num negócio sem contato **é impossível por
+construção**: nasceria com um botão que não pode funcionar, e clicar produziria **decisão registrada
+sem consequência nenhuma**.
+
+> *"É a simulação de atenção entrando pela porta dos fundos, no mesmo dia em que a gente fechou a
+> porta da frente com o prazo."*
+
+**E o achado maior não é o defeito — é o que ele revela:** um quarto dos negócios abertos **não tem
+caminho automático de retomada**, e ninguém tinha percebido **porque a proposta nunca existiu para
+revelar**.
+
+**A ausência de um mecanismo esconde a população que ele não alcançaria.** Ninguém conta quem está
+excluído de algo que não existe — o número é literalmente incontável antes da construção.
+
+**Regra:** ao adicionar mecanismo novo, **meça quem ele NÃO pode servir e reporte o número**. Essa
+contagem nasce junto com a feature, é invisível antes dela, e quase sempre é **decisão de produto**,
+não detalhe de implementação. Aqui: os 26 continuam esfriando e aparecendo no radar; **o que muda é
+que a saída deles é humana, não automática** — e isso precisa ser uma escolha declarada, não um
+efeito colateral.
+
+## §7.223 — Sonda NEGATIVA versionada é ativo; apagá-la é pagar o experimento duas vezes
+
+As duas sondas que deram negativo (a varredura das 55 linhas e a do `owner_kind`) **ficaram
+versionadas de propósito**: *"resultado negativo com aparato descrito vale mais que hipótese viva sem
+medida, e o próximo a investigar não precisa refazê-las."*
+
+O default é apagar o experimento que "não deu em nada" — e o custo aparece quando alguém, semanas
+depois, levanta a mesma hipótese e **refaz a medição inteira** para chegar ao mesmo negativo. Pior:
+sem a sonda, a hipótese volta como **viva**, porque não há registro de que foi testada.
+
+**E há um segundo uso imediato:** se a janela conjunta reproduzir o defeito, as sondas já estão
+prontas para rodar **do outro lado**, e a comparação passa a ser entre aparatos com o mesmo código.
+
+## §7.224 — Realtime é REALCE, nunca pré-requisito — a tela nasce funcionando sem ele
+
+Proposta aceita **integralmente**: o card da proposta nasce **sem realtime** (aparece pelo refetch,
+que funciona), e o tempo real entra depois. E não é concessão — **é a arquitetura correta**, pelo
+mesmo argumento da §7.198: se a tela só funciona com a entrega viva, **uma falha de entrega vira
+silêncio**, que é a doença que a wave existe para curar.
+
+E fecha com a §7.221: **o refetch é simultaneamente a base da tela, a cura da perda e o detector da
+falha**. Uma peça, três papéis — e a que sustenta as outras duas.
+
+**Regra:** nenhuma superfície nova depende de realtime para estar CORRETA. Realtime decide se ela é
+*imediata*; o refetch decide se ela é *verdadeira*. Quem inverte isso constrói uma tela que mente
+quando o transporte falha — e o transporte falha.
