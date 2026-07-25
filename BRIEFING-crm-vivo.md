@@ -9248,3 +9248,46 @@ terceira apareceu porque alguém foi procurar** (§7.283) — e a diferença ent
 entre sorte e método.
 
 **Provada por sabotagem também:** `EXIT=1` em 2s, *"cobaia removida"* no log, contador inalterado.
+
+## §7.292 — Busca que NÃO CASA é indistinguível de coisa que NÃO EXISTE
+
+Última retratação do dia, cinco minutos depois da afirmação: *"o oitavo lead órfão não existe"*.
+**Existe.** A busca foi por `"Titulo editado pela prova"` e o banco tem **`"Título"`, com acento** —
+a consulta voltou vazia **e o vazio foi lido como inexistência**. (Verificado: o lead está lá,
+criado 24/07 às 21:07.)
+
+**É o gêmeo, do lado da LEITURA, do `DELETE` que apaga zero em silêncio.** Nos dois, **um resultado
+nulo tem duas causas** — *não há* e *não achei* — e a ferramenta devolve o mesmo valor para as duas.
+É a §7.153 na sua forma mais banal e mais frequente: **acento, maiúscula, espaço, `trim`**.
+
+**Regra:** consulta que sustenta uma afirmação de **ausência** precisa de um controle positivo — uma
+busca que **tem** de casar algo. Sem ele, *"não encontrei"* nunca vira *"não existe"*, e a diferença
+é exatamente onde alguém apaga o que não devia ou deixa de apagar o que devia.
+
+### E "perder a conta é o dado"
+
+> *"Foi a sétima ou oitava do dia — **perdi a conta exata, e perder a conta é o dado**."*
+
+Quando a contagem de erros deixa de ser rastreável, **ela deixou de ser o indicador** — e o que
+sobrou como sinal é o **intervalo** (§7.287). **A perda da conta não é desleixo do relato: é a
+confirmação de que a métrica certa é outra.**
+
+## §7.293 — O método funciona porque é EXTERNO
+
+Fecho do QA, e é a leitura que a doutrina inteira pede:
+
+> *"O que eu quero que se leia disto não é que a gente é cuidadoso: **é que o método funciona porque
+> é EXTERNO. Ele não depende do estado de quem está cansado às seis da tarde** — que era exatamente
+> eu quando o `lint` pegou o `any`."*
+
+**Todas as leis desta coleção que funcionaram são externas ao julgamento de quem as aplica:** um
+número que precisa bater, uma lista que estoura se vier vazia, um veredito que fica vermelho quando
+melhora, uma sabotagem que exige o vermelho, um `lint`. **Nenhuma delas pede que alguém esteja
+lúcido.**
+
+**E as que exigiam lucidez foram justamente as que precisaram ser reescritas** — *"releia a série"*
+virou *"conte os resgates"*; *"procure a versão contável"* virou *"conte o que invalidaria"*;
+*"não confie no verde"* virou *"o veredito é pedido de atenção"*.
+
+**É o critério de sobrevivência de uma lei:** ela vale enquanto não depender do estado de quem a
+segue. **As que dependem não são leis — são lembretes com nome de lei.**
