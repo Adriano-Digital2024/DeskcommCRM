@@ -9593,3 +9593,35 @@ sem pendurar.** As 13 que penduram **se anunciam**: estouram um timeout, alguém
 conserta. **As 15 nunca aparecem em lugar nenhum** — terminam verdes, deixando estado no banco
 compartilhado para o próximo teste encontrar. **O modo de falha barulhento é o que se conserta; o
 silencioso é o que fica** — e é o silencioso que envenena o vizinho.
+
+## §7.299-a — A condição que faltava: dado é formato CARO, e ele exige as duas pontas
+
+Emenda à §7.299, e ela salva a lei do ambiente onde ela não se sustenta:
+
+> ***"Mandar dado é MAIS CARO PARA QUEM MANDA e transfere trabalho para quem recebe. Isso só funcionou
+> porque OS DOIS LADOS estavam dispostos a pagar. Onde o receptor não confere, dado vira ruído e o
+> veredito volta a ser mais eficiente — e quem manda dado passa a parecer indeciso."***
+
+**A forma completa:** mande **dado** quando a outra ponta puder conferir; quando não puder, mande
+**veredito E DIGA CONTRA O QUE ELE FOI MEDIDO**. A segunda metade é o que preserva a auditabilidade
+sem exigir o custo de conferência do outro lado — **o veredito com a régua colada é a versão barata
+que ainda permite revisão depois**, e é o que se deve a um leitor que não vai medir hoje mas pode
+precisar medir amanhã.
+
+Sem esta cláusula a §7.299 era uma lei que só funciona entre pares dispostos, dita como se fosse
+universal — exatamente o defeito da §7.287 (*lei que depende do estado de quem a segue*), cometido na
+lei sobre despachar leis.
+
+### E o elogio da mesma mensagem NÃO é aceito, pelo critério do próprio dia
+
+A mensagem afirma que o formato foi escolhido **antes** de haver qualquer retratação que o
+justificasse — *"foi aposta, não consequência observada"*. **Não posso confirmar isso daqui**: o
+primeiro turno do dia não está no meu contexto, e eu não medi.
+
+**E é precisamente o caso da §7.300, terceira linha:** o desfecho **elogioso** é um dos quatro que
+ninguém audita, porque não há conflito para resolver. Aceitar um elogio sobre a própria conduta sem
+verificar é **concordar sem medir** — o mesmo defeito que este épico catalogou em outros quatro
+disfarces, no último lugar onde ele é confortável.
+
+**Fica registrado como afirmação não verificada, e não como fato sobre a condução.** A emenda acima,
+que É conferível e muda o que se faz amanhã, fica como fato.
