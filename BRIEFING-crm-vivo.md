@@ -2154,3 +2154,35 @@ nunca rodou**.
 > A §7.42 diz que o defeito do *parse* só aparece no banco **novo**. Este diz que o defeito do
 > *backfill* só aparece no banco **intermediário** — que não é o novo nem o atualizado. **São três
 > estados, e a suíte cobre dois.**
+
+---
+
+## §7.48 — O vermelho também pode ser vazio: "recusou" não é a pergunta
+
+Achado do @QAVivo **contra o próprio aparato**, revelado pela mudança de tabela.
+
+Com o score fora de `crm_leads`, **toda** escrita da tabela-verdade passou a falhar com `42703`
+(coluna inexistente). E o teste só perguntava *"o banco recusou?"*. Resultado: **seis das oito linhas
+continuaram verdes — e erradas**. Um teste que afirma *"score sem razão é recusado"* ficou verde num
+banco onde **a coluna do score não existia mais**.
+
+> **A mudança de schema não criou o furo; revelou um que sempre esteve lá.**
+
+**A lei, com a formulação dele:** *"**recusou** não é a pergunta; **recusou pelo motivo certo** é."*
+Asserção de recusa sem checar o **código** da recusa é asserção sobre *"deu erro"* — e *"deu erro"* é o
+estado **mais fácil de produzir por acidente** no sistema inteiro.
+
+E é o **espelho exato** do verde vazio que este briefing já persegue: **o vermelho também pode ser
+vazio**. Um teste que espera falha é singularmente vulnerável, porque há **infinitas** maneiras de
+falhar e **uma** certa. Asserção positiva nomeia o estado esperado; **asserção negativa tem de nomear
+o modo de falha esperado** — aqui, `23514` e nada mais. Qualquer outro código acusa **caso mal
+montado**: falha do instrumento, não do produto.
+
+### E o fecho: foram as pernas POSITIVAS que expuseram o furo
+
+Das oito linhas, **duas** reprovaram — justamente *"score com razão e lastro é **aceito**"* e
+*"**ausência** de score é aceita"*. Elas não tinham como ficar verdes num banco onde a coluna sumiu.
+
+> **As pernas positivas que ele fez questão de incluir são o que expôs o verde falso das negativas.**
+> É o argumento mais forte que existe para nunca escrever uma tabela-verdade só de recusas: sem elas,
+> as oito linhas teriam ficado verdes e o instrumento estaria morto sem avisar.
