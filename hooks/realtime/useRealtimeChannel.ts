@@ -28,21 +28,61 @@ export interface UseRealtimeChannelOpts {
  *
  * `setAuth` é do SOCKET, não do canal: vale para todos os canais criados
  * depois. A promise fica memoizada para N hooks não dispararem N requisições.
+ *
+ * ⚠️ A MEMO SÓ SOBREVIVE AO SUCESSO. Esta é a linha que faltava, e o defeito que
+ * ela conserta foi medido em produção-de-desenvolvimento: uma assinatura de
+ * `crm_leads` ANÔNIMA (claims.sub nulo) no mesmo socket em que `conversations`
+ * estava autenticada. Com RLS por `auth.uid()`, anônimo devolve ZERO linhas: o
+ * canal responde SUBSCRIBED e nunca entrega nada — morte silenciosa, a pior
+ * forma, porque a tela parece viva.
+ *
+ * A versão anterior tinha TRÊS saídas e só UMA limpava a memo:
+ *   catch { realtimeAuth = null }  → exceção se curava sozinha
+ *   if (!res.ok) return            → 401/500: memo FICAVA, setAuth nunca corria
+ *   if (token) setAuth(token)      → corpo sem token: memo FICAVA, idem
+ *
+ * Ou seja: UM ÚNICO 401 transitório — sessão ainda estabelecendo, cookie em
+ * renovação — deixava TODOS os canais criados depois anônimos pelo resto
+ * daquele carregamento. E a recuperação estava escrita justamente para o
+ * caminho BARULHENTO, que era o que menos precisava dela.
+ *
+ * A REGRA GERAL, que vale para qualquer memoização: o critério não é "deu
+ * erro?" — é **o resultado memoizado é o resultado DESEJADO?**. Sucesso parcial
+ * memoizado é pior que erro memoizado, porque erro alguém repete.
  */
 const AUTH_TIMEOUT_MS = 1_500;
 
 let realtimeAuth: Promise<void> | null = null;
-function authenticateRealtime(supabase: ReturnType<typeof createClient>): Promise<void> {
+
+/** Só para teste: zera a memo entre casos (ela é módulo-global de propósito). */
+export function __resetRealtimeAuth(): void {
+  realtimeAuth = null;
+}
+
+export function authenticateRealtime(supabase: ReturnType<typeof createClient>): Promise<void> {
   realtimeAuth ??= (async () => {
+    // `autenticou` é o ÚNICO critério de guardar a memo. Não "não deu exceção",
+    // não "a resposta chegou": chamou `setAuth` ou não chamou.
+    let autenticou = false;
     try {
       const res = await fetch("/api/v1/auth/realtime-token", { credentials: "include" });
-      if (!res.ok) return;
-      const body = (await res.json()) as { data?: { access_token?: string } };
-      const token = body.data?.access_token;
-      if (token) supabase.realtime.setAuth(token);
+      if (res.ok) {
+        const body = (await res.json()) as { data?: { access_token?: string } };
+        const token = body.data?.access_token;
+        if (token) {
+          supabase.realtime.setAuth(token);
+          autenticou = true;
+        }
+      }
     } catch {
-      // Sem token o canal segue anônimo: a UI continua funcionando por refetch,
-      // só perde o tempo real. Derrubar a tela por causa disso seria pior.
+      // engolido de propósito: ver a degradação abaixo
+    }
+    if (!autenticou) {
+      // Sem token o canal segue anônimo e a UI continua funcionando por refetch,
+      // só perde o tempo real — derrubar a tela por causa disso seria pior.
+      // MAS A DEGRADAÇÃO VALE SÓ ATÉ A PRÓXIMA TENTATIVA, e é esta linha que faz
+      // a próxima tentativa existir. Sem ela, "temporário" virava permanente
+      // pelo resto do carregamento.
       realtimeAuth = null;
     }
   })();
