@@ -6,10 +6,19 @@ import type { ActivityType } from "@/lib/leads/activity-vocabulary";
 /** Os cinco atores que `crm_lead_activities.actor_kind` aceita (migration 0071). */
 export type ActivityActorKind = "user" | "ai" | "system" | "rule" | "contact";
 
-/** O lastro no formato de `flywheel_distiller_proposals.evidence`. */
+/**
+ * O lastro. **Cada chave aponta para UMA tabela** — a 0072 existe porque essa
+ * correspondência estava quebrada: o turno guardava id de `llm_calls` dentro de
+ * `run_ids`, e quem seguisse a trilha faria join contra `ai_agent_runs` e
+ * receberia vazio, sem erro.
+ */
 export interface ActivityEvidence {
+  /** → `ai_agent_runs` */
   run_ids?: string[];
+  /** → o trace do turno */
   trace_ids?: string[];
+  /** → `llm_calls` (0072) */
+  llm_call_ids?: string[];
 }
 
 export interface EmitLeadActivityInput {
@@ -73,7 +82,9 @@ export interface LeadActivityRow {
 export function buildLeadActivityRow(input: EmitLeadActivityInput): LeadActivityRow {
   const { kind, agentId, userId } = actorParaAtividade(input.actor);
   const temLastro =
-    (input.evidence?.run_ids?.length ?? 0) > 0 || (input.evidence?.trace_ids?.length ?? 0) > 0;
+    (input.evidence?.run_ids?.length ?? 0) > 0 ||
+    (input.evidence?.trace_ids?.length ?? 0) > 0 ||
+    (input.evidence?.llm_call_ids?.length ?? 0) > 0;
 
   // Ator 'ai' SEM lastro seria recusado pela constraint (0071). Em vez de
   // perder o registro ou inventar um run_id, grava como 'system' mantendo

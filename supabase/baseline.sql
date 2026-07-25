@@ -7127,3 +7127,21 @@ create trigger trg_stamp_stage_changed_at
 
 comment on column public.crm_leads.stage_changed_at is
   'Quando o lead entrou no estágio atual. Carimbado por trigger. É o relógio de "tempo no estágio" do card — distinto de last_activity_at, que é "tempo sem resposta".';
+
+-- ---- evidence: lastro pode apontar para llm_calls (migration 0072) ----
+-- Só AFROUXA a constraint (acrescenta uma terceira forma de lastro), então
+-- nenhuma linha existente passa a violá-la e o update.sh de clone não quebra.
+-- Idempotente por drop+add.
+alter table public.crm_lead_activities
+  drop constraint if exists crm_lead_activities_ai_needs_evidence;
+
+alter table public.crm_lead_activities
+  add constraint crm_lead_activities_ai_needs_evidence check (
+    actor_kind <> 'ai'
+    or coalesce(jsonb_array_length(evidence->'run_ids'), 0) > 0
+    or coalesce(jsonb_array_length(evidence->'trace_ids'), 0) > 0
+    or coalesce(jsonb_array_length(evidence->'llm_call_ids'), 0) > 0
+  );
+
+comment on column public.crm_lead_activities.evidence is
+  'O que SUSTENTA a atividade (N referências), cada chave apontando para UMA tabela: run_ids→ai_agent_runs, trace_ids→o trace do turno, llm_call_ids→llm_calls. Não confundir com source_module/source_id, que é O QUE ORIGINOU (um ponteiro). evidence nunca repete o source_id — origem não é prova.';
