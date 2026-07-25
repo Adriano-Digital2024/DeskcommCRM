@@ -25,7 +25,9 @@ export type ActivityType =
   | "handoff_triggered"
   | "next_action_approved"
   | "next_action_dismissed"
-  | "lead_edited";
+  | "lead_edited"
+  | "lead_cooled"
+  | "lead_reactivated";
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   stage_changed: "Mudou de estágio",
@@ -42,6 +44,12 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   // Não era "falta um emissor" — era meia continuidade vendida como
   // continuidade, e o dossiê teria mostrado só metade da vida do lead.
   lead_edited: "Dados do negócio alterados",
+  // O NEGÓCIO ESFRIANDO É ACONTECIMENTO, não telemetria: é o sistema dizendo
+  // "ninguém falou com esta pessoa dentro do prazo deste estágio". Sem linha na
+  // timeline, o card mudaria de cor e o dossiê não teria explicação — e o
+  // usuário concluiria que a timeline está incompleta, não que o negócio esfriou.
+  lead_cooled: "Negócio esfriou",
+  lead_reactivated: "Negócio voltou a andar",
 };
 
 /** Quando o tipo é legado/desconhecido, a linha ainda é honesta — sem jargão. */

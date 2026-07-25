@@ -29,6 +29,38 @@ import { sinceDoBucket } from "@/lib/leads/risk-since";
  * "o card diz uma coisa e o radar diz outra", que ninguém consegue depurar.
  */
 
+/**
+ * ⚠️ `detected_at` NÃO É ENVIADO — vem do default `now()` do BANCO.
+ *
+ * ⚠️ DOIS RELÓGIOS NA MESMA DECISÃO É DEFEITO, e este custou uma quebra real: o
+ * `since` deriva de `last_activity_at`, que o trigger carimba com o `now()` do
+ * BANCO; o `detected_at` vinha de `new Date()`, que é o relógio do PROCESSO.
+ * Medido nesta máquina: o banco está 2 SEGUNDOS à frente. Um negócio tocado no
+ * instante anterior à passada do worker produzia `since > detected_at` e o
+ * INSERT morria em `crm_lead_risk_states_since_no_passado` — o worker inteiro
+ * abortava por causa de dois segundos.
+ *
+ * A constraint estava CERTA: ela pegou a incoerência que eu não teria visto.
+ * O conserto é ancorar os dois no MESMO relógio, e ele é o do banco, porque é o
+ * banco que carimba os fatos com que a decisão é tomada. `since` já era do
+ * banco (deriva de `last_activity_at`); `detected_at` passa a ser também, por
+ * omissão.
+ *
+ * O relógio do processo continua CLASSIFICANDO (o `now` de `classifyRisk`), e
+ * isso é aceitável por uma razão que vale escrever: a classificação compara
+ * JANELAS DE HORAS, onde segundos não mudam bucket. O `CHECK` compara INSTANTES,
+ * onde mudam. Grandezas diferentes toleram precisões diferentes — e confundir as
+ * duas foi exatamente o defeito.
+ */
+/** Um negócio classificado AGORA — o que o seed grava e o worker compara. */
+export interface EstadoCalculado {
+  leadId: string;
+  contactId: string | null;
+  bucket: RiskBucket;
+  since: Date;
+  coldHours: number;
+}
+
 export interface ResultadoDoSeed {
   gravados: number;
   porBucket: Record<RiskBucket, number>;
@@ -45,11 +77,33 @@ interface LeadRow {
   created_at: string | null;
 }
 
-export async function semeiaEstadosDeRisco(
+/**
+ * O estado de risco de cada negócio aberto da org, AGORA.
+ *
+ * Compartilhada entre o seed (que grava tudo, uma vez) e o observador de
+ * travessia (que compara com o gravado). Extraída e não copiada porque uma
+ * segunda definição de "esfriando" começaria idêntica e divergiria no primeiro
+ * ajuste de janela — e a divergência apareceria para o usuário como "o card diz
+ * uma coisa e o radar diz outra", que ninguém consegue depurar.
+ *
+ * Devolve também `semRelogio`: negócio sem `last_activity_at` E sem `created_at`
+ * fica de FORA e é CONTADO. Chutar `now` o marcaria como recém-tocado e o
+ * esconderia do radar para sempre — buraco silencioso no lugar de buraco visível.
+ */
+export async function calculaBucketsAtuais(
   admin: SupabaseClient,
   organizationId: string,
   now: Date = new Date(),
-): Promise<ResultadoDoSeed> {
+): Promise<EstadoCalculado[]> {
+  const { estados } = await coletaEClassifica(admin, organizationId, now);
+  return estados;
+}
+
+async function coletaEClassifica(
+  admin: SupabaseClient,
+  organizationId: string,
+  now: Date,
+): Promise<{ estados: EstadoCalculado[]; semRelogio: number }> {
   const { data: leadRows, error: leadErr } = await admin
     .from("crm_leads")
     .select("id, stage_id, contact_id, last_activity_at, created_at")
@@ -90,23 +144,12 @@ export async function semeiaEstadosDeRisco(
     }
   }
 
-  const linhas: Array<{
-    lead_id: string;
-    organization_id: string;
-    bucket: RiskBucket;
-    since: string;
-    detected_at: string;
-    cold_hours: number;
-  }> = [];
-  const porBucket: Record<RiskBucket, number> = { critico: 0, em_risco: 0, em_voo: 0, em_dia: 0 };
+  const estados: EstadoCalculado[] = [];
   let semRelogio = 0;
 
   for (const l of leads) {
     const relogio = l.last_activity_at ?? l.created_at;
     if (!relogio) {
-      // Não invento um instante: negócio sem relógio nenhum fica FORA e é
-      // contado. Chutar `now` o marcaria como recém-tocado e o esconderia do
-      // radar para sempre — buraco silencioso no lugar de buraco visível.
       semRelogio += 1;
       continue;
     }
@@ -118,16 +161,32 @@ export async function semeiaEstadosDeRisco(
       inFlight: l.contact_id ? followupPorContato.has(l.contact_id) : false,
       window,
     });
-    porBucket[bucket] += 1;
-    linhas.push({
-      lead_id: l.id,
-      organization_id: organizationId,
+    estados.push({
+      leadId: l.id,
+      contactId: l.contact_id,
       bucket,
-      since: sinceDoBucket(bucket, lastActivityAt, window).toISOString(),
-      detected_at: now.toISOString(),
-      cold_hours: window.coldHours,
+      since: sinceDoBucket(bucket, lastActivityAt, window),
+      coldHours: window.coldHours,
     });
   }
+  return { estados, semRelogio };
+}
+
+export async function semeiaEstadosDeRisco(
+  admin: SupabaseClient,
+  organizationId: string,
+  now: Date = new Date(),
+): Promise<ResultadoDoSeed> {
+  const { estados, semRelogio } = await coletaEClassifica(admin, organizationId, now);
+  const porBucket: Record<RiskBucket, number> = { critico: 0, em_risco: 0, em_voo: 0, em_dia: 0 };
+  for (const e of estados) porBucket[e.bucket] += 1;
+  const linhas = estados.map((e) => ({
+    lead_id: e.leadId,
+    organization_id: organizationId,
+    bucket: e.bucket,
+    since: e.since.toISOString(),
+    cold_hours: e.coldHours,
+  }));
 
   if (linhas.length > 0) {
     // `upsert` e não `insert`: a estreia tem de poder ser re-executada sem
