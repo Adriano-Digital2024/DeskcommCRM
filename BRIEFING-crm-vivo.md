@@ -4401,3 +4401,54 @@ aparece**, que foi o que ele fez: falhou, nomeou a variante, e a lei ficou maior
 
 > **Quem escreveu a lei e falhou nela na mesma hora não invalidou a lei — completou-a.** A alternativa
 > era não contar, e a lei seguiria com o buraco, esperando outra pessoa.
+
+---
+
+## §7.116 — O que salvou foi o absurdo, não o cuidado
+
+Acréscimo do @QAVivo à §7.105, e é a coisa mais honesta da mensagem:
+
+> *"Não foi disciplina. A diferença NEGATIVA **não cabia em nenhuma explicação que eu tivesse**. Se
+> ela tivesse dado um número **plausível e errado** — digamos 2 órfãos por visita — **eu teria
+> reportado**. O que me salvou foi o resultado ser ABSURDO, não eu ser cuidadoso."*
+
+**Terceira vez hoje que alguém recusa crédito e a recusa melhora a regra** (§7.59-a: *não foi método,
+foi sorte*; §7.88: *foi proximidade, não caráter*). O padrão é o mesmo e a consequência também:
+
+> **Defesa que depende de o erro ser gritante não é defesa** — é sorte com boa reputação. O erro
+> plausível passa pela mesma porta, e passa mais frequentemente, porque **erros plausíveis são mais
+> comuns que absurdos**.
+
+**Conserto dele:** os quadros crus **saem sempre** no log da sonda, não só quando algo parece errado.
+A leitura deixa de depender de o agregado chamar atenção.
+
+## §7.117 — Comparação transforma suspeita em dívida medida
+
+As duas superfícies que assinam estão fechadas: **inbox 8 tópicos em 4 visitas (dois por visita)**,
+**kanban 4 em 4 (um por visita)**, `12 entraram · 12 saíram · zero órfãos`.
+
+**E a comparação vale mais que os dois zeros.** A observação anterior sobre o inbox era uma **suspeita
+sem régua** — *"dois canais, será que é demais?"*. Agora é:
+
+> **"Dois onde a superfície vizinha resolve com UM."**
+
+O board virou **contraexemplo**: prova que **uma assinatura basta para a mesma classe de tela**. A
+dívida deixa de ser palpite e passa a ter **magnitude e viabilidade** — e o conserto dimensionado
+(içar a assinatura para o layout) fica **sustentado por um caso que já funciona assim**.
+
+> **Suspeita vira dívida quando existe um vizinho que faz diferente e funciona.** Sem o vizinho, é
+> opinião sobre arquitetura; com ele, é diferença medida entre duas soluções para o mesmo problema.
+
+### E o atalho quase repetido, em outra escala
+
+A primeira versão visitava `/app/kanban` — que é a **LISTA de pipelines**. O canal só nasce **dentro**
+do pipeline.
+
+> Ele teria medido **uma tela que não assina nada** e concluído *"o board não vaza"* sobre uma
+> superfície **nunca visitada**. **Parecer que se visitou sem ter entrado é a mesma família de atalho
+> que o `goto`** (§7.104): o instrumento percorre um caminho que o usuário não percorre, e o defeito
+> fica **estruturalmente invisível**.
+
+Pegou **olhando o log de navegação em vez de confiar na URL** — e a linha
+`[nav] board por clique → /app/pipelines/<id> (15 cards)` é o que **prova que entrou**. **URL não é
+presença; conteúdo é.**
