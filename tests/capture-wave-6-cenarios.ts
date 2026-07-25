@@ -90,6 +90,7 @@ const CRITERIOS = [
   "D25",
   "D26",
   "D20.pii",
+  "D27",
 ];
 const { record, fechar } = criarPlacar("WAVE 6", CRITERIOS);
 
@@ -251,6 +252,51 @@ async function montarCaso(): Promise<{
     } as never);
     if (e4) throw new Error(`atividade do irmão: ${e4.code} ${e4.message}`);
   }
+
+  // O IRMÃO DO IRMÃO: segundo lead DO MESMO CONTATO, com uma atividade que só
+  // existe nele. A rota puxa as atividades de TODOS os leads do contato, então
+  // pelo código o dossiê de um negócio pode somar as do outro — sem marcador
+  // dizendo de onde veio.
+  //
+  // Isto tem ZERO linhas no banco real: dois contatos têm mais de um lead e
+  // nenhum deles tem atividade. Defeito possível e NÃO observado só vira medível
+  // com caso construído — e vazio se lê como "nada aconteceu", enquanto isto se
+  // lê como "aconteceu AQUI", que é atribuição errada em silêncio.
+  const tituloIrmao = `${PREFIXO} ${RUN} — IRMÃO do mesmo contato`;
+  const { data: lead3, error: e5 } = await admin
+    .from("crm_leads")
+    .insert({
+      organization_id: ORG,
+      pipeline_id: PIPELINE,
+      stage_id: STAGE,
+      contact_id: contactId,
+      title: tituloIrmao,
+      status: "open",
+      source: "manual",
+      value_cents: 700_000,
+      currency: "BRL",
+      owner_kind: "user",
+      owner_user_id: DONO,
+      owner_agent_id: null,
+      position_in_stage: 6002,
+      last_activity_at: new Date().toISOString(),
+    } as never)
+    .select("id")
+    .single();
+  if (e5 || !lead3) throw new Error(`criar irmão: ${e5?.code} ${e5?.message}`);
+  const { error: e6 } = await admin.from("crm_lead_activities").insert({
+    organization_id: ORG,
+    lead_id: (lead3 as { id: string }).id,
+    contact_id: contactId,
+    source_module: "qa",
+    type: "note",
+    actor_kind: "user",
+    performed_by_user_id: DONO,
+    reason: `${RUN} · ISTO PERTENCE AO OUTRO NEGOCIO`,
+    evidence: {},
+    performed_at: new Date(base - 300_000).toISOString(),
+  } as never);
+  if (e6) throw new Error(`atividade do irmão: ${e6.code} ${e6.message}`);
 
   return { leadId, titulo, agenteId, leadComContato, tituloComContato };
 }
@@ -463,6 +509,7 @@ async function main(): Promise<void> {
         ["D25", "âncora sem alvo vira TEXTO, não link nem exceção (LGPD, e não é defeito)"],
         ["D26", "lead SEM contato mostra as PRÓPRIAS atividades na timeline"],
         ["D20.pii", "o registro diz QUAL campo mudou e NÃO carrega o valor"],
+        ["D27", "o dossiê de um negócio NÃO mostra as atividades do negócio irmão"],
         ["D20", "CENÁRIO 20: editar campo salva E aparece na timeline com ator humano"],
         ["D21", "CENÁRIO 21: ação do agente na outra aba entra na timeline ao vivo"],
         ["D23", "o Sheet DESASSINA ao fechar — abrir e fechar N vezes não acumula canal"],
@@ -613,6 +660,33 @@ async function main(): Promise<void> {
           : "só nomes de campo no registro — o valor fica fora do log de auditoria",
       );
     }
+
+    // ---- 27: o irmão do mesmo contato ---------------------------------------
+    // NÃO BASTA O TEXTO SUMIR. A atividade do irmão é do MESMO ator que o time,
+    // então ela colapsaria DENTRO do bloco do time — e o motivo individual não
+    // apareceria mesmo tendo vazado. "Não vejo a frase" também é o que se vê
+    // quando ela está agrupada.
+    //
+    // Quem distingue é a CONTAGEM: o time tem 3 atividades neste negócio. Se o
+    // bloco anunciar 4, o irmão entrou. É o mesmo raciocínio do colapso — o bloco
+    // que diz quantos é o único que separa agrupar de somar o que não é seu.
+    const blocoDoTime = texto.match(/E2E Manager\s*·\s*(\d+)\s+ações/i);
+    const quantasDoTime = blocoDoTime ? Number(blocoDoTime[1]) : -1;
+    const vazouIrmao =
+      /ISTO PERTENCE AO OUTRO NEGOCIO/i.test(texto) || (quantasDoTime > 0 && quantasDoTime !== 3);
+    record(
+      "D27",
+      "o dossiê de um negócio NÃO mostra as atividades do negócio IRMÃO",
+      timelineCarregou && !vazouIrmao,
+      !timelineCarregou
+        ? "INCONCLUSIVO: a timeline não carregou nesta rodada"
+        : vazouIrmao
+          ? `a atividade do OUTRO negócio do mesmo contato entrou neste dossiê (bloco do time ` +
+            `anuncia ${quantasDoTime}, deveria anunciar 3) — sem marcador dizendo de onde veio. ` +
+            `Vazio se lê como "nada aconteceu"; isto se lê como "aconteceu AQUI"`
+          : `só as atividades deste negócio (bloco do time anuncia ${quantasDoTime}, que é o certo)`,
+      timelineCarregou ? undefined : "BLOQUEADO",
+    );
 
     // ---- 26: o lead SEM contato — 25% deles, e 66% das atividades ------------
     //
