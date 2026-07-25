@@ -26,7 +26,17 @@ import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const RAIZ = process.cwd();
-const DOCS = ["HANDOFF-crm-vivo.md", "BRIEFING-crm-vivo.md", "HANDOFF-lgpd.md"];
+const DOCS = [
+  "HANDOFF-crm-vivo.md",
+  "BRIEFING-crm-vivo.md",
+  "HANDOFF-lgpd.md",
+  // As narrativas por wave também citam prova, e citação morta é citação morta
+  // em qualquer documento — não só nos do regente.
+  "evidence/wave-0.md",
+  "evidence/wave-1.md",
+  "evidence/wave-2.md",
+  "evidence/lgpd.md",
+];
 
 /** Tudo que o git ENTREGA — não o que o disco tem. */
 function versionados(): Set<string> {
@@ -34,10 +44,20 @@ function versionados(): Set<string> {
   return new Set(saida.split("\n").filter(Boolean));
 }
 
-/** Referências a imagens de evidência dentro dos documentos da entrega. */
+/**
+ * Referências a imagens de evidência, NORMALIZADAS para o caminho do repositório.
+ *
+ * Casar só `evidence/*.png` deixava passar os documentos que vivem DENTRO de
+ * `evidence/` — eles citam por nome puro (`wave-1-card.png`), e o check passava
+ * vacuamente justamente nos quatro arquivos que eu tinha acabado de incluir.
+ * Verde vácuo dentro do próprio guarda escrito contra ele.
+ */
 function citadas(doc: string): string[] {
   const texto = fs.readFileSync(path.join(RAIZ, doc), "utf8");
-  const achados = texto.match(/evidence\/[\w./-]+\.png/g) ?? [];
+  const dir = path.dirname(doc);
+  const achados = (texto.match(/[\w./-]*[\w-]+\.png/g) ?? []).map((ref) =>
+    ref.startsWith("evidence/") ? ref : path.posix.join(dir === "." ? "evidence" : dir, path.basename(ref)),
+  );
   return [...new Set(achados)];
 }
 
