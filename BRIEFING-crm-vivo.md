@@ -8118,3 +8118,48 @@ resultado é `já_está_lá`, não "mover por cima".
 **desfeita em silêncio**, e a pessoa veria o próprio gesto revertido sem explicação. **Destruir a
 confiança custa mais que perder um movimento** — e a IA propor enquanto o humano decide só é
 verdade se a escrita respeitar a decisão que chegou primeiro.
+
+## §7.265 — Quando o VEREDITO e a MENSAGEM discordam, o veredito ganha — e o veredito é um PEDIDO DE ATENÇÃO, não uma afirmação sobre o produto
+
+A catraca do cenário 27 dava **PASS** no desfecho ideal (*"acompanha ao vivo"*) **enquanto a mensagem
+mandava subir a linha de base**. Passa/falha e instrução se contradiziam — **e passa ganha, porque
+ninguém age sobre verde.**
+
+> ***"A catraca falhava precisamente no caso para o qual ela existe: o dia do conserto."***
+
+**O mecanismo é simples e implacável:** o veredito é **o único canal com consequência mecânica** —
+ele propaga pela suíte, quebra o CI, aparece no placar. Tudo o mais na saída de um teste é
+**aviso**, e depende de alguém **ler E agir**. **Escrever "suba a linha de base" num critério verde é
+escrever num papel que ninguém vai abrir** — e o verde, especificamente, **remove o motivo de ler**.
+
+**E daí sai o reenquadramento que unifica o dia inteiro:**
+
+> **O veredito de um teste não é uma afirmação sobre o produto — é um PEDIDO DE ATENÇÃO.**
+
+A pergunta que ele responde não é *"o produto está correto?"*, e sim ***"alguém precisa agir?"***. Com
+isso, várias decisões de hoje deixam de ser julgamento e viram consequência:
+
+| situação | alguém precisa agir? | veredito |
+|---|---|---|
+| produto quebrou | sim | **vermelho** |
+| **melhorou além da base** | **sim — subir a base** | **vermelho** |
+| precondição de ambiente ausente | não é do produto | **bloqueado** |
+| não deu para medir | sim, refazer | **inconclusivo → falha** |
+| defeito preexistente, não desta wave | não desta wave | **bloqueado, com a raiz escrita** |
+
+**Regra:** se a ação necessária depende de alguém **ler**, o veredito tem de ser **vermelho**. Um
+verde com instrução é uma instrução perdida.
+
+**E os quatro desfechos foram verificados com simulação**, porque só ocorrem naturalmente em dias
+diferentes — e *"melhorou"* **só no dia do conserto**, que é exatamente quando ninguém pode descobrir
+que o ramo não funcionava (§7.244).
+
+### E a linha de base do 27 ficou declarada, com a raiz junto
+
+O critério roda contra a base de **25/07, commit `e65eb5f`, ANTES da wave 8** — e devolve
+**BLOQUEADO: defeito preexistente, não regressão desta wave**. Sem essa marca, a wave 8 seria
+reprovada por um defeito que ela não causou (§7.240, com o suspeito mais recente levando a culpa).
+
+E a raiz vai **escrita dentro do critério**: colunas desnormalizadas mantidas por caminho de
+aplicação, sem trigger, **mediana de defasagem 0,0h e o defeito na cauda** — para que o próximo a
+lê-lo não repita a leitura binária que sugeria colapso geral (§7.262).
