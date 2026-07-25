@@ -599,7 +599,11 @@ async function main(): Promise<void> {
     if ((await campoValor.count()) === 0) {
       record("D20", "CENÁRIO 20: editar campo salva E aparece na timeline", false, "sem campo editável no dossiê", "BLOQUEADO");
     } else {
-      const novo = `${caso.titulo} (editado)`;
+      // O TÍTULO DO LEAD QUE ESTÁ ABERTO. Isto montava o valor novo a partir do
+      // título do OUTRO lead — achado pela auditoria que o regente mandou fazer:
+      // trocar o fixture reaponta todo critério que nomeia uma linha, e NADA
+      // avisa quais. Reler os que eu lembrava de ter mexido não bastou.
+      const novo = `${caso.tituloComContato} (editado)`;
       await campoValor.fill(novo);
       await painel.getByRole("button", { name: /salvar|guardar/i }).first().click().catch(() => null);
       await page.waitForTimeout(2500);
@@ -650,7 +654,10 @@ async function main(): Promise<void> {
       // cliente, então gravar "de X para Y" põe PII num log de auditoria que
       // sobrevive à anonimização do contato. Nome de campo é metadado; valor de
       // campo é dado pessoal.
-      const vazouValor = registro.includes(caso.tituloComContato) || /\(editado\)/.test(registro);
+      // A guarda procura o VALOR QUE FOI ESCRITO — antes ela procurava o título
+      // antigo do lead certo enquanto o valor gravado vinha do outro. Passava
+      // por sorte, pela segunda cláusula.
+      const vazouValor = registro.includes(novo) || /\(editado\)/.test(registro);
       record(
         "D20.pii",
         "o registro diz QUAL campo mudou e NÃO carrega o valor — título é nome de cliente",
