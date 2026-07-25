@@ -103,6 +103,18 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
   const corpo = async (): Promise<string> =>
     ((await page.locator("body").innerText().catch(() => "")) ?? "").replace(/\s+/g, " ");
 
+  // O ESTADO DERIVADO ANTES DA AÇÃO, para poder ser DEVOLVIDO. A RPC que mantém
+  // essas colunas sobrescreve sem `greatest` E INCREMENTA `unread_count_for_assignee`
+  // — então cada rodada minha deixava a conversa com a prévia de uma mensagem que
+  // eu já tinha apagado e o contador de não lidos inflado. Apagar a mensagem não
+  // desfaz o efeito dela nas colunas derivadas: limpeza que só remove a linha
+  // deixa o rastro exatamente onde a próxima rodada vai medir.
+  const { data: antesDerivado } = await admin
+    .from("conversations")
+    .select("last_message_preview,last_message_at,last_inbound_at,last_outbound_at,unread_count_for_assignee")
+    .eq("id", conversaId)
+    .single();
+
   const marca = `COSTURA${RUN}${i}`;
   const antes = await corpo();
   if (antes.includes(marca)) throw new Error("a marca já estava na tela antes da ação");
@@ -195,6 +207,11 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
   }
   const textoDaLinha = (await lista()).slice(0, 110);
   await admin.from("messages").delete().like("body", `${marca}%`);
+  // A DEVOLUÇÃO É POR UPDATE DIRETO, e aqui isso é o certo: não estou simulando
+  // uma operação do produto, estou DESFAZENDO a minha contaminação. Usar a RPC
+  // para restaurar incrementaria o contador de novo — o "conserto" repetindo o
+  // dano é o que já me pegou uma vez hoje.
+  if (antesDerivado) await admin.from("conversations").update(antesDerivado as never).eq("id", conversaId);
   if (naLista === null)
     console.info(`      (a linha dizia: "${textoDaLinha}") · corrige ao recarregar: ${apoRecarga}`);
   return {
