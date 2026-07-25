@@ -421,13 +421,22 @@ async function main(): Promise<void> {
     // com o socket já aberto. Um contador cego reportaria "nenhum canal do
     // dossiê observado", que é um BLOQUEADO falso: o instrumento acusaria
     // ausência de recurso onde havia ausência de escuta.
-    const assinatura = { joins: 0, leaves: 0 };
+    const assinatura = { joins: 0, leaves: 0, porTopico: new Map<string, { j: number; l: number }>() };
     page.on("websocket", (ws) => {
       if (!ws.url().includes("supabase")) return;
       ws.on("framesent", (f) => {
         const t = String(f.payload);
-        if (/phx_join/.test(t)) assinatura.joins++;
-        if (/phx_leave/.test(t)) assinatura.leaves++;
+        const topico = (t.match(/realtime:([^"]+)/) ?? [])[1] ?? "?";
+        const reg = assinatura.porTopico.get(topico) ?? { j: 0, l: 0 };
+        if (/phx_join/.test(t)) {
+          assinatura.joins++;
+          reg.j++;
+        }
+        if (/phx_leave/.test(t)) {
+          assinatura.leaves++;
+          reg.l++;
+        }
+        assinatura.porTopico.set(topico, reg);
       });
     });
 
@@ -796,6 +805,13 @@ async function main(): Promise<void> {
     // crescem e as saídas não — e o número da diferença É o vazamento.
     const antesJ = assinatura.joins;
     const antesL = assinatura.leaves;
+    // A LISTA POR TÓPICO TAMBÉM PRECISA SER DA JANELA. Ela acumulava desde o
+    // início da página enquanto os totais eram do intervalo dos ciclos — duas
+    // réguas no mesmo relatório, e um baseline com duas réguas engana todo
+    // número futuro que for comparado com ele.
+    const antesPorTopico = new Map(
+      [...assinatura.porTopico.entries()].map(([t, r]) => [t, { ...r }]),
+    );
     const CICLOS = 4;
     for (let i = 0; i < CICLOS; i++) {
       await page.keyboard.press("Escape");
@@ -825,8 +841,25 @@ async function main(): Promise<void> {
       joins === 0
         ? "nenhum canal observado nos ciclos, com um lead QUE TEM contato — então o dossiê " +
           "não assina, ou assina com outro nome"
-        : `${CICLOS + 1} aberturas → ${joins} entradas e ${leaves} saídas no socket ` +
-          `(diferença ${joins - leaves}) — teste que abre e fecha UMA vez nunca veria isto`,
+        : `${CICLOS + 1} aberturas → ${joins} entradas e ${leaves} saídas ` +
+          `— o supabase-js manda um phx_leave ANTES do join do mesmo tópico e outro na ` +
+          `desmontagem, então DUAS saídas por entrada é o esperado (mesma razão medida no ` +
+          `inbox). A saída que sobra é de um canal aberto ANTES desta janela e fechado dentro ` +
+          `dela — aparece como 0j/1s na lista. Assimetria explicada, não tolerada: baseline com ` +
+          `número inexplicado engana todo número futuro comparado com ele. Por tópico: ` +
+          `${[...assinatura.porTopico.entries()]
+            .filter(([t]) => /timeline/i.test(t))
+            .map(([t, r]) => {
+              const a = antesPorTopico.get(t) ?? { j: 0, l: 0 };
+              return { t, j: r.j - a.j, l: r.l - a.l };
+            })
+            .filter((x) => x.j > 0 || x.l > 0)
+            .map((x) => `${x.t.slice(-14)} ${x.j}j/${x.l}s`)
+            .join(", ") || "(nenhum)"}` +
+          ` | PREVISÃO registrada ANTES do conserto do eixo: hoje são ${joins} entradas para ` +
+          `${CICLOS + 1} aberturas porque UM dos leads do caso não tem contato e o canal é ` +
+          `indexado por ele — esse dossiê não assina nada. Consertado o D26, esta contagem TEM ` +
+          `de virar ${CICLOS + 1}. Se continuar ${joins}, o conserto está incompleto.`,
       joins === 0 ? "BLOQUEADO" : undefined,
     );
 
