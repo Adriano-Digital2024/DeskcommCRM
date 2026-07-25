@@ -480,30 +480,45 @@ function sujidadeAtual(deps: string[]): string {
   }
 }
 
-/** Sondas que abrem navegador e não têm bloco que rode em caso de erro. */
-function sondasQuePenduram(): string[] {
-  const dir = path.join(process.cwd(), "tests");
-  const fora: string[] = [];
-  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".ts"))) {
-    const src = fs.readFileSync(path.join(dir, f), "utf8");
-    if (src.includes("chromium.launch") && !src.includes("} finally {")) fora.push(f);
-  }
-  return fora;
+/**
+ * OS ARQUIVOS VARRIDOS — E O SCANNER NÃO SE INCLUI.
+ *
+ * `qa-helpers.ts` contém, como texto, os próprios padrões que ele procura
+ * ("chromium.launch", o regex de insert). Varrendo a si mesmo, ele SEMPRE casa a
+ * pré-condição — o que (a) o contava como sonda e (b) impedia o controle
+ * positivo de disparar, porque nunca havia zero. Descobri sabotando o padrão de
+ * propósito e vendo a cerca NÃO morder: com o padrão quebrado, o único arquivo
+ * que ainda casava era o que continha a string quebrada.
+ *
+ * É a observação sendo instância do que ela mede, dentro do detector escrito
+ * para vigiar as outras.
+ */
+function arquivosVarridos(dir: string): string[] {
+  return fs.readdirSync(dir).filter((x) => x.endsWith(".ts") && x !== "qa-helpers.ts");
 }
 
 /** Sondas que inserem em `crm_lead_activities` sem passar pelo desfazer. */
 function sondasQueSujamORelogio(): string[] {
   const dir = path.join(process.cwd(), "tests");
   const fora: string[] = [];
-  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".ts"))) {
+  let comInsert = 0;
+  for (const f of arquivosVarridos(dir)) {
     const src = fs.readFileSync(path.join(dir, f), "utf8");
     const insere = /from\("crm_lead_activities"\)[\s\S]{0,40}\.insert\(/.test(src);
+    if (insere) comInsert++;
     // O CRITÉRIO É "DEVOLVE O RELÓGIO", não "usa o meu helper". A primeira versão
     // acusou o vigia — que restaura à mão, corretamente. Detector que exige a
     // FORMA em vez do EFEITO é o falso vermelho por forma que me pegou sete
     // vezes na wave 6, agora dentro do detector de dívida.
     const devolve = src.includes("atividadeDeTeste") || /last_activity_at[\s\S]{0,200}\.update\(|\.update\([\s\S]{0,200}last_activity_at/.test(src);
     if (insere && !devolve) fora.push(f);
+  }
+  // Mesmo controle positivo: se NENHUMA sonda insere atividade, o regex quebrou.
+  if (comInsert === 0) {
+    console.info(
+      "[carimbo] ⚠ o detector de dívida de limpeza NÃO ACHOU NENHUMA sonda que insira atividade — " +
+        "o padrão está errado, e o resultado dele não significa nada",
+    );
   }
   return fora;
 }
@@ -512,7 +527,7 @@ function sondasQueSujamORelogio(): string[] {
 function compartilhadosNaoDeclarados(): string[] {
   const dir = path.join(process.cwd(), "tests");
   const usos = new Map<string, number>();
-  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".ts"))) {
+  for (const f of arquivosVarridos(dir)) {
     const src = fs.readFileSync(path.join(dir, f), "utf8");
     for (const m of src.matchAll(/from "\.\/([a-z0-9-]+)"/g)) {
       const alvo = `tests/${m[1]}.ts`;
@@ -613,17 +628,6 @@ export function carimbar(dependencias: string[]): string {
   // adiantado — apagar a causa não apaga o efeito. Retrofitar 17 aparatos ao
   // fechar o épico seria churn com risco; deixar a dívida invisível seria pior.
   // Aqui ela sobe quando alguém escreve mais uma, que é o número certo.
-  // SONDA QUE ABRE NAVEGADOR SEM `finally` PENDURA O PROCESSO quando estoura —
-  // o Playwright segura o event loop e ninguém fecha o navegador. Achado do
-  // @DevVivo, sabotando a própria sonda com um throw para provar. A heurística
-  // olha o EFEITO possível (não há bloco que rode em caso de erro), não a forma.
-  const semFinally = sondasQuePenduram();
-  if (semFinally.length > 0) {
-    console.info(
-      `[carimbo] ${semFinally.length} sonda(s) abrem navegador SEM finally — se estourarem, não ` +
-        `limpam e PENDURAM o processo: ${semFinally.join(", ")}`,
-    );
-  }
   const semDesfazer = sondasQueSujamORelogio();
   if (semDesfazer.length > 0) {
     console.info(
