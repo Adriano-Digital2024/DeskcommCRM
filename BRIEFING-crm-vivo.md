@@ -3089,3 +3089,50 @@ E há um quarto que fecha com a Wave 5: **o template é a derivação**. A §7.5
 gerada não é auditável porque não se reconstrói; um `reentry_template_version` é exatamente o
 equivalente — a frase tem **procedência verificável**. O modelo entra **depois do aceite**, no
 `followup_turn` que a Wave 4 já enfileira.
+
+---
+
+## §7.74 — Migration reaplicada isoladamente é viagem no tempo que não volta sozinha
+
+O invariante novo (o par `{coluna jsonb, chaves que o CHECK guarda × chaves que o código lê}`)
+**pagou-se na estreia**, achando uma contaminação que ninguém sabia existir — e ela era da Wave 3.
+
+**Verificado:** `lead-activities-barramento.test.ts` reaplica a migration **0071** para provar o
+backfill dela. Mas a 0071 faz `drop constraint if exists` + `add constraint` de
+`crm_lead_activities_ai_needs_evidence` **com apenas `run_ids` e `trace_ids`** — e a **0072** existe
+justamente para acrescentar `llm_call_ids`.
+
+> Reaplicar a 0071 **DESFAZ a 0072** para todos os testes que rodam depois no mesmo container. O banco
+> de teste ficava numa versão **que o repositório já não tem**, e qualquer invariante posterior media
+> **o passado sem saber**.
+
+**Regra:** teste que reaplica uma migration para provar o efeito dela precisa reaplicar **tudo o que
+veio depois e tocou os mesmos objetos** — senão deixa o banco no passado.
+
+**E o preço é assimétrico, que é o que torna isto caro:**
+
+> **Quem contamina passa. Quem mede depois falha. E a investigação começa no lugar errado** — olhando a
+> vítima, que é o código mais novo e portanto o suspeito natural.
+
+## §7.75 — Quando o novo passa isolado e falha em conjunto, o problema quase nunca é o novo
+
+Nota de método do @DevVivo sobre como chegou lá, e ela vale mais que o achado:
+
+> O `CHECK` estava certo no dev, certo no install fresco, certo depois do update, e o invariante
+> **passava isolado (3/3)**. Falhava **só na suíte**. Isso deixa **uma** explicação — outro teste mexe —
+> e ela estava **a um `psql` de distância**: medir a constraint **antes** e **depois** de rodar o
+> arquivo suspeito.
+
+**Ele levou quatro tentativas erradas antes dessa**, procurando erro **no próprio extrator** — o
+suspeito natural, porque era código novo.
+
+> **"Quando o novo passa isolado e falha em conjunto, o problema quase nunca é o novo."**
+
+É o **inverso do instinto**, e o instinto tem uma explicação: o código novo é o que mudou, então parece
+a causa. Mas *"passa sozinho, falha acompanhado"* é a **assinatura de contaminação sofrida**, não de
+defeito próprio — o novo é a **vítima**, e é vítima justamente porque é o único que ainda não tinha
+aprendido a conviver com o estado que os outros deixam.
+
+**Discriminador barato, e é sempre o mesmo:** meça o estado **antes e depois** de rodar o suspeito. É a
+§7.30 (*sem o antes, todo depois é compatível com o acaso*) aplicada a **testes que compartilham
+ambiente** em vez de a sondas.
