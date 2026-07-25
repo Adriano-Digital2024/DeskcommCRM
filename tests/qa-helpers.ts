@@ -8,7 +8,7 @@
 
 import type { Locator, Page } from "@playwright/test";
 import * as crypto from "node:crypto";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -222,8 +222,12 @@ export async function shotPage(page: Page, file: string, fullPage = true): Promi
  * depender de alguém lembrar de ler o log.
  */
 export function carimbar(dependencias: string[]): string {
-  const head = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
-  const sujos = execSync(`git status --porcelain -- ${dependencias.join(" ")}`, {
+  const head = execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim();
+  // `execFileSync` com lista de argumentos, NÃO string de shell: os caminhos
+  // vêm de quem chama, e interpolar isso numa linha de comando seria injeção
+  // esperando acontecer. Não há entrada hostil aqui hoje — mas helper de teste
+  // é justamente o código que alguém copia para outro lugar.
+  const sujos = execFileSync("git", ["status", "--porcelain", "--", ...dependencias], {
     encoding: "utf8",
   })
     .split("\n")
