@@ -29,6 +29,14 @@ export interface CardInput {
   /** Wave 4 — próxima ação proposta pelo agente, aguardando decisão humana. */
   nextAction?: { label: string } | null;
   /**
+   * Wave 7 — proposta de retomada VIVA, com o prazo dela.
+   *
+   * Só chega aqui se `status = 'pending'`: proposta decidida ou vencida é
+   * histórico e não pode ocupar a faixa, senão o card ofereceria um botão para
+   * algo que já acabou.
+   */
+  reactivation?: { proposalId: string; expiresAt: string };
+  /**
    * Wave 5 — probabilidade 0-100 com evidência.
    *
    * `null` e `0` são COISAS DIFERENTES: null é "sinal insuficiente" (cenário
@@ -80,6 +88,8 @@ export function buildCardInput(
     ownerNames: Map<string, string | null> | undefined;
     /** ids que o radar (fonte única) classificou como esfriando. */
     coolingIds?: Set<string>;
+    /** Propostas de retomada VIVAS, por lead — só as `pending` chegam aqui. */
+    reactivations?: Map<string, { proposalId: string; expiresAt: string }>;
     /** `crm_pipelines.settings.canonical_tags` — só a primeira que o lead tiver. */
     canonicalTags?: string[];
     now?: Date;
@@ -103,6 +113,9 @@ export function buildCardInput(
     stageName: opts.stageName,
     hoursInStage,
     isCooling: opts.coolingIds?.has(lead.id) ?? false,
+    // Proposta viva do negócio, se houver. `undefined` e não `null` porque a
+    // ausência aqui é "não há proposta", não "há uma proposta vazia".
+    reactivation: opts.reactivations?.get(lead.id),
     // Score ausente vira `null` explícito, não `undefined` por omissão: a
     // diferença entre "não tem" e "esqueci de passar" é a que o cenário 17 mede.
     probability: lead.score ? lead.score.probability : null,
@@ -122,6 +135,7 @@ export function buildCardInput(
 export type CardSlot =
   | { type: "awaiting"; label: string }
   | { type: "cooling"; label: string }
+  | { type: "reactivation"; proposalId: string; expiresAt: string }
   | {
       type: "meter";
       probability: number;
@@ -165,6 +179,31 @@ export function resolveCardState(input: CardInput): CardState {
       border: "accent",
       slot: { type: "awaiting", label: input.nextAction.label },
       showStageAge: true,
+    };
+  }
+
+  // A PROPOSTA DE RETOMADA SUBSTITUI O "ESFRIANDO", e a razão é a diferença
+  // entre informar e permitir agir: `cooling` diz "este negócio parou";
+  // `reactivation` diz "parou E aqui está o que fazer a respeito". Mostrar
+  // "parado há 3 dias" quando existe uma proposta viva ESCONDE a decisão — e o
+  // card cujo propósito é provocar decisão passaria a só descrever o problema.
+  //
+  // Continua PERDENDO para `awaiting`, por coerência com o cenário 24 já
+  // decidido: quando há proposta do agente E o negócio está frio, o card mostra
+  // só "Aguardando você". Duas decisões pendentes no mesmo card é a pilha que o
+  // §5 proíbe.
+  if (input.reactivation) {
+    return {
+      kind: "cooling",
+      border: "warning",
+      slot: {
+        type: "reactivation",
+        proposalId: input.reactivation.proposalId,
+        expiresAt: input.reactivation.expiresAt,
+      },
+      // O prazo já ocupa a faixa; a idade no rodapé seria o mesmo dado por
+      // outro caminho, e o prazo é o que decide se a pessoa age agora.
+      showStageAge: false,
     };
   }
 

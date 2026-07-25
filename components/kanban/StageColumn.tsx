@@ -15,6 +15,8 @@ interface StageColumnProps {
   ownerNames?: Map<string, string | null>;
   /** ids que o radar classificou como esfriando (fonte única, não recalculada). */
   coolingIds?: Set<string>;
+  /** Propostas de retomada vivas, por lead. */
+  reactivations?: Map<string, { proposalId: string; expiresAt: string }>;
   /** `settings.canonical_tags` do pipeline — a única tag que fica no card. */
   canonicalTags?: string[];
   selectedLeadIds?: Set<string>;
@@ -43,6 +45,7 @@ export function StageColumn({
   pipelineId,
   ownerNames,
   coolingIds,
+  reactivations,
   canonicalTags,
   selectedLeadIds,
   pulses,
@@ -96,6 +99,7 @@ export function StageColumn({
                   stageName: stage.name,
                   ownerNames,
                   coolingIds,
+                  reactivations,
                   canonicalTags,
                 })}
                 lead={lead}

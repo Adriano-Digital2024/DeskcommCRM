@@ -130,3 +130,59 @@ describe("rótulos de tempo", () => {
     expect(stageAgeLabel(null)).toBe("");
   });
 });
+
+/**
+ * A PROPOSTA DE RETOMADA na faixa ③ (wave 7, cenário 23).
+ *
+ * A precedência é o contrato: `awaiting` > `reactivation` > `cooling` > medidor.
+ * Ela não é arbitrária — separa INFORMAR de PERMITIR AGIR, e mantém a regra do
+ * cenário 24 (duas decisões pendentes no mesmo card é a pilha que o §5 proíbe).
+ */
+describe("resolveCardState · proposta de retomada", () => {
+  const base = {
+    id: "l1",
+    title: "t",
+    valueCents: null,
+    currency: null,
+    owner: { kind: null, name: null, agentVersion: null },
+    stageName: "s",
+    hoursInStage: 80,
+    isCooling: true,
+  } as unknown as CardInput;
+
+  const proposta = { proposalId: "p1", expiresAt: "2026-07-26T12:00:00Z" };
+
+  it("proposta viva SUBSTITUI o 'esfriando' — informar não é permitir agir", () => {
+    const s = resolveCardState({ ...base, reactivation: proposta });
+    expect(s.slot.type).toBe("reactivation");
+    // A borda continua de alerta: o negócio SEGUE frio, e a proposta é o que
+    // fazer a respeito — não a cura.
+    expect(s.border).toBe("warning");
+  });
+
+  it("mas PERDE para a próxima ação do agente — cenário 24 continua valendo", () => {
+    const s = resolveCardState({
+      ...base,
+      reactivation: proposta,
+      nextAction: { label: "Enviar proposta" },
+    });
+    expect(s.slot.type).toBe("awaiting");
+  });
+
+  it("sem proposta viva, volta a ser o 'esfriando' de sempre", () => {
+    expect(resolveCardState(base).slot.type).toBe("cooling");
+  });
+
+  it("proposta viva num negócio que NÃO está frio ainda assim aparece", () => {
+    // Acontece na janela entre o negócio reaquecer e o worker vencer a
+    // proposta: o botão continua válido, e escondê-lo deixaria uma proposta
+    // pendente sem nenhuma superfície para decidir.
+    const s = resolveCardState({ ...base, isCooling: false, reactivation: proposta });
+    expect(s.slot.type).toBe("reactivation");
+  });
+
+  it("o prazo viaja até o slot — o card precisa dizer quanto falta", () => {
+    const s = resolveCardState({ ...base, reactivation: proposta });
+    expect(s.slot.type === "reactivation" && s.slot.expiresAt).toBe(proposta.expiresAt);
+  });
+});

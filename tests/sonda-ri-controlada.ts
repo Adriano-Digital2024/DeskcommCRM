@@ -13,6 +13,8 @@ import * as fs from "node:fs";
 
 import { createClient } from "@supabase/supabase-js";
 
+import { escolherAlvo } from "./qa-helpers";
+
 const env = Object.fromEntries(
   fs.readFileSync(".env.local", "utf8").split("\n")
     .filter((l) => l.includes("=") && !l.trimStart().startsWith("#"))
@@ -39,18 +41,27 @@ async function main(): Promise<void> {
     auth: { persistSession: false },
   });
   const m = creds.users.manager;
-  const { data: sessao, error: authErr } = await user.auth.signInWithPassword({
-    email: m.email,
-    password: creds.password,
-  });
-  if (authErr || !sessao.session) throw new Error(`login falhou: ${authErr?.message}`);
-  user.realtime.setAuth(sessao.session.access_token);
+  const PAPEL = process.env.PAPEL ?? "usuario";
+  let token: string;
+  if (PAPEL === "service") {
+    // O MESMO papel que o assinante independente do QAVivo usa.
+    token = env.SUPABASE_SERVICE_ROLE_KEY!;
+  } else {
+    const { data: sessao, error: authErr } = await user.auth.signInWithPassword({
+      email: m.email,
+      password: creds.password,
+    });
+    if (authErr || !sessao.session) throw new Error(`login falhou: ${authErr?.message}`);
+    token = sessao.session.access_token;
+  }
+  console.info(`papel do assinante: ${PAPEL}`);
+  user.realtime.setAuth(token);
   // Conecta ANTES de assinar e dá tempo do handshake carregar o token: sem
   // isto, o `subscribe` corre com o socket ainda anônimo.
   user.realtime.connect();
   await new Promise((r) => setTimeout(r, 2500));
-  user.realtime.setAuth(sessao.session.access_token);
-  console.info(`autenticado como ${m.email}`);
+  user.realtime.setAuth(token);
+  console.info(`autenticado (${PAPEL})`);
 
   const recebidos: string[] = [];
   const canal = user
@@ -75,10 +86,17 @@ async function main(): Promise<void> {
   // qualquer direção. 6s e repetição são o que tornam o resultado legível.
   await new Promise((r) => setTimeout(r, 6000));
 
+  // ⚠️ `escolherAlvo` e não `limit 1`, e isto é a lição de hoje mecanizada: a
+  // primeira versão pegava um lead SEM ORDEM e, por sorte, um saudável. O
+  // resultado "2/2, tudo chega" parecia CONTRADIZER a medição do QAVivo e não
+  // contradizia nada — media outro lead. Alvo sorteado não discorda de ninguém,
+  // só parece. O helper recusa lista vazia, ordena e LOGA qual de quantos foi
+  // escolhido, para o "por sorte um saudável" não voltar a acontecer calado.
   const pega = async (pipe: string) => {
     const { data } = await admin
-      .from("crm_leads").select("id, organization_id, title").eq("pipeline_id", pipe).limit(1).maybeSingle();
-    return data as { id: string; organization_id: string; title: string };
+      .from("crm_leads").select("id, organization_id, title").eq("pipeline_id", pipe);
+    const lista = (data ?? []) as Array<{ id: string; organization_id: string; title: string }>;
+    return escolherAlvo(lista, (l) => l.id, `lead do pipeline ${pipe.slice(0, 8)}`);
   };
   const vivo = await pega(PIPE);
   const pedidos = await pega(PEDIDOS);

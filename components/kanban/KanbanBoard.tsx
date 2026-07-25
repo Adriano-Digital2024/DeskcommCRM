@@ -7,6 +7,7 @@ import { useBoard } from "@/hooks/kanban/useBoard";
 import { useMoveCard } from "@/hooks/kanban/useMoveCard";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAtRiskLeads } from "@/hooks/leads/useAtRiskLeads";
+import { useReactivations } from "@/hooks/leads/useReactivations";
 import { midpoint } from "@/lib/kanban/fractional-indexing";
 import type { Lead } from "@/lib/types/leads";
 import type { Pipeline, Stage } from "@/lib/kanban/types";
@@ -85,6 +86,16 @@ export function KanbanBoard({
   // reclassifica nada (contrato §3.3). `em_voo` fica de fora: a IA já prometeu
   // voltar, então não há decisão pendente para o humano.
   const { data: atRisk } = useAtRiskLeads();
+  // As propostas vivas vêm da MESMA forma que o risco: uma lista por org, que o
+  // card consome sem saber de onde veio. Ver o cabeçalho da rota.
+  const { data: propostasVivas } = useReactivations();
+  const reactivations = useMemo(() => {
+    const m = new Map<string, { proposalId: string; expiresAt: string }>();
+    for (const p of propostasVivas ?? []) {
+      m.set(p.lead_id, { proposalId: p.proposal_id, expiresAt: p.expires_at });
+    }
+    return m;
+  }, [propostasVivas]);
   const coolingIds = useMemo(() => {
     const ids = new Set<string>();
     for (const item of atRisk?.items ?? []) {
@@ -230,6 +241,7 @@ export function KanbanBoard({
             pipelineId={pipelineId}
             ownerNames={ownerNames}
             coolingIds={coolingIds}
+            reactivations={reactivations}
             pulses={pulsesProp ?? queryResult.pulses}
             canonicalTags={canonicalTags}
             selectedLeadIds={selectedLeadIds}

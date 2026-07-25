@@ -6,6 +6,7 @@ import type { Lead } from "@/lib/types/leads";
 import { resolveCardState, stageAgeLabel, type CardInput } from "@/lib/kanban/card-state";
 import { KanbanCardActions } from "./KanbanCardActions";
 import { NextActionSlot } from "./NextActionSlot";
+import { ReactivationSlot } from "./ReactivationSlot";
 import { ScoreSlot } from "./ScoreSlot";
 import { OwnerBadge } from "./OwnerBadge";
 
@@ -185,6 +186,16 @@ export function KanbanCard({
                 label={state.slot.label}
                 leadId={card.id}
                 approvedSeq={lead.next_action?.seq ?? -1}
+                pipelineId={pipelineId}
+              />
+            )}
+            {state.slot.type === "reactivation" && (
+              // O negócio parou E aqui está o que fazer. Mesma faixa, mesma
+              // altura: o card não cresce quando o sistema tem algo a propor.
+              <ReactivationSlot
+                leadId={card.id}
+                proposalId={state.slot.proposalId}
+                expiresAt={state.slot.expiresAt}
                 pipelineId={pipelineId}
               />
             )}

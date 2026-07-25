@@ -66,3 +66,35 @@ mesmos com cara de resultado sobre o produto.
 E o caso que decidiu o desenho não é o muro de blocos: é o lead com **26 itens e
 26 blocos, zero colapsáveis** — ausência de estrutura acima da linha, que é a
 forma mais comum. Por isso o agrupamento parte dos itens, não dos blocos finos.
+
+## O card da proposta (cenário 23)
+
+![o card com a proposta de retomada](wave7-card-reativacao.png)
+
+A faixa ③ ganha um quarto estado. A precedência ficou
+`awaiting > reactivation > cooling > medidor`, e ela separa **informar** de
+**permitir agir**: `cooling` diz "este negócio parou", a proposta diz "parou e
+aqui está o que fazer". Continua perdendo para a próxima ação do agente, por
+coerência com o cenário 24 — duas decisões pendentes no mesmo card é a pilha que
+o contrato de UI proíbe.
+
+| Verificação | Resultado |
+|---|---|
+| a faixa mostra a proposta | sim |
+| mostra o **prazo** | sim — "· 2d" |
+| os dois botões decidem | Retomar / Encerrar |
+| o card cresceu? | não — 144px com e sem proposta |
+| decidir tira a oferta da tela | sim, **depois do conserto** |
+
+O prazo aparece no card de propósito: proposta com prazo que **não mostra o
+prazo** é a mesma simulação de atenção que o prazo existe para evitar — quem
+olha precisa saber que a janela fecha, senão "decido depois" é indistinguível de
+"decidi não".
+
+![depois de decidir, a faixa não oferece mais](wave7-card-reativacao-decidido.png)
+
+E o último item achou defeito real: o servidor respondia `accepted` e **o card
+seguia oferecendo o botão**. O hook invalidava só `["board", pipelineId]`, e a
+lista de propostas vive em `["reactivations"]` — um lado mudou, o outro não
+acompanhou, e ninguém reclamou. Clicar de novo daria 409, e o usuário concluiria
+que o sistema não obedeceu.
