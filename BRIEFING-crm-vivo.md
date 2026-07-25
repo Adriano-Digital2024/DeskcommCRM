@@ -8072,3 +8072,49 @@ recarregar a página.
 
 *"Sem essa leitura eu teria entregue o defeito leve."* **Custa um F5 e muda o defeito, a gravidade e
 quem é chamado para consertar.**
+
+## §7.263 — O QUE aconteceu e QUEM fez são campos diferentes: uma gramática por acontecimento
+
+O movimento do agente registra pelo **mesmo `stageChangeReason` do arrasto humano** — *"Movido de
+Carrinho abandonado para Aguardando pagamento"* —, com `ator=system`.
+
+> ***"A timeline não deve ter duas gramáticas para o mesmo acontecimento; quem moveu está no ATOR,
+> que é onde essa informação pertence."***
+
+**Codificar o QUEM dentro do texto do QUÊ cria duas frases para um evento** — e o custo aparece em
+todo lugar depois: cada leitor precisa conhecer as duas, cada filtro precisa casar as duas, cada
+tradução precisa manter as duas em sincronia, e a divergência entre elas vira defeito invisível
+(porque as duas "estão certas").
+
+**Regra:** um acontecimento tem **uma** descrição. Autoria, origem e canal são **campos**, nunca
+variações do texto. Se a diferença precisa aparecer na tela, ela aparece **ao lado** da frase, lida
+do campo.
+
+## §7.264 — Código que trata estado IMPOSSÍVEL ensina que ele é possível
+
+O resolvedor **não trata** a ambiguidade de `hint` — de propósito, com o motivo escrito no arquivo:
+a migration a tornou **impossível no banco**.
+
+> *"Tratar ali protegeria contra um estado que não pode existir — e, **pior, faria o próximo leitor
+> acreditar que pode**."*
+
+**Código defensivo contra o impossível é desinformação com a autoridade de código.** Quem lê conclui
+que o estado ocorre (senão por que o tratamento existiria?), e passa a desenhar em torno de uma
+possibilidade que não existe — replicando o tratamento em cada peça nova, para sempre.
+
+**E é o espelho exato da §7.261:** lá, um **teste mais rigoroso que o schema** criava uma regra
+inexistente; aqui, **código mais permissivo que o schema** criaria uma possibilidade inexistente.
+
+**A lei que une as duas: toda discordância entre CÓDIGO e SCHEMA sobre o que é possível é
+desinformação — a direção só muda quem ela engana.** Mais rigoroso engana quem escreve; mais
+permissivo engana quem lê.
+
+### E a trava otimista pelo ESTÁGIO DE ORIGEM, que eu não pedi e aprovo inteira
+
+Se um humano arrastou o card entre a leitura e a escrita do agente, **o agente não atropela** — o
+resultado é `já_está_lá`, não "mover por cima".
+
+**Não é cortesia, é a doutrina do épico no ponto de escrita:** sem isso, uma decisão humana seria
+**desfeita em silêncio**, e a pessoa veria o próprio gesto revertido sem explicação. **Destruir a
+confiança custa mais que perder um movimento** — e a IA propor enquanto o humano decide só é
+verdade se a escrita respeitar a decisão que chegou primeiro.
