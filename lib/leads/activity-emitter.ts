@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Actor } from "@/lib/api/handlers/types";
+import type { ActivityType } from "@/lib/leads/activity-vocabulary";
 
 /** Os cinco atores que `crm_lead_activities.actor_kind` aceita (migration 0071). */
 export type ActivityActorKind = "user" | "ai" | "system" | "rule" | "contact";
@@ -15,8 +16,12 @@ export interface EmitLeadActivityInput {
   organizationId: string;
   leadId: string;
   contactId?: string | null;
-  /** `type` da timeline: stage_changed, handoff_triggered, note_added… */
-  type: string;
+  /**
+   * Tipo da atividade — do vocabulário fechado (activity-vocabulary.ts). É
+   * `ActivityType` e não `string` de propósito: foi escrevendo tipo livre que a
+   * tela e o banco divergiram sem ninguém perceber.
+   */
+  type: ActivityType;
   /** O QUE ORIGINOU (um ponteiro) — não confundir com evidence. */
   sourceModule: string;
   sourceId?: string | null;
@@ -40,10 +45,32 @@ export interface EmitLeadActivityInput {
  * **Fire-and-forget de propósito**: a timeline não pode derrubar a operação que
  * ela descreve. Falha vira log, nunca exceção para o usuário.
  */
-export async function emitLeadActivity(
-  supabase: SupabaseClient,
-  input: EmitLeadActivityInput,
-): Promise<{ ok: boolean; error?: string }> {
+/** A linha exatamente como vai para `crm_lead_activities`. */
+export interface LeadActivityRow {
+  organization_id: string;
+  lead_id: string;
+  contact_id: string | null;
+  type: ActivityType;
+  source_module: string;
+  source_id: string | null;
+  actor_kind: ActivityActorKind;
+  actor_agent_id: string | null;
+  performed_by_user_id: string | null;
+  reason: string;
+  evidence: ActivityEvidence | null;
+  payload: Record<string, unknown>;
+}
+
+/**
+ * A REGRA, separada da escrita.
+ *
+ * Existe porque os emissores não compartilham cliente: a API usa o client do
+ * Supabase e o motor do agente usa `pg.Pool` direto (before-send roda fora do
+ * request). Se cada um montasse a própria linha, a regra de lastro viveria em
+ * dois lugares — e um deles ficaria para trás, que é como todo o resto desta
+ * entrega já quebrou uma vez.
+ */
+export function buildLeadActivityRow(input: EmitLeadActivityInput): LeadActivityRow {
   const { kind, agentId, userId } = actorParaAtividade(input.actor);
   const temLastro =
     (input.evidence?.run_ids?.length ?? 0) > 0 || (input.evidence?.trace_ids?.length ?? 0) > 0;
@@ -54,7 +81,7 @@ export async function emitLeadActivity(
   // agente estava envolvido. Mesma regra do backfill da 0071.
   const actorKind: ActivityActorKind = kind === "ai" && !temLastro ? "system" : kind;
 
-  const { error } = await supabase.from("crm_lead_activities").insert({
+  return {
     organization_id: input.organizationId,
     lead_id: input.leadId,
     contact_id: input.contactId ?? null,
@@ -65,9 +92,18 @@ export async function emitLeadActivity(
     actor_agent_id: agentId,
     performed_by_user_id: userId,
     reason: input.reason,
-    evidence: temLastro ? input.evidence : null,
+    evidence: temLastro ? (input.evidence ?? null) : null,
     payload: input.payload ?? {},
-  });
+  };
+}
+
+export async function emitLeadActivity(
+  supabase: SupabaseClient,
+  input: EmitLeadActivityInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from("crm_lead_activities")
+    .insert(buildLeadActivityRow(input));
 
   return error ? { ok: false, error: error.message } : { ok: true };
 }

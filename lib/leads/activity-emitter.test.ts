@@ -33,7 +33,7 @@ function supabaseFake(erro?: string) {
 const base = {
   organizationId: "org-1",
   leadId: "lead-1",
-  type: "stage_changed",
+  type: "stage_changed" as const,
   sourceModule: "crm",
   reason: "Movido de A para B",
 };

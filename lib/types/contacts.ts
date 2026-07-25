@@ -42,4 +42,9 @@ export interface TimelineItem {
   metadata: Record<string, unknown>;
   performed_at: string;
   performed_by_user_id: string | null;
+  /** 0071 — quem agiu, por quê e com base em quê. */
+  actor_kind?: string | null;
+  actor_agent_id?: string | null;
+  reason?: string | null;
+  evidence?: Record<string, unknown> | null;
 }

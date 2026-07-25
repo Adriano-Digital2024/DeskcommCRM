@@ -11,7 +11,9 @@ import { Separator } from "@/components/ui/separator";
 import { Tag, Receipt, Users, ArrowRight } from "@/lib/ui/icons";
 import { createClient } from "@/lib/supabase/browser";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
+import { activityLabel, actorLabel, actorShape } from "@/lib/leads/activity-vocabulary";
 import { ConversationTagsEditor } from "./ConversationTagsEditor";
+import { cn } from "@/lib/utils";
 
 interface Props {
   conversation: ConversationWithContact | null;
@@ -41,6 +43,9 @@ interface ActivityRow {
   source_module: string;
   performed_at: string;
   payload: Record<string, unknown> | null;
+  /** 0071 — o porquê legível e quem agiu. */
+  reason: string | null;
+  actor_kind: string | null;
 }
 
 function formatMoney(cents: number | null, currency: string | null): string {
@@ -96,7 +101,7 @@ export function CRMSidePanel({ conversation }: Props) {
 
       const actsP = supabase
         .from("crm_lead_activities")
-        .select("id, type, source_module, performed_at, payload")
+        .select("id, type, source_module, performed_at, payload, reason, actor_kind")
         .eq("contact_id", contactId)
         .order("performed_at", { ascending: false })
         .limit(5);
@@ -256,9 +261,25 @@ export function CRMSidePanel({ conversation }: Props) {
           <ul className="mt-2 space-y-1.5">
             {activities.map((a) => (
               <li key={a.id} className="rounded-md border border-border p-2 text-xs">
-                <div className="font-medium">{a.type}</div>
+                {/* Rótulo do vocabulário único (activity-vocabulary), nunca o
+                    tipo cru: a tela e o banco divergiram justamente por manter
+                    duas listas. Marcador por ator, forma e não cor (§5). */}
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span
+                    className={cn(
+                      "h-2 w-2 shrink-0",
+                      actorShape(a.actor_kind) === "filled" && "rounded-full bg-accent",
+                      actorShape(a.actor_kind) === "ring" &&
+                        "rounded-full border border-accent bg-surface",
+                      actorShape(a.actor_kind) === "square" && "rounded-[2px] bg-text-muted/50",
+                    )}
+                    aria-hidden
+                  />
+                  {activityLabel(a.type)}
+                </div>
+                {a.reason && <div className="mt-0.5 truncate text-muted-foreground">{a.reason}</div>}
                 <div className="text-muted-foreground">
-                  {a.source_module} · {shortDate(a.performed_at)}
+                  {actorLabel(a.actor_kind) || a.source_module} · {shortDate(a.performed_at)}
                 </div>
               </li>
             ))}
