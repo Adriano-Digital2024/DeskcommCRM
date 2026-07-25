@@ -24,7 +24,7 @@
 import { chromium, type BrowserContext, type Page } from "@playwright/test";
 import * as fs from "node:fs";
 
-import { BASE, CARD_ATTR, CREDS, EVIDENCE, gotoBoard, login, shotPage } from "./qa-helpers";
+import { BASE, CARD_ATTR, CREDS, EVIDENCE, gotoBoard, login, loginAs, shotPage } from "./qa-helpers";
 
 const ALVO = "Marina Costa — clareamento";
 const ESPERA_REALTIME_MS = 15_000;
@@ -97,11 +97,20 @@ async function esperarSemReload(
 async function abrirTenantB(ctx: BrowserContext): Promise<Page> {
   const page = await ctx.newPage();
   const b = CREDS.tenant_b;
-  await page.goto(`${BASE}/login`);
-  await page.locator("#email").fill(b.email);
-  await page.locator("#password").fill(b.password);
-  await page.getByRole("button", { name: /entrar/i }).click();
-  await page.waitForURL(/\/app\//, { timeout: 20_000 });
+  // Login PELO HELPER, não à mão. A versão anterior preenchia email e senha e
+  // esperava `/app/` — e o usuário do tenant B tem TOTP enrolado, então a
+  // navegação parava em `/login/mfa` e a espera estourava. O sintoma parecia
+  // "o tenant descartável quebrou"; a causa era um segundo login caseiro que não
+  // conhecia MFA, ao lado de um helper que conhece.
+  //
+  // O segredo é POR USUÁRIO: usar o do admin da org de teste falha de um jeito
+  // que parece senha errada.
+  await loginAs(page, {
+    email: b.email,
+    password: b.password,
+    totpSecret: b.totp?.secret,
+    rotulo: "tenant B",
+  });
   await page.goto(`${BASE}/app/pipelines/${b.pipeline_id}`);
   await page.waitForLoadState("networkidle").catch(() => null);
   console.info(`[aba C] tenant B logado (${b.email}) → ${page.url()}`);

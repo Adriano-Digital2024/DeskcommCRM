@@ -76,7 +76,20 @@ interface Caso {
   campos: Record<string, unknown>;
 }
 
-const LASTRO = { activity_ids: ["11111111-1111-1111-1111-111111111111"] };
+/**
+ * O lastro canônico carrega AS DUAS chaves de propósito.
+ *
+ * O CHECK conta âncoras (`activity_ids`/`message_ids`/`checkpoint_ids`); o board
+ * lê `factors`. Enquanto forem dois vocabulários, o único payload que satisfaz a
+ * constraint E aparece na tela é o que traz os dois — e a perna positiva desta
+ * tabela tem de ser um caso REALISTA, não o mínimo que o banco tolera. Um
+ * "aceito" que o usuário nunca veria não é a linha positiva de nada.
+ */
+const ANCORA = "11111111-1111-1111-1111-111111111111";
+const LASTRO = {
+  activity_ids: [ANCORA],
+  factors: [{ pontos: 20, frase: "Cliente confirmou o orçamento", ancora: { kind: "activity", id: ANCORA } }],
+};
 
 const CASOS: Caso[] = [
   {
@@ -189,6 +202,26 @@ async function escreverScore(
  */
 const VIOLACAO_DE_CHECK = "23514";
 
+/**
+ * A TRÍPLICE (decisão do regente, ainda não aplicada quando isto foi escrito).
+ *
+ * O conserto do vocabulário duplo é exigir AS DUAS COISAS: pelo menos uma âncora
+ * E `factors` não vazio. Uma sem a outra produz evidência **ilegível**
+ * (rastreável e muda) ou **irrastreável** (legível e sem destino) — e o cenário
+ * 15 promete as duas: o hover revela, o clique leva.
+ *
+ * Armado antes de a migration existir. Enquanto ela não entra, os dois casos são
+ * BLOQUEADO — recurso que ninguém escreveu acusa quem planejou.
+ */
+async function travaDaTriplice(): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `select 1 from pg_constraint
+      where conrelid = 'public.crm_lead_scores'::regclass and contype = 'c'
+        and pg_get_constraintdef(oid) like '%factors%'`,
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 async function tabelaVerdade(): Promise<void> {
   const { rows } = await pool.query<{ id: string }>(
     `select id from crm_leads where organization_id = $1 and status = 'open' order by id limit 1`,
@@ -197,12 +230,43 @@ async function tabelaVerdade(): Promise<void> {
   const leadId = rows[0]?.id;
   if (!leadId) throw new Error("nenhum lead aberto na org — a tabela-verdade não se monta");
 
+  const temTriplice = await travaDaTriplice();
+  const CASOS_TRIPLICE: Caso[] = [
+    {
+      n: "C16.l",
+      nome: "âncora SEM factors é recusada — evidência rastreável e MUDA",
+      recusar: true,
+      campos: {
+        ai_probability: 72,
+        ai_probability_reason: "lastro que o banco vê e a tela não",
+        ai_probability_evidence: { activity_ids: [ANCORA] },
+      },
+    },
+    {
+      n: "C16.m",
+      nome: "factors SEM âncora é recusado — evidência legível e IRRASTREÁVEL",
+      recusar: true,
+      campos: {
+        ai_probability: 72,
+        ai_probability_reason: "frase bonita sem destino",
+        ai_probability_evidence: {
+          factors: [{ pontos: 10, frase: "parece animado", ancora: { kind: "activity", id: ANCORA } }],
+        },
+      },
+    },
+  ];
+
   const client = await pool.connect();
   try {
     // Tudo dentro de UMA transação desfeita no fim: a constraint é exercitada de
     // verdade e o banco compartilhado não guarda nada.
     await client.query("begin");
-    for (const caso of CASOS) {
+    if (!temTriplice) {
+      for (const c of CASOS_TRIPLICE) {
+        record(c.n, c.nome, false, "a trava da tríplice ainda não entrou no banco", "BLOQUEADO");
+      }
+    }
+    for (const caso of temTriplice ? [...CASOS, ...CASOS_TRIPLICE] : CASOS) {
       await client.query("savepoint c");
       let erro: { code?: string; message?: string } | null = null;
       try {

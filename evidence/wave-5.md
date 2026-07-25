@@ -68,6 +68,13 @@ faixa subir para o card, a Wave 5 passa a precisar de prova visual que hoje não
 existe, e o sintoma que essa prova procuraria é o card dizendo "Frio" ao lado de
 72%.
 
+## Lacunas NOMEADAS (não são esquecimento)
+
+| lacuna | por que ficou aberta |
+|---|---|
+| **Foco por teclado não revela o porquê** | O hover revela e o clique também — quem usa toque alcança. O foco por teclado **não abre**. Isso é acessibilidade, e merece critério próprio em vez de virar apêndice do hover: embutido aqui, ele seria julgado pela régua errada e sumiria no verde do gesto que funciona. Vira item quando a entrega chegar em acessibilidade. |
+| **A faixa não tinha imagem enquanto não chegou ao card** | Ver a seção abaixo — ausência de tela registrada como dado. |
+
 ## A) A lei mora no banco — então se cobra do banco
 
 Ler a migration prova que **alguém escreveu** a constraint. Não prova que ela foi
