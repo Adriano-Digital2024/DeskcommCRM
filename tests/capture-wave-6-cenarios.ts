@@ -502,15 +502,24 @@ async function main(): Promise<void> {
     // do humano CONTINUASSE VISÍVEL — e ela some, corretamente, porque as três
     // notas do time também colapsam. Eu estava exigindo que o produto NÃO
     // agrupasse o segundo ator, que é o oposto do cenário.
+    // PRÉ-CONDIÇÃO DE CAPACIDADE: a timeline pode ter FALHADO ao carregar, e ela
+    // diz isso na tela ("Não consegui carregar a linha do tempo") — que é o
+    // comportamento certo, e é diferente de "carregou e não colapsou". Sem esta
+    // guarda eu reprovaria o agrupamento por causa de uma leitura que nem chegou.
+    const timelineCarregou = !/não consegui carregar|nao consegui carregar/i.test(texto);
     const blocos = texto.match(/·\s*3\s+(ações|eventos|atividades)/gi) ?? [];
     const naoEngoliu = blocos.length >= 2;
     record(
       "D19",
       "CENÁRIO 19: colapsa por ATOR — dois blocos de 3, não um de 6",
-      naoEngoliu,
-      `blocos de 3 anunciados: ${blocos.length} (esperado 2 — cliente e time) · ` +
-        `painel diz: "${texto.slice(0, 150)}"` +
-        (blocos.length === 1 ? " — um bloco só significa que os dois atores foram engolidos juntos" : ""),
+      timelineCarregou && naoEngoliu,
+      !timelineCarregou
+        ? `INCONCLUSIVO: a timeline não carregou nesta rodada — a tela diz isso, e é o ` +
+          `comportamento certo, mas não dá para julgar agrupamento sem leitura`
+        : `blocos de 3 anunciados: ${blocos.length} (esperado 2 — cliente e time) · ` +
+          `painel diz: "${texto.slice(0, 150)}"` +
+          (blocos.length === 1 ? " — um bloco só significa que os dois atores foram engolidos juntos" : ""),
+      timelineCarregou ? undefined : "BLOQUEADO",
     );
 
     // ---- 19.rótulo: o bloco do CLIENTE não pode se ler como o do TIME -------
@@ -530,9 +539,12 @@ async function main(): Promise<void> {
     record(
       "D19.rotulo",
       "cada bloco nomeia o SEU ator pelo texto — CLIENTE não se lê como TIME",
-      dizCliente && dizTime,
-      `no painel: cliente nomeado=${dizCliente} · time nomeado=${dizTime} — a forma não ` +
-        `distingue os dois (ambos preenchidos), então quem distingue é o texto`,
+      timelineCarregou && dizCliente && dizTime,
+      !timelineCarregou
+        ? "INCONCLUSIVO: sem timeline carregada não há bloco para rotular"
+        : `no painel: cliente nomeado=${dizCliente} · time nomeado=${dizTime} — a forma não ` +
+          `distingue os dois (ambos preenchidos), então quem distingue é o texto`,
+      timelineCarregou ? undefined : "BLOQUEADO",
     );
 
     // ---- 20: as duas metades, medidas separado -----------------------------
@@ -689,7 +701,17 @@ async function main(): Promise<void> {
     for (let i = 0; i < CICLOS; i++) {
       await page.keyboard.press("Escape");
       await page.waitForTimeout(600);
-      const { card: c } = await cardLocator(page, caso.titulo);
+      // PELO ID, não pelo título: o critério anterior EDITA o título, e um
+      // localizador por texto procuraria o nome antigo. O aparato quebrava com
+      // "nenhum card casa" e dois critérios viraram AUSENTE — que foi o placar
+      // desta manhã pegando o meu erro em tempo real, no mesmo dia em que o
+      // construí para isso.
+      //
+      // E o canal da timeline é `timeline-<contactId>`: ciclar o lead SEM contato
+      // abriria um dossiê que não assina nada, e o contador leria zero. Ausência
+      // de recurso e ausência de caso produzem o mesmo zero.
+      const c = page.locator(`[data-rfd-draggable-id="${caso.leadComContato}"]`).first();
+      await c.scrollIntoViewIfNeeded();
       await c.click();
       await page.waitForTimeout(900);
     }
@@ -702,7 +724,8 @@ async function main(): Promise<void> {
       "o Sheet DESASSINA ao fechar — abrir e fechar N vezes não acumula canal",
       joins > 0 && joins - leaves <= 1,
       joins === 0
-        ? "nenhum canal do dossiê observado — ou ele não assina nada, ou o nome do canal mudou"
+        ? "nenhum canal observado nos ciclos, com um lead QUE TEM contato — então o dossiê " +
+          "não assina, ou assina com outro nome"
         : `${CICLOS + 1} aberturas → ${joins} entradas e ${leaves} saídas no socket ` +
           `(diferença ${joins - leaves}) — teste que abre e fecha UMA vez nunca veria isto`,
       joins === 0 ? "BLOQUEADO" : undefined,
