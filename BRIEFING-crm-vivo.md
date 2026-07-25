@@ -5822,3 +5822,47 @@ sem fronteira temporal produziu quase-falso-positivo (7 quadros "chegando") e fa
 **Checklist de toda medição de efeito:** a observação começou ANTES da ação? a contagem tem janela
 com início e fim? o predicado de existência pode ser satisfeito por RESÍDUO de rodada anterior?
 Qualquer "não" invalida o veredito nas duas direções.
+
+## §7.168 — Explicação PLAUSÍVEL fecha um número melhor que uma medição
+
+A razão **1 entrada : 2 saídas** foi medida de manhã e explicada na hora: *"o supabase manda um leave
+ANTES do join do mesmo tópico, e outro na desmontagem"*. A explicação encaixa, é verossímil — e
+**nunca foi medida**. A ORDEM dos quadros estava sendo capturada e simplesmente não guardada,
+**porque a história removeu o motivo de olhar**.
+
+É a §7.147-a com o mecanismo explícito: explicar arquiva, e **explicação plausível arquiva melhor
+que medição**, porque medição convida a conferir e história não. O sinal de alerta é exatamente este:
+*o dado necessário já estava ao alcance e ninguém o registrou.*
+
+**Regra:** ao explicar um número, marque se a explicação foi **medida** ou **suposta**. Suposta é
+hipótese com aparência de conclusão, e volta como candidata na próxima investigação em vez de ficar
+fora dela.
+
+## §7.169 — Mecanismo candidato: `removeChannel` de canal NUNCA assinado mata o irmão de mesmo tópico
+
+Rastreado em `hooks/realtime/useRealtimeChannel.ts`, e casa com a razão 1:2 e com "confirmado e sem
+quadros". `reactStrictMode: true` (verificado em `next.config.ts`), logo em desenvolvimento o efeito
+roda **duas vezes**:
+
+1. **Efeito 1** cria o canal A com tópico `${name}::${instanceId}` — e `instanceId` vem de `useId()`,
+   **estável entre as duas execuções**. O `subscribe` está dentro de `esperarAuth(...).then(...)`,
+   ainda pendente.
+2. **Cleanup do efeito 1** marca `cancelado = true` e chama `supabase.removeChannel(A)` — **A nunca
+   assinou**, mas `removeChannel` empurra um `phx_leave` **do tópico**, e é assíncrono.
+3. **Efeito 2** cria o canal B com o **MESMO tópico**, autentica e assina. O servidor confirma.
+4. **O leave fantasma de A pode chegar DEPOIS do join de B** — e derruba, no servidor, a assinatura
+   que o cliente acabou de ver confirmada.
+
+Fecha a aritmética: **1 join (B) + 2 leaves (o fantasma de A e o real da desmontagem)**.
+
+**Conserto mínimo, e é do tipo que tira a possibilidade:** só chamar `removeChannel` se o
+`subscribe` realmente aconteceu — se o cleanup rodou antes do `.then()`, não há nada para deixar.
+Alternativa mais forte: tópico único por execução do efeito, para que o leave de um nunca alcance o
+outro.
+
+**O que isto NÃO explica sozinho, e por isso continua candidato e não veredito:** o mesmo critério
+passou de manhã com este mesmo código. Corrida é sensível a tempo, e algo mudou o tempo — mas
+**"passou antes" não absolve um mecanismo defeituoso**, apenas prova que ele é intermitente. E há uma
+consequência de escopo: `reactStrictMode` só duplica em DEV, então, se for isto, o vermelho é
+artefato de desenvolvimento — o que **não o torna barato**, porque inviabiliza toda medição de tempo
+real do time.
