@@ -16,6 +16,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { resolveOwnerPatch } from "@/lib/leads/owner-patch";
 import { emitLeadActivity, stageChangeReason } from "@/lib/leads/activity-emitter";
+import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 import { bulkLeadActionSchema, validateRequest } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -175,7 +176,19 @@ export async function POST(req: NextRequest): Promise<Response> {
                 bulk: true,
               },
             });
-            if (!r.ok) console.error("[lead.bulk_moved] activity insert failed", r.error);
+            if (!r.ok) {
+              // O bulk é o pior caso dos três: N leads movidos, e uma falha de
+              // atividade some junto com as outras N-1 que deram certo. Sem o
+              // aviso, o buraco na timeline não tem nem tamanho conhecido.
+              await registraFalhaDeAtividade(supabase, {
+                organizationId: row.organization_id,
+                leadId: row.id,
+                tipo: "stage_changed",
+                origem: "leads/bulk",
+                erro: r.error,
+                requestId,
+              });
+            }
           }),
       );
       await Promise.all(

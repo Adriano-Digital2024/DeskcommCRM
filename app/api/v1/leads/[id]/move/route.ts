@@ -17,6 +17,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { moveLeadSchema, validateRequest } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { emitLeadActivity, stageChangeReason } from "@/lib/leads/activity-emitter";
+import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 
 export const dynamic = "force-dynamic";
 
@@ -152,7 +153,16 @@ export async function POST(
     },
   });
   if (!atividade.ok) {
-    console.error("[lead.move] activity insert failed", atividade.error);
+    // Mesma política do handler: mutação já ocorrida não bloqueia, mas o rastro
+    // perdido é contado em vez de sumir num log de processo.
+    await registraFalhaDeAtividade(supabase, {
+      organizationId: lead.organization_id,
+      leadId,
+      tipo: "stage_changed",
+      origem: "leads/[id]/move",
+      erro: atividade.error,
+      requestId,
+    });
   }
 
   // Emit domain event (fire-and-forget; trigger NEVER does HTTP — workers do).

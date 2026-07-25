@@ -11,6 +11,7 @@ import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
 import { audit } from "@/lib/audit";
 import { resolveOwnerPatch, type OwnerPatch, type OwnerPatchInput } from "@/lib/leads/owner-patch";
 import { emitLeadActivity, stageChangeReason } from "@/lib/leads/activity-emitter";
+import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 import type { CreateLeadInput, UpdateLeadInput } from "@/lib/schemas";
 
 type SB = SupabaseClient;
@@ -572,7 +573,17 @@ export async function moveLeadHandler(
     },
   });
   if (!atividade.ok) {
-    console.error("[lead.move] activity insert failed", atividade.error);
+    // Falha BAIXO: o card já moveu e bloquear deixaria o negócio refém da
+    // timeline. Mas falhar baixo é escolher não bloquear, não escolher não
+    // contar — o rastro perdido vira evento e alerta.
+    await registraFalhaDeAtividade(supabase, {
+      organizationId: lead.organization_id,
+      leadId,
+      tipo: "stage_changed",
+      origem: "leads/_handler.moveLeadHandler",
+      erro: atividade.error,
+      requestId: ctx.requestId,
+    });
   }
 
   await audit({
