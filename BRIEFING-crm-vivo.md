@@ -8847,3 +8847,38 @@ o relógio, por UPDATE direto (§7.277).
 
 **E a atribuição foi declarada:** das 16, quatro são de outro autor. **O número é "dívida do
 repositório", não "dívida minha"** — dito antes que alguém o lesse errado.
+
+## §7.282 — Tolerância sem modo de falha correspondente é FOLGA — e folga vira permissão
+
+Mandei pôr tolerância no cenário 27 por causa da deriva aparelho×servidor. **A instrução estava
+errada, e o erro é meu:** infeririu o que o critério compara **a partir do que ele é sobre**, em vez
+de ler o arquivo.
+
+**O 27 não compara aquelas colunas.** Compara **dois deslocamentos do mesmo relógio** (`Date.now()`),
+lidos do DOM pelos dois painéis com a **mesma régua**. `last_message_at` aparece uma vez no arquivo —
+no backup das colunas derivadas — e **nunca numa comparação**. O `0ms` não é *"duas colunas que
+calharam de bater"*: é *"os dois painéis mostraram o texto na mesma amostragem"*.
+
+**E a recusa em pôr "por via das dúvidas" é a parte que vira lei:**
+
+> ***"Tolerância sem modo de falha correspondente é FOLGA. E folga em critério não fica parada — em
+> seis meses alguém a aumenta porque 'já tinha', e ninguém sabe mais contra o que ela existia."***
+
+**Folga defensiva vira permissão com o tempo**, porque **a razão não fica presa ao número**. E é a
+§7.278 virada contra mim no mesmo dia: eu havia escrito que *quem sobe uma tolerância acha que está
+consertando frouxidão* — e mandei criar exatamente a frouxidão que alguém subiria depois.
+
+**E o aviso foi guardado no lugar CERTO, que é melhor que a instrução original:** se alguém trocar o
+observável pelo **rótulo de tempo** que a linha exibe, a deriva **entra** e a tolerância passa a ser
+obrigatória. A nota está **no ponto exato onde essa edição aconteceria**, com o motivo escrito —
+*"guardado no lugar onde o risco nasce em vez de aplicado onde ele não existe"*.
+
+**Regra:** proteção contra risco **condicional** mora **onde a condição seria criada**, não onde o
+efeito apareceria. Aplicada no efeito, ela é folga permanente contra um risco que ainda não existe;
+aplicada na origem, ela só custa alguma coisa no dia em que alguém a ativar.
+
+### E o fecho da §7.233-c, dito por dentro
+
+> *"'Roda sem leitor' não é uma propriedade com uma consequência; é uma propriedade com DUAS — e a
+> segunda é invisível **por construção**, porque o rastro só aparece para quem medir DEPOIS, que é
+> sempre outra pessoa ou eu mesmo amanhã."*
