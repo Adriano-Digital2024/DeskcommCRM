@@ -5148,3 +5148,52 @@ terceira:
 
 O que não vale é o silêncio, que hoje é o padrão: uma suíte cheia de guardas de regressão
 não-provadas parece proteção e é **afirmação**.
+
+## §7.140 — Toda asserção NEGATIVA tem de excluir a explicação chata
+
+O critério "salvar sem mexer em nada NÃO registra atividade" passaria **igualzinho** se o clique não
+tivesse feito nada. O verde seria compatível com o comportamento desejado E com "nada foi tentado"
+— e provaria o oposto do que afirma. A correção foi provar o gatilho antes do efeito: **(a)** um
+PATCH saiu, **(b)** o `updated_at` mudou no banco, **(c)** e mesmo assim não registrou (4 → 4).
+
+Esta é a terceira lei de ausência do dia, e as três têm **o mesmo esqueleto**: *"não vejo X"* tem
+mais de uma explicação, e a asserção só vale se a explicação chata for excluída. O que muda é qual
+é a chata em cada camada:
+
+| camada | a explicação chata |
+|---|---|
+| ação (§7.140) | o gatilho não disparou — nada foi tentado |
+| superfície (§7.132) | está lá, escondido pelo agrupamento/corte/página |
+| projeção (§7.134) | não veio porque não foi pedido |
+
+**A pergunta única, que dispensa decorar as três:** *"o que mais produziria exatamente esta
+observação?"* — e prove que não foi isso. Um verde negativo sem essa exclusão não é resultado; é a
+ausência de tentativa com cara de sucesso.
+
+## §7.141 — Atividade e evento respondem a perguntas diferentes; divergir é correto
+
+Ficou a dúvida: a atividade deixou de ser emitida quando nada muda, e o `emit_event lead.updated`
+continua saindo. Parece inconsistência — **não é**, e vale registrar antes que alguém "harmonize"
+os dois.
+
+A **atividade** conta a vida do negócio para um humano: só entra o que MUDOU. O **evento** anuncia
+que houve escrita, e é gatilho de automação: quem escuta quer saber que o registro foi tocado,
+inclusive quando o resultado foi idêntico. Suprimir o evento mudaria o comportamento de automações
+já existentes — é alteração de contrato, não limpeza.
+
+**Regra:** antes de igualar dois emissores porque "os dois falam da mesma mutação", pergunte quem
+ESCUTA cada um. Emissores com plateias diferentes têm o direito de discordar.
+
+## §7.142 — O mesmo `undefined` mordeu o instrumento e quase mordeu o produto, no mesmo dia
+
+No instrumento (§7.134): um critério afirmou sobre um campo que a consulta não trouxe, e leu
+"ausente da resposta" como "ausente do banco".
+
+No produto: ao comparar o patch com o estado anterior, ler o anterior com **lista fixa de colunas**
+faria um campo NOVO cair contra `undefined` e ser marcado como alterado **em toda edição** — o
+defeito voltando por outra porta em seis meses. A saída foi ler o estado anterior inteiro; custo
+zero, porque a consulta já existia.
+
+**A confusão `undefined`/`null` não é um erro de teste nem um erro de handler — é um buraco do
+idioma**, e ele aparece em qualquer camada onde algo é lido parcialmente. Onde houver projeção,
+pergunte se "não veio" e "não tem" estão separados.
