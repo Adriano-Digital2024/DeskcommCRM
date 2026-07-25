@@ -36,7 +36,7 @@ import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 
-import { BASE, CREDS, carimbar, login, shotPage } from "./qa-helpers";
+import { BASE, CREDS, carimbar, login, mensagemDeSonda, shotPage } from "./qa-helpers";
 
 const env: Record<string, string> = {};
 for (const line of fs.readFileSync(".env.local", "utf8").split("\n")) {
@@ -211,6 +211,8 @@ async function main(): Promise<void> {
     .limit(1);
   const conversa = (convs ?? [])[0] as { id: string; channel_session_id: string; contact_id: string };
 
+  // O que a superfície de inbox plantou, para o `desfazer` apagar pelo ID.
+  let plantada: Awaited<ReturnType<typeof mensagemDeSonda>> | null = null;
   const superficies: Superficie[] = [
     {
       nome: "board",
@@ -269,22 +271,27 @@ async function main(): Promise<void> {
       },
       gatilho: async () => {
         const marca = `RAIO${RUN}`;
-        const { error } = await admin.from("messages").insert({
-          organization_id: ORG,
-          conversation_id: conversa.id,
-          channel_session_id: conversa.channel_session_id,
-          contact_id: conversa.contact_id,
+        // PASSA PELO ESCRITOR REAL (`mensagemDeSonda` → a mesma RPC do ingest).
+        //
+        // Inserindo direto, a conversa nunca recebia o carimbo de última
+        // mensagem — e esta sonda mede justamente se a LISTA acompanha. Ela
+        // estaria cobrando da tela uma atualização que nenhum escritor tinha
+        // mandado fazer, e chamando de "não recuperou" o que era gatilho mudo.
+        plantada = await mensagemDeSonda(admin, {
+          organizationId: ORG,
+          conversationId: conversa.id,
+          contactId: conversa.contact_id,
+          channelSessionId: conversa.channel_session_id,
           direction: "inbound",
-          type: "text",
-          body: `mensagem do raio ${marca}`,
-          status: "delivered",
-          sent_at: new Date().toISOString(),
-        } as never);
-        if (error) throw new Error(`gatilho inbox: ${error.message}`);
+          // A marca no COMEÇO: a lista mostra prévia truncada, e marca no fim
+          // seria cortada pela apresentação — falso vermelho por forma.
+          body: `${marca} mensagem do raio`,
+        });
         return marca;
       },
       desfazer: async () => {
-        await admin.from("messages").delete().like("body", `mensagem do raio RAIO${RUN}%`);
+        await plantada?.apaga();
+        plantada = null;
       },
     },
   ];

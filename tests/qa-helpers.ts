@@ -7,6 +7,7 @@
  */
 
 import type { Locator, Page } from "@playwright/test";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import * as crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
@@ -542,4 +543,86 @@ export function carimbar(dependencias: string[]): string {
   );
   for (const l of sujos) console.info(`[carimbo]   ${l}`);
   return "-ARVORE-SUJA";
+}
+
+/**
+ * INSERE UMA MENSAGEM COMO O PRODUTO INSERE — e devolve como apagá-la.
+ *
+ * ⚠️ EXISTE PORQUE `insert` DIRETO EM `messages` PLANTA ACHADO FALSO. As colunas
+ * derivadas da conversa (`last_message_at`, `last_message_preview`,
+ * `last_inbound_at`, `unread_count_for_assignee`) não são mantidas pela tabela:
+ * quem as escreve são os DOIS caminhos de produção — `lib/waha/ingest.ts` pela
+ * RPC `fn_mark_conversation_message`, e a API de mensagens por `update`.
+ * Inserindo à mão, a sonda pula o escritor e depois lê uma coluna que ninguém
+ * mandou atualizar. A tela mostra "Sem mensagens" numa conversa com mensagens, e
+ * o defeito é da sonda.
+ *
+ * Isso não é hipótese e não aconteceu uma vez: em 25/07 uma rodada assim me fez
+ * reportar um defeito de preview que não existia — a ponto de uma migration com
+ * trigger ser aprovada para consertar nada — e a mesma linha plantada apareceu
+ * na tela do QA como "Sem mensagens". Enquanto a sonda inserir direto, CADA
+ * RODADA PLANTA UM ACHADO FALSO DE PRODUTO.
+ *
+ * A limpeza vem pelo ID devolvido, não por `LIKE` no corpo: um padrão que não
+ * casa apaga zero linhas em silêncio, e foi assim que duas mensagens de sonda
+ * sobreviveram a uma limpeza que "rodou".
+ */
+export async function mensagemDeSonda(
+  admin: SupabaseClient,
+  m: {
+    organizationId: string;
+    conversationId: string;
+    contactId?: string;
+    channelSessionId?: string;
+    /** `inbound` conta como não-lida na conversa, igual ao produto. */
+    direction: "inbound" | "outbound";
+    body: string;
+    /** Para a marca não ser cortada, ponha-a no COMEÇO do corpo. */
+    preview?: string;
+  },
+): Promise<{ id: string; apaga: () => Promise<void> }> {
+  const agora = new Date().toISOString();
+
+  const { data, error } = await admin
+    .from("messages")
+    .insert({
+      organization_id: m.organizationId,
+      conversation_id: m.conversationId,
+      contact_id: m.contactId ?? null,
+      channel_session_id: m.channelSessionId ?? null,
+      direction: m.direction,
+      type: "text",
+      body: m.body,
+      status: m.direction === "inbound" ? "delivered" : "sent",
+      sent_at: agora,
+    })
+    .select("id")
+    .maybeSingle();
+  if (error || !data) throw new Error(`mensagemDeSonda: insert falhou — ${error?.message ?? "sem linha"}`);
+
+  // O MESMO escritor que o ingest usa. Falha aqui ESTOURA: uma sonda que segue
+  // com a conversa não-carimbada mede o estado errado e chama isso de produto.
+  const { error: erroRpc } = await admin.rpc("fn_mark_conversation_message", {
+    p_conv: m.conversationId,
+    p_direction: m.direction,
+    p_preview: m.preview ?? m.body,
+    p_at: agora,
+  });
+  if (erroRpc) throw new Error(`mensagemDeSonda: fn_mark_conversation_message falhou — ${erroRpc.message}`);
+
+  const id = data.id;
+  return {
+    id,
+    apaga: async () => {
+      const { data: apagadas, error: erroDel } = await admin
+        .from("messages")
+        .delete()
+        .eq("id", id)
+        .select("id");
+      if (erroDel) throw new Error(`mensagemDeSonda.apaga: ${erroDel.message}`);
+      // Conta, porque delete que não confere pode ter casado com nada.
+      if ((apagadas ?? []).length !== 1)
+        throw new Error(`mensagemDeSonda.apaga: apagou ${(apagadas ?? []).length} linhas, esperava 1 (${id})`);
+    },
+  };
 }

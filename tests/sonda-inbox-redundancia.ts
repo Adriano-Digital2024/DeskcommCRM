@@ -15,7 +15,7 @@ import * as fs from "node:fs";
 import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
-import { BASE, login } from "./qa-helpers";
+import { BASE, login, mensagemDeSonda } from "./qa-helpers";
 
 const env = Object.fromEntries(
   fs.readFileSync(".env.local", "utf8").split("\n")
@@ -66,15 +66,14 @@ async function main(): Promise<void> {
 
   // O CAMINHO CRUZADO: uma MENSAGEM nova atualiza a LISTA DE CONVERSAS?
   const antes = (await page.locator("body").textContent())?.length ?? 0;
-  const marca = `sonda-${Date.now()}`;
-  await admin.from("messages").insert({
-    organization_id: ORG,
-    conversation_id: c.id,
+  // Passa pelo MESMO escritor que o ingest usa — ver `mensagemDeSonda`. Inserir
+  // direto pularia o carimbo da conversa e a próxima medição leria, na tela, um
+  // defeito que a sonda acabou de plantar.
+  const plantada = await mensagemDeSonda(admin, {
+    organizationId: ORG,
+    conversationId: c.id,
     direction: "inbound",
-    type: "text",
     body: `sonda de redundância ${new Date().toISOString().slice(11, 19)}`,
-    status: "received",
-    external_id: marca,
   });
   await page.waitForTimeout(6000);
   const depois = (await page.locator("body").textContent())?.length ?? 0;
@@ -82,24 +81,9 @@ async function main(): Promise<void> {
 
   await page.screenshot({ path: "evidence/wave7-inbox-redundancia.png" });
 
-  // ⚠️ A SONDA LIMPA O QUE CRIOU, e isto não é higiene: mensagem inserida
-  // DIRETO em `messages` não passa pelo produto (nem pelo ingest, nem pela
-  // API), então a conversa não recebe o carimbo de última mensagem que os dois
-  // caminhos reais escrevem. O rastro fica com a assinatura de um defeito que
-  // não existe — e em 25/07 duas linhas assim me fizeram reportar um defeito
-  // inventado e quase mover uma migration de schema por causa dele.
-  //
-  // Confere quantas apagou pelo MESMO motivo: delete que não conta pode não
-  // ter casado com nada e ninguém saberia. Foi assim que as duas linhas de
-  // 25/07 sobreviveram a uma limpeza que "rodou".
-  const { data: apagadas, error: erroLimpeza } = await admin
-    .from("messages")
-    .delete()
-    .eq("external_id", marca)
-    .select("id");
-  if (erroLimpeza) console.error(`LIMPEZA FALHOU: ${erroLimpeza.message} — a linha ${marca} ficou no banco`);
-  else if ((apagadas ?? []).length !== 1)
-    console.error(`LIMPEZA NÃO CASOU: apagou ${(apagadas ?? []).length} linhas, esperava 1 (${marca})`);
+  // A sonda apaga o que plantou, pelo ID — e `apaga()` estoura se não casar
+  // com exatamente uma linha.
+  await plantada.apaga();
   await browser.close();
 }
 void main();
