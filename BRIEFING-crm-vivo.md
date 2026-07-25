@@ -3313,3 +3313,58 @@ parecia necessário quando foi criado, e nenhum momento apresentou a pergunta *"
 atividade de IA sem `run/trace/llm_call`. **A lei do porquê vale também para o REGISTRO**, e a
 constraint fez o trabalho dela contra um cliente descuidado — o próprio autor do teste. *E não é o caso
 do score: aqui a chave que o banco exige é a mesma que o consumidor usa.*
+
+---
+
+## §7.81 — Limitação de ferramenta empurra para o desenho errado, e chega disfarçada de pragmatismo
+
+*"Pelo menos um fator **com** âncora"* parece exigir **subconsulta**, e `CHECK` não aceita. O movimento
+óbvio é recuar para **duas listas paralelas** — que é **exatamente o desenho que a §7.68 acabou de
+matar**.
+
+A saída foi **jsonpath** (verificado no banco):
+
+```
+ai_probability_evidence @? '$."factors"[*]."ancora"'::jsonpath
+```
+
+É **expressão, não subquery** — e é o que permite exigir a âncora **dentro do fator** em vez de numa
+lista paralela.
+
+> *"Sem isso eu teria sido empurrado de volta para as duas listas **por limitação de ferramenta**."*
+
+**Regra:** quando a ferramenta parece proibir o desenho certo, o recuo disponível costuma ser **o
+desenho errado** — e ele chega **disfarçado de pragmatismo**, porque "o banco não deixa" soa como
+restrição da realidade e não como falta de procura. **Procure a saída antes de ceder**; e se ceder,
+registre que cedeu **por limitação**, não por escolha — senão o próximo lê o desenho ruim como
+deliberado.
+
+## §7.82 — Instrumento vence também a INTENÇÃO CORRETA MAL EXECUTADA
+
+Este é um eixo **novo**, e o @DevVivo o nomeou sobre si mesmo. A §7.67 dizia que doutrina falha por
+**não-reconhecimento** — você não vê que está no caso. Aqui:
+
+> *"Eu **SABIA** a regra da tríplice, **escrevi o código para cumpri-la**, e ainda assim entreguei
+> incompleto — porque o erro não foi de conhecimento, foi de **execução parcial que passou
+> despercebida**."*
+
+O `MANIFEST` ficou sem a linha da 0077 porque o script **abortou antes de escrevê-la**. Quem pegou foi
+o **pre-commit da tríplice indivisível** — *"o guard achou exatamente o que o meu script deixou pela
+metade, sem eu saber que tinha deixado"*.
+
+> **Instrumento não só vence memória; vence também a intenção correta mal executada — um modo de falha
+> que memória nenhuma cobre**, porque a memória estava **certa**. Não há o que lembrar melhor.
+
+**E os outros dois erros da mesma sessão têm a mesma forma — script que falha em silêncio:**
+
+| erro | o que teria acontecido |
+|---|---|
+| o script que reescrevia o baseline **falhou calado** | `test:db` passou **338 medindo o baseline ANTIGO** — **verde sobre o estado errado**, e ele teria reportado sucesso com a migration só no dev |
+| a correção seguinte **cortou uma linha a mais** | `drop constraint` órfão, que **só apareceu no install** |
+
+O primeiro é o mais assustador: **a suíte inteira verde, medindo o artefato errado**. É a §7.42 pelo
+avesso — lá o defeito só aparecia no banco novo; aqui o **acerto** só aparecia no banco novo, e o
+ambiente de todo dia dizia que estava tudo bem.
+
+> **Os três só apareceram porque ele rodou em vez de supor.** Script que faz três coisas e falha na
+> segunda deixa a primeira feita e a terceira ausente — e nada nessa combinação **parece** erro.
