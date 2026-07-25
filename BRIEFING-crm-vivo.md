@@ -5564,3 +5564,62 @@ decisão. Então a **lista positiva** do trigger é o ÚNICO lugar que define o 
 — e um erro de digitação no emissor produz um tipo que ninguém rejeita e que a lista não conhece.
 Falha para o lado seguro (não carimba o relógio), o que confirma a escolha da lista positiva, e
 **exige que o emissor use constante compartilhada, nunca string literal**.
+
+## §7.156 — Defeito cujo SINTOMA aponta para o lugar errado, e o suspeito mais recente absorve a culpa
+
+*"O esfriamento não gruda"* manda investigar o CLASSIFICADOR. A causa está no GATILHO, três camadas
+ao lado. **Sintoma que aponta para a superfície errada é o defeito mais caro que existe** — não pelo
+conserto, que é pequeno, mas pelo tempo gasto onde não está.
+
+**E o agravante é de CALENDÁRIO:** este só se tornaria visível DEPOIS da entrega, porque é a entrega
+que faz a atividade de risco existir. Nesse momento haveria código novo, recém-escrito, e
+**o suspeito mais recente absorve a culpa** — sempre. A entrega correta seria acusada por um defeito
+que a antecede em meses.
+
+**A defesa é barata e tem de ser feita ANTES:** medir o defeito latente **agora**, com número e data,
+enquanto ainda não há nada novo para culpar. É o que converte *"o código novo quebrou"* em
+*"conhecido, e anterior"*. Medição carimbada antes da entrega é a única coisa capaz de **inocentar**
+a entrega — o resto é discussão.
+
+**E foi medido, não deduzido:** lead com 96h de silêncio, uma atividade inserida, **0,0h de
+silêncio**. Duas leituras independentes do mecanismo (a definição do trigger e a da função) chegaram
+ao mesmo lugar, o que vale mais que qualquer das duas sozinha.
+
+## §7.157 — Restrição de papel GERA método — e não ser mérito é justamente o que a torna melhor
+
+A terceira saída (provar a guarda **construindo o estado** em vez de reverter o conserto) não veio de
+perspicácia: veio de **não poder** fazer o que eu tinha sugerido. Reverter produção não é do QA,
+então ele foi procurar o que era.
+
+Ele registrou isso como "sorte estrutural, não mérito". **Está certo, e é por isso que vale mais.**
+Quem PUDESSE reverter teria revertido — a ferramenta mais poderosa teria produzido o método pior
+(mexer em produção para provar um teste). **Poder fazer a coisa cara impede de procurar a barata.**
+
+E a consequência é de desenho de time, não de elogio: o QA não ter escrita em produção **não é só
+salvaguarda — é gerador de método**. Mérito não se repete sozinho; restrição sim. É a mesma lógica
+de *"desconfiar não escala, cerca escala"*, aplicada a quem pode o quê.
+
+## §7.158 — A SÍNTESE DO DIA: ausência silenciosa se lê como aprovação
+
+Ele nomeou o eixo, e ao conferir, **metade das leis de hoje são a mesma lei em superfícies
+diferentes**:
+
+| lei | a ausência que se disfarça de aprovação |
+|---|---|
+| §7.132 | não vejo o texto → mas está agrupado |
+| §7.134 | o campo veio vazio → mas não foi pedido |
+| §7.140 | nada foi registrado → mas nada foi tentado |
+| §7.151 | o card não alerta → mas a consulta não chegou |
+| §7.148-a | o tipo não está na lista de exceções → logo conta como interação |
+| §7.153 | não houve erro de constraint → mas a tabela não existia |
+| §7.126 | a regra agrupou → mas talvez agrupe sempre |
+
+**Uma única doença, sete superfícies.** E o antídoto tem sempre a mesma forma: **fazer a ausência se
+anunciar** — contagem em vez de texto, `in` em vez de `??`, lista positiva em vez de exceções,
+desfecho "outra coisa" nomeado, o contraste enquadrado junto.
+
+**E o fecho que importa:** esta é exatamente a doença que o épico existe para curar — *o card parado
+que ninguém viu, porque nada aconteceu e nada avisou*. O time passou o dia encontrando-a **dentro
+das próprias ferramentas** e **dentro do próprio produto**, em camadas que nada tinham a ver umas com
+as outras. Não é coincidência temática: é o mesmo hábito de engenharia produzindo o mesmo buraco em
+todo lugar onde alguém precisou representar "não sei".
