@@ -36,10 +36,10 @@ async function main(): Promise<void> {
     email: creds.users.manager.email,
     password: creds.password,
   });
-  user.realtime.setAuth(s!.session!.access_token);
+  await user.realtime.setAuth(s!.session!.access_token);
   user.realtime.connect();
   await new Promise((r) => setTimeout(r, 2500));
-  user.realtime.setAuth(s!.session!.access_token);
+  await user.realtime.setAuth(s!.session!.access_token);
 
   const chegaram = new Set<string>();
   const canal = user

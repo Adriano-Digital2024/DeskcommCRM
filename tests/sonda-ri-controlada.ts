@@ -55,12 +55,12 @@ async function main(): Promise<void> {
     token = sessao.session.access_token;
   }
   console.info(`papel do assinante: ${PAPEL}`);
-  user.realtime.setAuth(token);
+  await user.realtime.setAuth(token);
   // Conecta ANTES de assinar e dá tempo do handshake carregar o token: sem
   // isto, o `subscribe` corre com o socket ainda anônimo.
   user.realtime.connect();
   await new Promise((r) => setTimeout(r, 2500));
-  user.realtime.setAuth(token);
+  await user.realtime.setAuth(token);
   console.info(`autenticado (${PAPEL})`);
 
   const recebidos: string[] = [];
