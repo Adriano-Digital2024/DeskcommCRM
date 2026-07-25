@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ehEcoLocal } from "@/lib/kanban/local-echo";
 import { useRealtimeChannel } from "@/hooks/realtime/useRealtimeChannel";
+import { useRefetchDeSeguranca } from "@/hooks/realtime/useRefetchDeSeguranca";
 import { apiClient } from "@/lib/api/client";
 import type { BoardData } from "@/lib/kanban/types";
 
@@ -119,7 +120,7 @@ export function useBoard(pipelineId: string | null) {
   // Assinatura que morre calada é peça sem sinal de vida: o "log morto" do
   // checklist do sistema vivo, na versão cara, porque a tela continua parecendo
   // certa enquanto o board já não escuta mais nada.
-  const { status: realtimeStatus } = useRealtimeChannel({
+  const { status: realtimeStatus, ultimaEntrega } = useRealtimeChannel({
     name: pipelineId ? `kanban-${pipelineId}` : "kanban-disabled",
     postgresChanges: pipelineId
       ? {
@@ -143,5 +144,25 @@ export function useBoard(pipelineId: string | null) {
     };
   }, []);
 
-  return { ...query, pulses, realtimeStatus };
+  // A REDE DE SEGURANÇA. Sem ela, um canal que para de entregar deixa o board
+  // congelado num passado que parece presente — e nem voltar para a aba
+  // conserta. A assinatura é a contagem de leads mais o maior `updated_at`: é
+  // sensível a exatamente o que o canal deveria ter trazido (lead novo, lead
+  // movido, lead editado) e barata de calcular a cada verificação.
+  const seguranca = useRefetchDeSeguranca<BoardData>({
+    queryKey,
+    assinatura: (d) => {
+      const leads = d?.leads ?? [];
+      let maior = "";
+      for (const l of leads) {
+        const u = (l as { updated_at?: string }).updated_at ?? "";
+        if (u > maior) maior = u;
+      }
+      return `${leads.length}:${maior}`;
+    },
+    ultimaEntrega,
+    enabled: !!pipelineId,
+  });
+
+  return { ...query, pulses, realtimeStatus, seguranca };
 }

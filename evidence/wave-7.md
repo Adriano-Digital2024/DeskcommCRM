@@ -152,3 +152,27 @@ outro não acompanhou, sem nada reclamar.**
 68, sem contato). Eles continuam esfriando e aparecendo no radar; a saída deles
 é humana. Isso não é regressão — é uma lacuna que só apareceu porque a proposta
 passou a existir para revelá-la.
+
+---
+
+## A rede de segurança (fora do escopo da wave, e a peça mais valiosa dela)
+
+![o board recuperando com a entrega morta](wave7-rede-de-seguranca.png)
+
+Uma peça com três papéis, e ela responde ao único achado do dia que atravessou
+três retratações intacto: **quando a entrega morre, nenhuma tela avisa**.
+
+| | canal trouxe | o card apareceu | divergências |
+|---|---|---|---|
+| entrega **morta** | não | **sim** | 0 → **1** |
+| entrega **viva** (controle) | sim | sim | 0 → **0** |
+
+O par é o que prova. Só o lado morto mostraria a cura e não distinguiria "a rede
+funcionou" de "o canal funcionou"; só o lado vivo não mostraria nada. Juntos:
+**cura nos dois casos, denuncia só quando há o que denunciar** — um detector que
+gritasse sempre seria desligado na primeira semana.
+
+Matar a entrega exigiu `addInitScript` substituindo o construtor de `WebSocket`.
+A primeira versão usou `page.route`, que intercepta HTTP e **não** WebSocket: o
+canal entregou normalmente, e o "curou: sim" era o realtime funcionando. Aparato
+que não produz a condição mede outra coisa e devolve um verde que parece prova.

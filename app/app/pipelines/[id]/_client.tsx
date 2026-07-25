@@ -35,7 +35,7 @@ export function PipelinePageClient({
   pipelineId: string;
   initialName: string;
 }) {
-  const { data, isLoading, error, pulses, realtimeStatus } = useBoard(pipelineId);
+  const { data, isLoading, error, pulses, realtimeStatus, seguranca } = useBoard(pipelineId);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -66,6 +66,13 @@ export function PipelinePageClient({
       // Ainda NÃO religa — religar é desenho e merece bloco próprio. Isto aqui
       // é só parar de descartar o que já era calculado.
       data-realtime-status={realtimeStatus.toLowerCase()}
+      // A rede de segurança fica OBSERVÁVEL pelo mesmo motivo do status do
+      // canal: "a entrega morreu" e "nada aconteceu" têm a mesma aparência, que
+      // é silêncio. Aqui o número de divergências é a diferença entre os dois —
+      // e é o sinal que faltava para uma verificação poder APROVAR, e não só
+      // reprovar.
+      data-refetch-divergencias={seguranca.divergencias}
+      data-refetch-em={seguranca.ultimaVerificacao ?? ""}
     >
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">

@@ -118,7 +118,11 @@ function esperarAuth(supabase: ReturnType<typeof createClient>): Promise<void> {
   ]);
 }
 
-export function useRealtimeChannel(opts: UseRealtimeChannelOpts): { status: RealtimeStatus } {
+export function useRealtimeChannel(opts: UseRealtimeChannelOpts): {
+  status: RealtimeStatus;
+  /** Instante da última entrega deste canal, ou null se nunca entregou nada. */
+  ultimaEntrega: number | null;
+} {
   const { name, postgresChanges, broadcast, onChange, enabled = true } = opts;
 
   // ref makes onChange identity-stable so changing handler doesn't re-subscribe
@@ -126,6 +130,19 @@ export function useRealtimeChannel(opts: UseRealtimeChannelOpts): { status: Real
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  /**
+   * QUANDO este canal entregou algo pela última vez.
+   *
+   * Existe para o refetch de segurança poder responder "houve entrega
+   * recente?" — sem esse sinal, uma diferença entre o que o servidor tem e o
+   * que a tela mostra é indistinguível de "nada aconteceu no intervalo", e a
+   * checagem só consegue REPROVAR, nunca aprovar.
+   *
+   * `useRef` e não `useState`: isto não redesenha nada, e virar dependência de
+   * efeito faria o canal re-assinar a cada evento — perdendo eventos na janela.
+   */
+  const ultimaEntrega = useRef<number | null>(null);
 
   const [status, setStatus] = useState<RealtimeStatus>(enabled ? "connecting" : "closed");
 
@@ -149,6 +166,10 @@ export function useRealtimeChannel(opts: UseRealtimeChannelOpts): { status: Real
     let chain: RealtimeChannel = supabase.channel(channelName);
 
     const handler = (payload: unknown) => {
+      // Carimba ANTES de entregar: se o consumidor lançar, a entrega ainda
+      // aconteceu — e o refetch de segurança precisa saber disso para não
+      // acusar o canal de ter perdido o que ele trouxe.
+      ultimaEntrega.current = Date.now();
       onChangeRef.current(payload);
     };
 
@@ -201,5 +222,5 @@ export function useRealtimeChannel(opts: UseRealtimeChannelOpts): { status: Real
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, enabled, instanceId, postgresChanges?.event, postgresChanges?.table, postgresChanges?.filter, postgresChanges?.schema, broadcast?.event]);
 
-  return { status };
+  return { status, ultimaEntrega: ultimaEntrega.current };
 }
