@@ -9291,3 +9291,54 @@ virou *"conte os resgates"*; *"procure a versão contável"* virou *"conte o que
 
 **É o critério de sobrevivência de uma lei:** ela vale enquanto não depender do estado de quem a
 segue. **As que dependem não são leis — são lembretes com nome de lei.**
+
+## §7.294 — Canal que normaliza texto DESTRÓI CHAVE e PRESERVA PROSA
+
+A busca que não achou o oitavo lead não foi um descuido de quem buscou: **a chave chegou quebrada**.
+Quem a enviou escreve as mensagens deste canal **sem acentuação** — prática adotada justamente porque
+o canal já corrompeu texto em silêncio antes.
+
+**Medido no mesmo banco, no mesmo instante:**
+
+```
+like 'Titulo editado%'   (a chave que trafegou)  -> 0
+like 'Título editado%'   (o dado real)           -> 1
+```
+
+**A assimetria é a lei:**
+
+| tipo de texto | o que a normalização faz |
+|---|---|
+| **prosa** | *"conversao"* sem til continua **legível** — ninguém age errado |
+| **chave/identificador** | não é lido: **é COLADO numa consulta** — e casa zero |
+
+> ***"Ele leu uma string compreensível; ela só não era mais a mesma string."***
+
+**E quem escreve não sente a diferença**, porque as duas formas continuam perfeitamente legíveis para
+humano. **A degradação é invisível na origem e fatal no destino** — e produz o pior desfecho possível:
+*"não existe"*, dito com confiança, sobre algo que existe.
+
+**Regra: o que o outro vai COLAR vai em ASCII puro.** Aqui bastava o número —
+`where title like '%1784986646931%'` — que **identifica sozinho e atravessa qualquer canal**. Quando
+não houver forma ASCII, mande o identificador estável (id, sha, timestamp), nunca o texto exibido.
+
+**E o efeito colateral desta correção é o oposto de enfraquecer a decisão anterior:** a dúvida sobre o
+oitavo lead **continua irredutível** e ele continua não sendo apagado — mas agora **pelo motivo
+certo** (*nenhum arquivo do repo gera aquela string*) e não pelo errado (*"o colega disse que nem
+existe"*). **Uma conclusão certa sustentada por premissa falsa é frágil mesmo quando acerta.**
+
+## §7.295 — Desconfiar da própria CAUTELA é operação de segunda ordem
+
+Fecho do desenvolvedor sobre as três retratações do próprio dia:
+
+> *"As duas primeiras vieram das leis. **Esta terceira veio de uma pergunta que eu não teria feito sem
+> as duas primeiras — desconfiar da própria cautela só aparece depois de desconfiar das próprias
+> afirmações.** Não é virtude minha, é ordem de operação."*
+
+**Há uma ordem, e ela não se pula:** primeiro se aprende a duvidar do que se afirma; **só depois** se
+torna possível duvidar do que se **evita afirmar**. A segunda é mais difícil porque a cautela **não
+produz artefato para conferir** — ela produz **ausência**, e ausência não reprova em teste nenhum.
+
+**Consequência prática:** não se cobra de alguém que examine a própria cautela **antes** de ele ter o
+hábito de examinar as próprias afirmações. **A ordem é o método**, e inverter só produz paralisia com
+vocabulário de rigor.
