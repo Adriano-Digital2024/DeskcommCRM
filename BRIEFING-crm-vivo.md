@@ -2321,3 +2321,34 @@ E é a segunda linha que importa: protege contra o refactor em que alguém troca
 arquivo havia mudado). O `exit=0` que veio depois era **vazio**, e eu soube disso porque o `assert` da
 §7.44 gritou. **A lei se pagou dentro da hora em que foi escrita** — sem ela, a leitura teria sido *"o
 teste não tem dentes"*, que é a conclusão errada **e** a confortável.
+
+---
+
+## §7.55 — Número fixo de evidência vira cota, e cota se preenche
+
+O @DevVivo, revisando o cenário 15 **antes** de codar: a fórmula produz hoje **uma** evidência
+(o `checkpoint_id`) e o cenário promete **"as 3 evidências"**.
+
+> Se a UI espera três e chega uma, ou aparece **buraco na tela**, ou alguém **"completa"** inventando
+> lastro para cumprir a cota. E **lastro inventado é pior que lastro nenhum** — porque **passa na
+> constraint**.
+
+**Ruling: "3" é TETO, não cota.** Mostra-se **as evidências que existem, até três**; nunca se preenche
+para chegar a três. O número no contrato descrevia o caso típico, não uma obrigação de contagem.
+
+> **Generalização:** contagem fixa num contrato de UI cria **pressão para fabricar**. Quando o número
+> de itens depende do dado, o contrato diz **"até N"** e o vazio é um estado legítimo com desenho
+> próprio — senão a primeira vez que faltar dado alguém inventa, e inventar passa em todo teste que
+> só conta linhas.
+
+### Emenda à §7.52 — a construção que torna o cenário de ausência mediável
+
+Ele chegou ao mesmo verde vazio do @QAVivo por outro caminho **e trouxe a forma do conserto**:
+
+> *"'Lead sem sinal não mostra score' fica verde também quando a feature está quebrada e **nenhum**
+> lead mostra score. A prova precisa ser na **MESMA TELA**: um lead **com** score e um **sem**, lado a
+> lado. Sem o par, 'não apareceu' é compatível com 'não funciona'."*
+
+**É a perna positiva da §7.48 aplicada a um cenário visual.** O par na mesma captura é o que separa
+*"o produto decidiu não mostrar"* de *"o produto não mostra nada"* — e nenhum print de um card só
+consegue fazer essa distinção.
