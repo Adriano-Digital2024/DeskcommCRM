@@ -6085,3 +6085,42 @@ segunda não é opcional:
    comentário, muda de arquivo), a lista extraída vira `[]` e a comparação passa **por vacuidade** —
    §7.161 exatamente, dentro do conserto dela. Zero valores extraídos é erro do instrumento, nunca
    um conjunto vazio legítimo.
+
+## §7.180 — Refutar uma hipótese com um teste que nunca a EXECUTOU
+
+Ao testar *"assinatura órfã envenena o ciclo"*, a fase que abria o board carregava uma checagem de
+que a assinatura **existia** — tráfego de realtime na página e board renderizado. Sem ela,
+*"com board aberto é igual a sem board"* não distinguiria **"assinar não quebra"** de **"eu não
+assinei"**.
+
+É a §7.161 (concordância por ausência) na sua forma mais cara: **a hipótese seria declarada refutada
+por um experimento que nunca a estabeleceu**. E refutação é pior que afirmação errada — ela fecha a
+linha de investigação e ninguém volta.
+
+**Regra:** todo teste que REFUTA precisa de um controle POSITIVO interno — prova de que a condição
+hipotetizada foi de fato criada. Sem isso, o resultado nulo é indistinguível de experimento não
+realizado.
+
+## §7.181 — Um experimento refuta o mecanismo que ele CONSEGUIU PRODUZIR, não a classe inteira
+
+As órfãs foram fabricadas pelo caminho do **próprio app** — abrir e matar abas. Isso refuta
+*"órfã criada por abertura/fechamento do board"*, e **não** refuta *"assinatura registrada por outro
+cliente, com filtro malformado ou claim vencido"*, que continua possível e simplesmente **não é
+produzível por esse caminho**.
+
+**Ao refutar, declare o mecanismo de PRODUÇÃO junto com o resultado.** "Não consegui produzir o
+efeito" e "o efeito não existe" são frases diferentes, e a segunda quase nunca é o que foi medido.
+
+E a fase que só existiu por causa da escala merece registro: A/B/C usavam **uma** assinatura,
+enquanto o board acumula uma por abertura o dia inteiro. **"Não quebra com uma" não é "não quebra
+com vinte"** — a quarta fase (oito órfãs de uma vez) foi acrescentada para não confundir ausência de
+efeito com efeito que precisa de volume.
+
+### §7.176-b — Não ter par limpo é problema de FABRICAÇÃO, não de amostragem
+
+O fecho do raciocínio, e ele reorganiza o dia: escolher alvo com cuidado dentro do acervo resolve o
+alvo sorteado; **fabricar o par resolve o problema um nível acima** — em vez de procurar melhor
+dentro do que existe, construir o que precisa existir.
+
+Quando o acervo não contém o contraste necessário, a conclusão não é *"a medição fica com
+ressalva"*. É que **a medição ainda não tem sujeito, e o sujeito se constrói**.
