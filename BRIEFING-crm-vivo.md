@@ -5066,3 +5066,40 @@ Sem isso, um conserto pela metade passaria numa superfície que ninguém planejo
 continuaria verde afirmando que está tudo bem. **A assimetria dentro de um número verde era a
 impressão digital do vermelho de outro critério** — e uma previsão é a única forma de fazer essa
 digital cobrar quem a produziu.
+
+## §7.137 — Em worktree compartilhado, `git commit` sem pathspec commita o trabalho alheio
+
+**Eu era a "outra sessão".** Dois commits meus de doutrina (`b84b892`, `dc03a74`) carregam o conserto
+do eixo, escrito por outro. Não usei `-a`: `git add BRIEFING.md && git commit` já basta, porque o
+`commit` publica **o índice inteiro**, e o índice é COMPARTILHADO — o colega já tinha feito o `add`
+dele. Eu tinha inclusive MEDIDO o estado staged minutos antes e reportado a terceiros; ver o `A` e
+o `M` na saída e mesmo assim commitar é o defeito completo, não a falta de informação.
+
+**Nada se perdeu; o que ficou órfão foi o REGISTRO** — dois commits cuja mensagem fala de uma coisa
+e cujo conteúdo é outra. Num repositório onde o histórico é o único relato de por que algo foi
+feito, isso é perda real, e silenciosa: não há conflito, não há erro, os testes passam.
+
+**A cerca (§7.99: remove a possibilidade, não a instância):** commitar com **pathspec** —
+`git commit CAMINHO -m "..."` — que ignora o índice e publica só aquele arquivo. Não depende de
+lembrar de conferir o `status` antes; não há estado do colega capaz de vazar.
+
+**E a correção do histórico não é reescrevê-lo.** Rebase/amend embaixo de sessão ativa é
+destrutivo, e um commit-vazio de registro tem a MESMA corrida (levaria o `add` do outro junto,
+invertendo o problema). `git notes add` anexa o relato sem tocar índice nem histórico — foi o que
+os dois lados usaram.
+
+**Escopo medido, não estimado:** dos dez commits de doutrina, exatamente DOIS carregam código
+alheio; os outros oito têm um arquivo cada. A suspeita de "várias waves com registro trocado" é
+falsa — só houve contaminação nos instantes em que o colega tinha índice preparado.
+
+## §7.137-a — Conserto que devolve dados revela dívidas que a ausência escondia
+
+Com o eixo consertado, o dossiê do lead de 111 atividades virou **20 blocos idênticos "E2E Manager ·
+2 ações" empilhados**. O agrupamento está CORRETO (janela de 60s, episódios distintos) e o
+resultado não informa nada.
+
+**Isto não é defeito do conserto — é dívida que só agora pôde aparecer.** Enquanto a tela dizia
+"nada aconteceu", nenhuma quantidade de dados podia expor o problema de densidade. Vale como aviso
+geral: **todo conserto que restaura volume de dados deve ser seguido de um olhar na apresentação**,
+porque a ausência estava mascarando o comportamento com carga real — e o time acabou de provar que
+o vazio se lê como aprovação.
