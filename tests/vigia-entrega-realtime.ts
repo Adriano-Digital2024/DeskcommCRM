@@ -45,42 +45,65 @@ const DOENTE = "35bf4ac9-c5e0-4f7d-846a-99b1bcc92d69";
 const RUN = randomUUID().slice(0, 6);
 const LOG = path.join(process.cwd(), "evidence", "vigia-entrega.log");
 
-async function mede(leadId: string, etiqueta: string): Promise<boolean> {
+/**
+ * UM CICLO = UMA ASSINATURA, DUAS ESCRITAS.
+ *
+ * A versão anterior media o pipeline saudável e o doente em assinaturas
+ * SEPARADAS. O @DevVivo mostrou por que isso é frágil: uma assinatura pode ser
+ * registrada como ANÔNIMA no servidor enquanto o cliente diz SUBSCRIBED — o
+ * estado reportado é do CLIENTE, não do que o servidor gravou. Com duas
+ * assinaturas, o controle podia estar são e a do doente nascer surda, e eu leria
+ * "o defeito voltou" sobre uma assinatura que nunca funcionou.
+ *
+ * Aqui o CANÁRIO viaja na MESMA assinatura que vai julgar o lead doente: primeiro
+ * uma escrita no pipeline saudável, que TEM de chegar; só se ela chegar é que o
+ * resultado do doente significa alguma coisa. É o controle positivo deixando de
+ * ser "outra medição na mesma janela" e passando a ser "a mesma medição".
+ */
+async function ciclo(bom: string, doente: string): Promise<{ canario: boolean; doente: boolean }> {
   const cli = createClient(env.NEXT_PUBLIC_SUPABASE_URL!, env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const marca = `${RUN}-${etiqueta}-${Date.now() % 1000000}`;
-  let chegou = false;
+  const vistos = new Set<string>();
   const canal = cli
-    .channel(`vigia-${marca}`)
+    .channel(`vigia-${RUN}-${Date.now() % 1000000}`)
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "crm_lead_activities" },
-      (p: { new?: Record<string, unknown> }) => {
-        if (String(p.new?.reason ?? "") === marca) chegou = true;
-      },
+      (p: { new?: Record<string, unknown> }) => vistos.add(String(p.new?.reason ?? "")),
     );
   const st = await new Promise<string>((r) => canal.subscribe((s) => r(s)));
   if (st !== "SUBSCRIBED") {
     await cli.removeAllChannels();
-    return false;
+    return { canario: false, doente: false };
   }
   await new Promise((r) => setTimeout(r, 2000));
-  const { error } = await admin.from("crm_lead_activities").insert({
-    organization_id: ORG,
-    lead_id: leadId,
-    source_module: "qa",
-    type: "note",
-    actor_kind: "system",
-    reason: marca,
-    evidence: {},
-    performed_at: new Date().toISOString(),
-  } as never);
-  if (error) throw new Error(`vigia ${etiqueta}: ${error.message}`);
+
+  const marcas = { canario: `${RUN}-canario-${Date.now() % 1000000}`, doente: `${RUN}-doente-${Date.now() % 1000000}` };
+  const escrever = async (leadId: string, marca: string): Promise<void> => {
+    const { error } = await admin.from("crm_lead_activities").insert({
+      organization_id: ORG,
+      lead_id: leadId,
+      source_module: "qa",
+      type: "note",
+      actor_kind: "system",
+      reason: marca,
+      evidence: {},
+      performed_at: new Date().toISOString(),
+    } as never);
+    if (error) throw new Error(`vigia: ${error.message}`);
+  };
+
+  await escrever(bom, marcas.canario);
+  // Folga entre as duas: se caíssem no mesmo instante eu não saberia distinguir
+  // "as duas chegaram" de "chegou uma e eu contei duas".
+  await new Promise((r) => setTimeout(r, 1500));
+  await escrever(doente, marcas.doente);
   await new Promise((r) => setTimeout(r, 7000));
-  await admin.from("crm_lead_activities").delete().eq("reason", marca);
+
+  await admin.from("crm_lead_activities").delete().in("reason", [marcas.canario, marcas.doente]);
   await cli.removeAllChannels();
-  return chegou;
+  return { canario: vistos.has(marcas.canario), doente: vistos.has(marcas.doente) };
 }
 
 async function main(): Promise<void> {
@@ -99,18 +122,17 @@ async function main(): Promise<void> {
   console.info(`[vigia] ${CICLOS} ciclos a cada ${INTERVALO / 60000}min · log em ${LOG}`);
 
   for (let i = 1; i <= CICLOS; i++) {
-    const okBom = await mede(bom.id, "saudavel");
-    const okDoente = await mede(doente.id, "doente");
+    const { canario: okBom, doente: okDoente } = await ciclo(bom.id, doente.id);
     const hora = new Date().toTimeString().slice(0, 8);
     // O CONTROLE DECIDE A LEITURA DO CICLO. Sem ele, um ciclo em que nada
     // entrega viraria "o defeito voltou" — e seria o mesmo par caído que eu já
     // descartei uma vez hoje, agora escrito num log que ninguém vai reauditar.
     const leitura = !okBom
-      ? "INDECIDÍVEL (nem o controle entregou)"
+      ? "INDECIDÍVEL (o canário não chegou NESTA assinatura)"
       : okDoente
         ? "os dois entregam"
         : "*** O DEFEITO VOLTOU: controle entrega, doente não ***";
-    const linha = `${hora} ciclo ${String(i).padStart(2)} · saudável=${okBom ? "ok" : "FALHOU"} · doente=${okDoente ? "ok" : "FALHOU"} · ${leitura}`;
+    const linha = `${hora} ciclo ${String(i).padStart(2)} · canário=${okBom ? "ok" : "FALHOU"} · doente=${okDoente ? "ok" : "FALHOU"} · ${leitura}`;
     console.info(`  ${linha}`);
     fs.appendFileSync(LOG, `${new Date().toISOString()} ${linha}\n`);
     if (i < CICLOS) await new Promise((r) => setTimeout(r, INTERVALO));
