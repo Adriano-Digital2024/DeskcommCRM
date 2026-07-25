@@ -50,6 +50,9 @@ async function main(): Promise<void> {
   const pool = new pg.Pool({ connectionString: env.SUPABASE_DB_URL });
   const marca = randomUUID();
   let leadFantasma: string | null = null;
+  /** Só os avisos que ESTA execução fez nascer — a limpeza não pode levar junto
+   *  um item que já estava lá antes e não é dela. */
+  let avisosDesteRun: string[] = [];
 
   try {
     // Contato com próxima ação e EXATAMENTE um negócio aberto: dá para criar o
@@ -69,6 +72,10 @@ async function main(): Promise<void> {
                 where x.organization_id = $1
                   and x.contact_id = ls.contact_id
                   and x.status = 'open') = 1
+        -- ORDER BY explícito: LIMIT 1 sem ordem é alvo SORTEADO, e uma sonda que
+        -- mede um alvo diferente a cada execução não produz veredito comparável
+        -- — o verde de hoje não fala do vermelho de ontem.
+        order by ls.contact_id
         limit 1`,
       [ORG],
     );
@@ -88,6 +95,25 @@ async function main(): Promise<void> {
     leadFantasma = criados[0]!.id as string;
     console.info(`empate criado: negócio fantasma ${leadFantasma} ao lado de ${alvo.lead_id}`);
 
+    // LEITURA "ANTES" — a procedência do item, não só a existência dele.
+    //
+    // Furo achado pelo @QAVivo atacando esta sonda: a versão anterior contava os
+    // itens SÓ DEPOIS de abrir o board. Ele plantou um aviso à mão, sem empate
+    // nenhum e sem rodar uma linha de código de produção, e as quatro asserções
+    // fecharam 4/4. A sonda provava a tela e MENTIA SOBRE A ORIGEM — exatamente
+    // o que está escrito, em português, no topo de `sonda-veto-na-tela.ts`, e
+    // que eu repeti num arquivo novo.
+    //
+    // Guardar os ids de antes torna o veredito uma DIFERENÇA: o que a sonda
+    // afirma é que o board CRIOU este item agora, não que ele existe.
+    const { rows: antesRows } = await pool.query(
+      `select id from agent_inbox_items
+        where organization_id = $1 and kind = 'next_action_ambiguous' and ref_id = $2`,
+      [ORG, alvo.contact_id],
+    );
+    const antes = new Set(antesRows.map((r) => r.id as string));
+    console.info(`avisos deste tipo ANTES de abrir o board: ${antes.size}`);
+
     const browser = await chromium.launch();
     const page = await browser
       .newContext({ viewport: { width: 1440, height: 900 } })
@@ -97,12 +123,16 @@ async function main(): Promise<void> {
     // O board é quem detecta — abrir a tela É disparar o código de produção.
     await page.goto(`${BASE}/app/pipelines/${PIPELINE}`, { waitUntil: "networkidle" });
 
-    const { rows: itens } = await pool.query(
+    const { rows: depoisRows } = await pool.query(
       `select id, title, status from agent_inbox_items
         where organization_id = $1 and kind = 'next_action_ambiguous' and ref_id = $2`,
       [ORG, alvo.contact_id],
     );
-    console.info(`itens de caixa criados pelo board: ${itens.length}`);
+    // O que interessa é o DELTA: item que não existia antes e existe depois de
+    // o board rodar. Um aviso plantado à mão está no "antes" e não conta.
+    const novos = depoisRows.filter((r) => !antes.has(r.id as string));
+    avisosDesteRun = novos.map((r) => r.id as string);
+    console.info(`avisos NASCIDOS do board (delta): ${novos.length}`);
 
     await page.goto(`${BASE}/app/ai/inbox`, { waitUntil: "networkidle" });
 
@@ -120,12 +150,19 @@ async function main(): Promise<void> {
     await shotPage(page, `wave-4-ambiguo-na-caixa${SUFIXO}.png`);
     await browser.close();
 
-    const nasceu = itens.length === 1 && naTela === 1;
+    // `antes.size === 0` entra na decisão de propósito: se já houvesse um aviso
+    // aberto para este contato, a dedup do board impediria o nascimento e a
+    // sonda mediria um item que não é dela. Melhor recusar o cenário do que
+    // emitir veredito sobre matéria-prima contaminada.
+    const nasceu = antes.size === 0 && novos.length === 1 && naTela === 1;
     const rotulado = /Próxima ação sem negócio definido/.test(texto);
     const semGenerico = !/Aviso do assistente/.test(texto);
     const pedeEscolha = /Escolha a qual negócio ela pertence/.test(texto);
 
-    console.info(`item nasceu do board e aparece uma vez só: ${nasceu ? "SIM" : "NÃO"}`);
+    console.info(
+      `item NASCEU do board nesta execução (0 antes → 1 depois) e aparece uma vez só: ` +
+        `${nasceu ? "SIM" : "NÃO"}`,
+    );
     console.info(`rótulo específico na linha: ${rotulado ? "SIM" : "NÃO"}`);
     console.info(`a linha NÃO cai no genérico: ${semGenerico ? "SIM" : "NÃO"}`);
     console.info(`corpo diz o que fazer: ${pedeEscolha ? "SIM" : "NÃO"}`);
@@ -134,19 +171,15 @@ async function main(): Promise<void> {
     if (!(nasceu && rotulado && semGenerico && pedeEscolha)) process.exitCode = 1;
   } finally {
     if (leadFantasma) {
-      const { rows } = await pool.query(
-        `select contact_id from crm_leads where id = $1`,
-        [leadFantasma],
-      );
       await pool.query(`delete from crm_lead_activities where lead_id = $1`, [leadFantasma]);
       await pool.query(`delete from crm_leads where id = $1`, [leadFantasma]);
-      const contato = rows[0]?.contact_id;
-      const { rowCount } = contato
-        ? await pool.query(
-            `delete from agent_inbox_items
-              where organization_id = $1 and kind = 'next_action_ambiguous' and ref_id = $2`,
-            [ORG, contato],
-          )
+      // Apaga por ID, e só os desta execução. A versão anterior apagava TODOS os
+      // avisos deste tipo do contato — se um já existisse antes, a sonda o
+      // destruiria de brinde. Limpeza também precisa de procedência.
+      const { rowCount } = avisosDesteRun.length
+        ? await pool.query(`delete from agent_inbox_items where id = any($1::uuid[])`, [
+            avisosDesteRun,
+          ])
         : { rowCount: 0 };
       console.info(`limpeza: negócio fantasma removido, ${rowCount} aviso(s) desta execução`);
     }
