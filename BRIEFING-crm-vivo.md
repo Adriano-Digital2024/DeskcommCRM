@@ -9984,3 +9984,22 @@ para quem aquilo não parecia virtude.**
 ---
 
 > **Encerramento da série em 311.** A intenção fica sem afirmação, dos dois lados.
+
+## §7.312 — O defeito não é da ferramenta, é do GESTO: quem acrescenta nunca vê o que já estava lá
+
+A §7.301 culpava a **substituição programática de texto**. Generalização correta, e ela explica por que
+o mesmo defeito atravessou **três artefatos sem tecnologia em comum** num dia — um arquivo de teste, um
+arquivo de memória e este documento de doutrina:
+
+> **Quem acrescenta nunca vê o que já estava lá. Só quem lê inteiro vê.**
+
+**Edição em modo APPEND é cega ao próprio arquivo por construção**, e a cegueira não depende da
+ferramenta: vale para `>>`, para um patch, para uma seção nova no fim de um doc, e para escrever uma
+lição num arquivo de memória onde outra sessão já escrevera a mesma. **O ato de acrescentar não tem
+como sinal nenhum a existência do que já está lá** — a operação sempre "funciona" (§7.298), e o
+resultado é duas definições da mesma coisa.
+
+**A cerca é a mesma da §7.301, e agora com o escopo certo:** antes de acrescentar, **contar quantas
+vezes a coisa já existe** — não conferir a ferramenta, conferir o gesto.
+
+*(Instância que fechou o círculo: a duplicata apareceu no arquivo que guarda a lei sobre duplicatas.)*
