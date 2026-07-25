@@ -29,10 +29,16 @@ async function main(): Promise<void> {
     .from("crm_leads").select("pipeline_id, stage_id").eq("organization_id", ORG).limit(1).maybeSingle();
   const b = base as { pipeline_id: string; stage_id: string };
 
+  // O lead da sonda precisa de CONTATO: sem ele não há proposta (não há para
+  // quem retomar) nem envio (`cron_jobs` é por contato).
+  const { data: algumContato } = await admin
+    .from("contacts").select("id").eq("organization_id", ORG).limit(1).maybeSingle();
+  const contactId = (algumContato as { id: string }).id;
+
   const criaLead = async (): Promise<string> => {
     const id = randomUUID();
     await admin.from("crm_leads").insert({
-      id, organization_id: ORG, pipeline_id: b.pipeline_id, stage_id: b.stage_id,
+      id, organization_id: ORG, pipeline_id: b.pipeline_id, stage_id: b.stage_id, contact_id: contactId,
       title: `sonda decisao ${new Date().toISOString().slice(11, 19)}`,
       last_activity_at: new Date(Date.now() - 100 * 3_600_000).toISOString(), position_in_stage: 1,
     });
@@ -64,10 +70,19 @@ async function main(): Promise<void> {
   // ── 1. ACEITAR ───────────────────────────────────────────────────────────
   const l1 = await criaLead();
   const p1 = await propoeReativacao(admin, { organizationId: ORG, leadId: l1, coldHours: 24 });
+  // limpa follow-up pendente do contato: a guarda anti-bombardeio é legítima e
+  // faria o envio não ser agendado por um motivo que não é o que se mede aqui.
+  await admin.from("cron_jobs").update({ enabled: false })
+    .eq("contact_id", contactId).eq("job_kind", "followup_turn").eq("enabled", true);
   const r1 = await decidir(l1, p1!.id, "accept");
   const { data: e1 } = await admin
     .from("crm_lead_reactivations").select("status, decided_by_user_id").eq("id", p1!.id).maybeSingle();
+  const corpo1 = (() => { try { return JSON.parse(r1.corpo).data; } catch { return {}; } })();
+  const { count: jobs } = await admin
+    .from("cron_jobs").select("*", { count: "exact", head: true })
+    .eq("contact_id", contactId).eq("job_kind", "followup_turn").eq("enabled", true);
   console.info(`1. ACEITAR → http ${r1.http} · status=${(e1 as { status: string }).status} · decisor gravado: ${(e1 as { decided_by_user_id: string | null }).decided_by_user_id ? "SIM" : "NÃO"}`);
+  console.info(`   envio_agendado no corpo: ${corpo1.envio_agendado} · followup_turn na fila: ${jobs} (o campo tem que BATER com a fila)`);
   console.info(`   timeline: ${JSON.stringify(await linhas(l1))}`);
 
   // ── 2. RECUSAR — recusa é sinal, não ausência de sinal ───────────────────

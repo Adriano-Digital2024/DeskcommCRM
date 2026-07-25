@@ -99,11 +99,58 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     .select("contact_id")
     .eq("id", leadId)
     .maybeSingle();
+  const contactId = (lead as { contact_id: string | null } | null)?.contact_id ?? null;
+
+  // ── O ENVIO, pelo caminho que JÁ EXISTE ─────────────────────────────────
+  //
+  // `cron_jobs` + `followup_turn` é como toda mensagem agendada sai deste
+  // produto. Criar um segundo caminho seria o mesmo erro de ter duas definições
+  // de "esfriando": funcionaria hoje e divergiria no primeiro ajuste de
+  // anti-banimento, janela de envio ou throttle — e a divergência apareceria
+  // como "algumas mensagens ignoram o horário permitido".
+  //
+  // ⚠️ NÃO agenda se o contato JÁ tem um follow-up pendente. A guarda existe no
+  // agendador do agente com a razão escrita lá — "evita bombardear o lead com
+  // confirmações repetidas" — e vale igual aqui. Na prática é raro (lead com
+  // follow-up agendado está `em_voo`, não `em_risco`, e não recebe proposta),
+  // mas o raro acontece quando o agente agenda ENTRE a proposta e o clique.
+  let envioAgendado = false;
+  if (decision === "accept" && contactId) {
+    const { data: pendente } = await supabase
+      .from("cron_jobs")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("contact_id", contactId)
+      .eq("kind", "at")
+      .eq("job_kind", "followup_turn")
+      .eq("enabled", true)
+      .gt("next_run_at", new Date().toISOString())
+      .maybeSingle();
+    if (!pendente) {
+      const { error: cronErr } = await supabase.from("cron_jobs").insert({
+        organization_id: orgId,
+        contact_id: contactId,
+        kind: "at",
+        job_kind: "followup_turn",
+        // Agora: a pessoa acabou de autorizar. Adiar seria transformar uma
+        // decisão em promessa, que é o que a wave inteira combate.
+        next_run_at: new Date().toISOString(),
+        payload: {
+          reason: "Retomada de contato autorizada por um humano",
+          promise: null,
+          promised_at: null,
+          source: "reactivation",
+          proposal_id,
+        },
+      });
+      envioAgendado = !cronErr;
+    }
+  }
 
   const atividade = await emitLeadActivity(supabase, {
     organizationId: orgId,
     leadId,
-    contactId: (lead as { contact_id: string | null } | null)?.contact_id ?? null,
+    contactId,
     type: decision === "accept" ? "reactivation_accepted" : "reactivation_dismissed",
     sourceModule: "crm",
     sourceId: leadId,
@@ -139,9 +186,15 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     {
       id: (decidida as { id: string }).id,
       status: decision === "accept" ? "accepted" : "dismissed",
-      // O ENVIO é do motor de follow-up, não desta rota — ver o cabeçalho de
-      // `lib/leads/reactivation.ts`. Aqui fica a DECISÃO.
-      envio_agendado: decision === "accept",
+      // O campo VOLTOU, e agora diz a verdade: ele reflete se um
+      // `followup_turn` foi de fato enfileirado. Ele saiu por um tempo porque a
+      // versão anterior respondia `true` sem agendar nada — comentário protege
+      // quem edita, contrato protege quem consome, e são pessoas diferentes.
+      //
+      // `false` numa aceitação é estado REAL, não erro: o contato já tinha
+      // follow-up pendente, ou o negócio não tem contato. Quem consome precisa
+      // distinguir "autorizado e a caminho" de "autorizado e parado".
+      envio_agendado: envioAgendado,
     },
     { requestId },
   );

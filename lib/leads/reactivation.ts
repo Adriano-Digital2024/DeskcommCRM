@@ -52,6 +52,23 @@ export async function propoeReativacao(
   const now = input.now ?? new Date();
   const expiresAt = new Date(now.getTime() + input.coldHours * 3_600_000);
 
+  // ⚠️ NEGÓCIO SEM CONTATO NÃO RECEBE PROPOSTA, e isso não é detalhe: a
+  // proposta é "retomar CONTATO", e o envio viaja por `cron_jobs`, que é
+  // indexado por `contact_id`. Sem contato não há para quem enviar — a proposta
+  // nasceria com um botão que não pode funcionar, e clicar nele produziria uma
+  // decisão registrada sem consequência nenhuma. É a simulação de atenção pela
+  // porta dos fundos.
+  //
+  // E não é caso de canto: 25% dos negócios não têm contato (medido na wave 6,
+  // quando isso deixou o dossiê mudo). Eles continuam esfriando e aparecendo no
+  // radar — o que muda é que a saída deles é humana, não automática.
+  const { data: alvo } = await admin
+    .from("crm_leads")
+    .select("contact_id")
+    .eq("id", input.leadId)
+    .maybeSingle();
+  if (!(alvo as { contact_id: string | null } | null)?.contact_id) return null;
+
   const { data: viva } = await admin
     .from("crm_lead_reactivations")
     .select("id")
