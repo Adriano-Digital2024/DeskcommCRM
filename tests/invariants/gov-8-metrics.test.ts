@@ -168,6 +168,26 @@ function funnelCount(actorId: string, stageId: string): number {
 
 /** EXPLAIN plan text under a role, seqscan disabled to expose index applicability. */
 /**
+ * ⚠️ O QUE ESTES TESTES PROVAM MUDOU — leia antes de citá-los.
+ *
+ * ANTES a afirmação era "o planner ESCOLHE este índice". Ela era FALSA como
+ * garantia e passava por sorte: medido, o índice esperado custava 7.06 contra
+ * 7.07 do bitmap por outro índice. A escolha virava no TERCEIRO DECIMAL, então
+ * o teste não media propriedade do schema — media ruído, e verde por ruído é
+ * pior que vermelho, porque ninguém investiga.
+ *
+ * AGORA a afirmação é mais ESTREITA e verdadeira: "FORÇADO a usar índice (sem
+ * seqscan, sem bitmap), o planner escolhe ESTE". Continua garantia real — a
+ * sabotagem confirma: sem o índice no baseline, reprova — mas não diga por aí
+ * que o plano de produção usará este caminho. Produção tem volume, e volume é
+ * exatamente o que falta aqui.
+ *
+ * E A CLASSE É FRÁGIL POR CONSTRUÇÃO: invariante que mede ESCOLHA DE PLANO em
+ * tabela pequena depende do planner desempatar centavos. O que normalmente se
+ * quer garantir é que o índice EXISTE e é UTILIZÁVEL — e isso se mede sem
+ * depender de desempate.
+ */
+/**
  * ⚠️ O `analyze` vem ANTES do `set role` (ANALYZE exige dono; sob
  * `authenticated` é ignorado em silêncio) e existe porque este teste era
  * INTERMITENTE: ele mede ESCOLHA DE PLANO numa tabela minúscula, e
