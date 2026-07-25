@@ -49,3 +49,87 @@ A atividade usa o **mesmo** `stageChangeReason` do arrasto humano — "Movido de
 Primeiro contato para Proposta enviada" — com `actor_kind = system`. Quem moveu
 é **campo**, não texto: duas frases para o mesmo acontecimento fariam cada
 leitor, cada filtro e cada tradução carregarem as duas para sempre.
+
+---
+
+# O defeito de preview que não existia — uma retratação, e o que ela ensina
+
+Interrompi a wave 8 para investigar um defeito que **eu inventei**. O registro fica
+aqui inteiro porque o erro custou mais que qualquer entrega do dia: levou o
+orquestrador a aprovar uma migration de schema, e travou um cenário do QA.
+
+## O que eu reportei
+
+Que `conversations.last_message_preview` ficava para trás: **11 conversas defasadas,
+mediana 0h, máxima 69 dias**. Pedi um trigger para carimbar a conversa a cada
+mensagem inserida, e ele foi aprovado — com duas consequências declaradas (dobrar o
+tráfego de realtime, já que `conversations` está na publicação; e conferir se alguma
+trava otimista dependia de `updated_at`).
+
+## O que era de verdade
+
+Eu comparei o carimbo da conversa com `max(messages.created_at)`. **O sistema carimba
+por `max(coalesce(sent_at, created_at))`** — a hora do *envio* no WhatsApp, não a hora
+em que a linha entrou no banco. A migration 0027 (unificação de conversas) agrega
+assim, e está certa: a caixa de entrada ordena por quando o cliente falou, não por
+quando o banco soube.
+
+Nas mensagens que a 0027 **repontou**, as duas horas divergem por meses — `created_at`
+é o instante da importação, `sent_at` é o instante real.
+
+| régua | defasadas |
+|---|---|
+| envio (`coalesce(sent_at, created_at)`) — a que o sistema usa | **1 de 28** |
+| inserção (`created_at`) — a que eu usei | 11 de 28 |
+
+E a única que sobra na régua certa tem `external_id` nulo: **inserção direta, sonda
+minha**. Não é do produto.
+
+A prova de que era isso, e não coincidência: as 5 "defasadas do WAHA" têm `updated_at`
+= **07/07 00:16, todas, ao minuto** — o instante em que a 0027 rodou (14 conversas
+tocadas naquela hora). Elas não esqueceram de atualizar; foram recalculadas pela
+migration, pela régua do envio, e ficaram **certas**. Meu comparador chamou o certo de
+errado.
+
+## O sinal que estava na cara
+
+**"Mediana 0h, máxima 69 dias" não é a assinatura de um mecanismo que falha às vezes —
+é a assinatura de dois relógios.** Mecanismo quebrado erra em toda parte; régua trocada
+erra só onde os dois relógios divergem. Eu tinha o diagnóstico no próprio número que
+reportei e passei por ele.
+
+## O erro de instrumento que veio antes
+
+Antes da retratação eu já tinha errado uma vez no mesmo caso: afirmei que
+`lib/waha/ingest.ts` "insere mensagem e nunca toca `conversations`". Ele toca — por
+`markConversation()`, que chama a RPC `fn_mark_conversation_message`. Minha varredura
+procurou `from("conversations")` **dentro do arquivo**, e o ingest chega lá por RPC,
+através de um helper. É a mesma família: **varredura que procura o recurso perde quem
+chega nele pelos portões.**
+
+Os dois caminhos de escrita estão íntegros e sempre estiveram — API por `update`,
+ingest por RPC.
+
+## O que ficou de conserto real
+
+Nenhuma migration. O que a investigação produziu de útil foi:
+
+- **`9d5b1f5`** — `useRealtimeChannel` devolvia `ultimaEntrega.current`, leitura de ref
+  dentro do render: o número saía congelado e o consumidor só via o valor novo se
+  *outra coisa* causasse render. Funcionava por acidente (a query redesenha ao
+  invalidar) e falharia na janela entre a entrega e o redesenho — que é exatamente
+  onde o refetch de segurança dispara. Ele leria carimbo velho e acusaria divergência
+  numa mudança legítima. A ref agora **atravessa** a fronteira do hook; quem lê é o
+  timer, fora do render. Não virou `useState` de propósito: o valor entraria nas
+  dependências do efeito e o canal re-assinaria a cada evento.
+- **`f2131b3`** — a sonda de redundância apaga o que insere e **confere quantas linhas
+  apagou**. Mensagem inserida direto em `messages` não passa por nenhum dos dois
+  caminhos, então a conversa não recebe carimbo, e o rastro ganha a assinatura de um
+  defeito de preview. Foi o que sujou a medição.
+
+## Ressalva de honestidade sobre as evidências da wave 7
+
+As evidências da rede de segurança foram tiradas **antes** de `9d5b1f5`. O detector que
+elas mostram funcionando é o que tinha a leitura congelada. A lógica do comparador não
+mudou — só a frescura do dado que entra nele —, mas isso é **raciocínio, não
+observação**, e a diferença é justamente a que não se deve borrar.
