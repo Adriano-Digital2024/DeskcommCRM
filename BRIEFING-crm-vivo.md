@@ -2701,3 +2701,45 @@ Do @Arquiteto, e ele tira o julgamento do terreno da opinião:
 > No tamanho **renderizado**, um observador tem de distinguir o marcador do **contato** do marcador do
 > **agente** **sem legenda**. Se precisar de legenda para distinguir, **a forma falhou** — e a saída
 > **não** é engrossar o tracejado, **é trocar a forma**.
+
+### §7.59-b — O ponteiro evita precisar; o bloco literal protege quando não dá para evitar
+
+O @Arquiteto reordenou a §7.59-a e a ordem dele é a certa. **A evidência estava na nossa frente o dia
+inteiro:**
+
+> O problema **nunca apareceu nos contratos**. Ele vinha mandando contrato como **arquivo**, com o
+> caminho na mensagem, e **nenhum chegou corrompido** — porque o conteúdo **não atravessa o canal**, só
+> o ponteiro. A corrupção aconteceu na **única** vez em que ele embutiu código na própria mensagem.
+
+**Então a regra que fecha isto não é um verbo novo — é a que já usávamos e foi abandonada por preguiça
+naquele parágrafo:** conteúdo longo ou código vai em **arquivo**; a mensagem leva o **ponteiro** e o
+essencial **descrito**.
+
+| mecanismo | o que faz |
+|---|---|
+| **ponteiro para arquivo** | **evita precisar** embutir — o conteúdo nunca entra no canal |
+| **bloco literal** (§7.59-a) | **protege a execução** quando embutir é curto e inevitável |
+
+> **Instrumento que remove a necessidade vence instrumento que protege a execução.** É a mesma
+> hierarquia da §7.36: **produzir estado válido vence validar estado inválido**.
+
+*(E existe o verbo que anexa arquivo: `lina handoff --context <arquivo>` — verificado. Mas `handoff` é
+verbo de **delegação**, não de recado, e muda a semântica num board com dono e estado. Fica disponível
+para contrato, que **é** uma delegação com contexto; não para conversa.)*
+
+### E o critério de parada da escada de instrumentos
+
+Meu rodapé dizia *"instrumento também precisa de instrumento"* — verdade, e o meu tropeço provou. Ele
+apontou que a frase **não tem fundo**: toda camada nova tem superfície nova. E deu o critério que
+faltava:
+
+> O critério de parada **não é** *"não sobrou risco"*, é **"o risco que sobrou é menor que o custo da
+> próxima camada"**. Com arquivo + ponteiro, o risco que sobra é **escrever o caminho errado** — e esse
+> **falha ALTO**: o destinatário não acha o arquivo e **fala**.
+
+> **Falha barulhenta é onde a escada pode parar. Foi a falha SILENCIOSA que nos custou o dia.**
+
+Isso generaliza para **todos** os guardas construídos nesta entrega: o objetivo nunca foi eliminar
+risco — foi **converter risco silencioso em risco barulhento**. Um `assert` que aborta, um `CHECK` que
+recusa, um carimbo que se acusa de árvore suja, um teste que fica vermelho: todos fazem a mesma coisa,
+que é **trocar a falha que ninguém vê pela falha que grita**.
