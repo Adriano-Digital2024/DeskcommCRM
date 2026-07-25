@@ -21,7 +21,10 @@ import * as fs from "node:fs";
 
 import { createClient } from "@supabase/supabase-js";
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import pg from "pg";
+
+import { emitVetoActivity } from "@/lib/leads/veto-activity";
 
 import { BASE, CARD_ATTR, CREDS, EVIDENCE, carimbar, gotoBoard, login, loginAs, shotPage } from "./qa-helpers";
 
@@ -542,6 +545,14 @@ async function main(): Promise<void> {
     await armarContadorDePulsos(abaB, ALVO);
     // Dispara a 1a mudança e JÁ sai perseguindo o overlay, antes que ele suma.
     const cardB = abaB.locator(`[${CARD_ATTR}]`).filter({ hasText: ALVO }).first();
+    // ARMA a espera ANTES do gatilho. Esperar depois é chegar atrasado por
+    // construção: o disparo já consumiu a janela em que o overlay existe.
+    const overlayNasceu = cardB
+      .locator("[data-pulse]")
+      .first()
+      .waitFor({ state: "attached", timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
     await duasMudancasRemotas((leadAlvo.data as { id: string }).id, destinos, 500);
     // PERNA DE PIXEL: o evento nativo prova que ALGO rodou; só o pixel prova que
     // alguém VERIA. E o A/B é DURANTE × DEPOIS, nunca durante × antes: o gatilho
@@ -550,9 +561,15 @@ async function main(): Promise<void> {
     let durantePix = "";
     let depoisPix = "";
     try {
+      // Espera o overlay NASCER antes de fotografar. Disparar e fotografar em
+      // seguida perde a janela: a animação dura 320ms e o próprio screenshot
+      // consome parte disso — foi assim que eu produzi um vermelho que era do
+      // meu relógio, não do produto.
+      const nasceu = await overlayNasceu;
+      if (!nasceu) throw new Error("overlay não nasceu");
       durantePix = hashDoRecorte(await cardB.screenshot());
     } catch {
-      durantePix = "(não capturado)";
+      durantePix = "(overlay não nasceu na janela)";
     }
     await abaB.waitForTimeout(5000);
     try {
@@ -898,44 +915,73 @@ async function main(): Promise<void> {
   // 21 decisões de não-enviar em `before_send_traces` (16 por promessa semântica,
   // 3 por limite de aquecimento, 1 por contato bloqueado, 1 fora da janela) — e
   // NENHUMA delas é visível para um humano. É o cenário 11 em números.
-  const veto = await (async () => {
-    const r = await admin
-      .from("before_send_traces")
-      .select("contact_id,vetoed_gate,vetoed_code,created_at")
-      .eq("organization_id", CREDS.org_id)
-      .not("vetoed_gate", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    if (r.error) throw new Error(`vetos: ${r.error.message}`);
-    const linhas = (r.data ?? []) as { contact_id: string; vetoed_gate: string; vetoed_code: string }[];
-    const comLead = await admin
-      .from("crm_leads")
-      .select("contact_id")
-      .in("contact_id", linhas.map((x) => x.contact_id));
-    const ids = new Set(((comLead.data ?? []) as { contact_id: string }[]).map((x) => x.contact_id));
-    return linhas.find((x) => ids.has(x.contact_id)) ?? null;
-  })();
-
-  if (!veto) {
-    record("11", "decisão de NÃO enviar aparece na timeline", false, "nenhum veto com lead na org — sem caso real para ancorar");
-  } else {
-    await abaA.goto(`${BASE}/app/contacts/${veto.contact_id}`);
-    await abaA.waitForLoadState("networkidle").catch(() => null);
-    await abaA.waitForTimeout(4000);
-    const texto = ((await abaA.locator("main").first().textContent()) ?? "").replace(/\s+/g, " ");
-    // Aceita o código cru OU um rótulo humano do mesmo motivo — o que importa é
-    // que a decisão de silêncio esteja NA TELA, não a forma exata da palavra.
-    const rotulos = [veto.vetoed_code, veto.vetoed_gate, "não envi", "nao envi", "veto", "bloque", "promessa"];
-    const achou = rotulos.some((r) => new RegExp(r, "i").test(texto));
-    record(
-      "11",
-      "decisão de NÃO enviar aparece na timeline",
-      achou,
-      achou
-        ? `veto "${veto.vetoed_gate}/${veto.vetoed_code}" visível na timeline do contato`
-        : `veto REAL existe no banco ("${veto.vetoed_gate}/${veto.vetoed_code}") e NÃO aparece na tela do contato — o silêncio do agente segue invisível. Pendente do bloco 2.3.`,
+  // DECISÃO DO REGENTE (opção a): o critério passa a exigir que um veto NOVO
+  // apareça — a ponte funcionando. Os 21 vetos históricos de `before_send_traces`
+  // NÃO são reescritos como atividade: publicar histórico retroativo numa trilha
+  // append-only e auditada é decisão de produto, não conveniência de fechamento
+  // de onda. Ficam como dívida NOMEADA no handoff, com query e viabilidade.
+  //
+  // O veto é criado pelo EMISSOR DE PRODUÇÃO (mesmo código de um veto real), e
+  // removido ao fim: prova não pode deixar resíduo num lead que outras sessões usam.
+  const pool = new pg.Pool({ connectionString: envVars.SUPABASE_DB_URL });
+  const traceId = randomUUID();
+  try {
+    const alvo = await pool.query(
+      `select l.organization_id, l.contact_id
+         from crm_leads l
+        where l.contact_id is not null and l.status = 'open'
+          and l.organization_id = $1
+        limit 1`,
+      [CREDS.org_id],
     );
-    await shotPage(abaA, "wave-3-c11-timeline-veto.png", false);
+    const linha = alvo.rows[0] as { organization_id: string; contact_id: string } | undefined;
+    if (!linha) {
+      record("11", "veto NOVO aparece na timeline", false, "sem lead aberto com contato para emitir o veto");
+    } else {
+      const r = await emitVetoActivity({
+        pool,
+        organizationId: linha.organization_id,
+        contactId: linha.contact_id,
+        traceId,
+        gate: "pacing",
+        code: "warmup_cap",
+      });
+
+      await abaA.goto(`${BASE}/app/contacts/${linha.contact_id}`);
+      await abaA.waitForLoadState("networkidle").catch(() => null);
+      const abaTl = abaA.getByRole("tab", { name: /timeline/i }).first();
+      if ((await abaTl.count()) > 0) await abaTl.click();
+      await abaA
+        .waitForFunction(
+          () => {
+            const p = Array.from(document.querySelectorAll('[role="tabpanel"]')).find(
+              (x) => (x as HTMLElement).offsetParent !== null,
+            );
+            return !!p && (p.textContent ?? "").trim().length > 0;
+          },
+          undefined,
+          { timeout: 30_000 },
+        )
+        .catch(() => null);
+
+      const sup = await avaliarSuperficie(abaA, '[role="tabpanel"]');
+      const anunciaVeto = /bloquead|não envi|nao envi/i.test(sup.texto);
+      const temMotivo = /ritmo|limite|aquecimento|warmup/i.test(sup.texto);
+      record(
+        "11",
+        "a decisão de NÃO enviar aparece na timeline, com motivo legível",
+        (r.routed as boolean) && anunciaVeto && temMotivo && sup.uuidsVisiveis.length === 0,
+        `roteado=${r.routed} · anuncia o bloqueio=${anunciaVeto} · motivo legível=${temMotivo} · uuid visível=${sup.uuidsVisiveis.length}` +
+          (anunciaVeto ? "" : ` · tela: "${sup.texto.slice(0, 110)}"`),
+      );
+      await shotPage(abaA, "wave-3-c11-timeline-veto.png", false);
+    }
+  } finally {
+    // Limpa o que escreveu — a mesma disciplina da sonda do regente.
+    await pool
+      .query(`delete from crm_lead_activities where type = 'send_vetoed' and source_id = $1`, [traceId])
+      .catch(() => null);
+    await pool.end().catch(() => null);
   }
 
   await browser.close();
