@@ -259,3 +259,60 @@ Os ~60s são o polling declarado da lista de propostas, que não vem por canal �
 não há perda a curar ali, há latência. A primeira medição esperou 7s e concluiu
 "o ciclo não chegou à tela": estava medindo a minha impaciência, não o produto.
 O contrato pede **sem reload**, não instantâneo.
+
+---
+
+## Consequência de DEPLOY descoberta (não é da wave 7 — e é maior que ela)
+
+O cenário 23 agenda o envio por `cron_jobs` + `followup_turn`, que é **o caminho
+que já existe** para o agente falar com o cliente. A escolha está certa: criar um
+segundo caminho de envio seria o mesmo erro de ter duas definições de
+"esfriando".
+
+**Mas o produto tem DOIS mecanismos de agendamento que custam coisas diferentes
+para OPERAR:**
+
+| mecanismo | quem drena | o que o self-host precisa |
+|---|---|---|
+| `followup_enrollments` | rota de cron (`followup-flow-worker`) | nada além do agendador HTTP que já existe |
+| `cron_jobs` | `fireOneDue`, dentro do **agent-worker** | **um processo vivo** (`npm run worker`) |
+
+E num produto self-host isso é um defeito de entrega esperando acontecer:
+alguém instala o kit, aceita uma reativação, o sistema responde **"agendado"** —
+e a mensagem nunca sai. Sem erro, sem aviso, sem nada ligando sintoma a causa.
+É a doença do épico inteiro, agora no manual de instalação.
+
+**A prova de que o mecanismo está inerte neste ambiente**, medida em dois
+andares:
+
+```
+cron_jobs  · 22 followup_turn · 7 vencidos · attempts = 0 em TODOS
+job_queue  · 7 pendentes depois do tick     · attempts = 0 em TODOS
+```
+
+`attempts = 0` não é "tentou e falhou" — é **nunca foi tentado**. Nenhum
+consumidor jamais pegou nenhum desses jobs aqui.
+
+E a cadeia completa, com um consumidor diferente em cada seta:
+
+```
+cron_jobs ──tickCron──▶ job_queue ──agent-worker──▶ turno do agente ──▶ mensagem
+   ✅ provado              ⛔ sem processo vivo
+```
+
+O `agent-dispatcher` **não** cobre o segundo elo: está marcado `@deprecated` e é
+no-op permanente desde a convergência da Fase 0.
+
+### A regra que fica
+
+Ao escolher entre mecanismos que fazem a mesma coisa **no código**, conte
+**quantos processos precisam estar vivos** para cada um. A diferença não aparece
+em teste — aparece na máquina de quem instalou. E quando a escolha custa um
+processo a mais, isso vira **requisito declarado do deploy**, não detalhe de
+implementação.
+
+### O item que fica aberto (decisão de produto, não de código)
+
+Ou o kit self-host declara e sobe o agent-worker, ou o envio da reativação migra
+para o mecanismo que não exige processo. As duas são decisões de produto. Nada
+foi mudado — só registrado.
