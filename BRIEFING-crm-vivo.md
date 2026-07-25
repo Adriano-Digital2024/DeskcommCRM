@@ -3038,3 +3038,54 @@ elo a elo — com **status e identidade na mesma linha**: `data-realtime-status=
 E o que ele **não** sabe continua dito: a falha original **não foi reproduzida** e **não há causa**.
 Duas rodadas determinísticas aconteceram, e nenhuma explicação ambiental foi inventada para fechar a
 história.
+
+---
+
+## §7.73 — A cura da morte silenciosa pode criar uma morte silenciosa nova, e ela é pior
+
+Ponto central do contrato da Wave 7, do @Arquiteto, e é **recursivo**: a wave existe para fazer o
+estado *"esfriando"* virar **demanda**. E a demanda que ela cria **também pode morrer**.
+
+> Proposta de reativação que ninguém decide **fica pendente para sempre**, e o lead volta a ser card
+> parado — **agora com um botão em cima, o que é pior, porque parece que alguém está cuidando**.
+
+**A doença do épico, vestida de cura.** E é mais cara que a original: um card parado **sem nada** é
+legível como abandono; um card parado **com uma proposta pendente** simula atenção, e simulação de
+atendimento adia a intervenção humana em vez de provocá-la.
+
+**Regra:** proposta pendente **tem prazo**, e vencida vira **item de caixa** — mesmo destino e mesmo
+motivo da ambiguidade da Wave 4: **demanda sem dono não mora no Kanban**. Não expira em silêncio e não
+fica no card fingindo que alguém vai decidir.
+
+> **Toda solução para "algo morre sem ninguém ver" precisa responder o que acontece quando a própria
+> solução não for atendida.** Se a resposta for "fica lá", a solução é um adiamento com interface
+> melhor.
+
+### E a wave é MENOR do que o briefing sugere — porque alguém foi medir
+
+Ele mediu em vez de assumir o §4, e **metade já está entregue**. Verifiquei os três:
+
+| item | estado | evidência |
+|---|---|---|
+| reconciliação da §3.3 (radar × card) | **feito** | `at-risk/route.ts` usa `classifyRisk` + `resolveStageWindow`, com o comentário *"para o radar e o card nunca discordarem do mesmo lead"* |
+| esfriando visível no card | **feito** | `coolingIds` sai de `useAtRiskLeads` e desce até `StageColumn` |
+| precedência do cenário 24 | **feito** | `resolveCardState` devolve `awaiting` antes de `cooling` |
+| **o ciclo** | **falta** | **zero** consumidores de *cooling/at_risk* no engine ou no follow-up |
+
+> *"Hoje **esfriando** é só um ESTADO VISUAL: nada nasce dele."* — confirmado por varredura.
+
+**Medir antes de despachar encolheu a wave inteira.** O briefing descrevia o escopo pelo que **faltava
+quando foi escrito**; o repositório respondeu o que falta **agora**. Contrato herdado sem medição
+manda construir o que já existe.
+
+### A proposta nasce de TEMPLATE, não de modelo
+
+Aceito, e a ordem dos motivos dele é a certa: **custo sem retorno** (uma chamada de modelo por lead
+frio para produzir proposta que talvez ninguém aprove — e leads frios são, por definição, a maior e
+mais parada população da base); **auditabilidade** (template versionado diz **qual versão** produziu
+aquela frase; texto de modelo não diz nada); **determinismo** (o cenário 23 fica reproduzível).
+
+E há um quarto que fecha com a Wave 5: **o template é a derivação**. A §7.54 estabeleceu que prosa
+gerada não é auditável porque não se reconstrói; um `reentry_template_version` é exatamente o
+equivalente — a frase tem **procedência verificável**. O modelo entra **depois do aceite**, no
+`followup_turn` que a Wave 4 já enfileira.
