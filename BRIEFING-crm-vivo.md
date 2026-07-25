@@ -8557,3 +8557,43 @@ escrita não é dívida: é decisão.**
 
 **Resultado positivo em N rodadas não refuta "falha às vezes"** — refutar exige o contador que ainda
 não existe. A ordem continua: **tornar observável → medir → só então decidir sobre a cerca**.
+
+## §7.274 — Dado ANTIGO produz defeito inferido no código ATUAL
+
+Quase-erro que vale mais que os consertos da rodada: ao investigar por que a limpeza de uma sonda
+falhara, a conclusão pronta era *"o `LIKE` exige que o corpo COMECE pela marca"*. **Conferido o
+código no HEAD antes de falar: a marca já vem no começo** — foi movida para lá durante a própria
+wave. **As linhas órfãs são de uma versão ANTIGA do arquivo.**
+
+> ***"Eu estava reconstruindo, do zero, o mesmo erro que tinha acabado de me retratar — inferir
+> defeito de dado velho sem checar a versão do código."***
+
+**É a lei do alvo em movimento pelo lado que ninguém vigia.** A preocupação usual é o código mudar
+**sob** a medição. Aqui é o inverso e é mais comum: **o dado sobrevive a todas as versões do código
+que o produziu.** Uma linha gravada em abril é evidência sobre o código de abril — e lida hoje, vira
+acusação contra o código de hoje.
+
+**Regra:** toda inferência que vai **do dado para o código** data as duas pontas. *"Esta linha está
+assim, logo o código faz assim"* só vale se o código **que a escreveu** for o código que se está
+lendo — e em base viva, quase nunca é.
+
+## §7.275 — Apagar linha em tabela com coluna DERIVADA sem recomputar deixa o ponteiro pior
+
+Autorizada a remoção das duas linhas de sonda — **com uma condição que a proposta não previa**.
+
+`conversations.last_message_at` e `last_message_preview` são mantidos por caminho de aplicação
+(update do handler / RPC do ingest). **Não há trigger.** Logo, **apagar as mensagens NÃO recalcula
+nada**: a conversa continuaria carimbada por uma mensagem **que não existe mais**.
+
+**O resultado seria pior que o estado atual** — hoje o carimbo aponta para uma linha real e
+indesejada; depois apontaria para uma linha **inexistente**. E o sintoma na tela seria idêntico ao
+defeito que acabamos de provar que não existe, **plantado por nós, na limpeza**.
+
+**Sequência correta:** apagar as mensagens **e** recompor o carimbo das conversas afetadas —
+recalculando pelo `max(coalesce(sent_at, created_at))` das que sobraram, ou chamando a RPC — **na
+mesma operação**, com contagem antes e depois provando que saíram exatamente duas.
+
+**Regra geral:** toda remoção em tabela que alimenta coluna derivada **por caminho de aplicação**
+precisa recompor a derivada explicitamente. O caminho de escrita cobre INSERT; **ninguém escreveu o
+caminho de DELETE**, porque apagar mensagem não é operação de produto — e é exatamente por isso que
+a limpeza manual é onde esse buraco aparece.
