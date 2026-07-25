@@ -1847,3 +1847,31 @@ modificado por **outro usuário**. Recarregue e tente novamente."* Quando o escr
 frase é **falsa** — a pessoa vai procurar um colega que não existe. O texto embute a premissa de que
 todo escritor concorrente é humano, e ela deixou de valer no dia em que automações passaram a escrever
 no lead.
+
+### §7.36-a — A ambiguidade era minha, e o instrumento certo a resolveu sem reprovar por ela
+
+O @QAVivo foi armar a invariante de coerência e esbarrou num texto meu que diz **duas coisas**: a
+§7.33 escreve `frio ⇒ score <= 45`; a §7.36 escreve *"frio só sobrevive com score **< 45**"*.
+
+**Ele não reprovou por isso** — e essa foi a decisão certa. Em vez de asserir uma borda que a
+especificação não fixa, **varreu e leu de volta** o intervalo que o banco aceita, assertando apenas o
+que os dois textos concordam e deixando o intervalo como **saída** do teste:
+
+```
+frio 0..45 · morno 35..75 · quente 65..100 — bordas INCLUSIVAS
+```
+
+> **Reprovar por ambiguidade de especificação é reprovar o produto por defeito do texto.** Quando a
+> spec não fixa a borda, o instrumento mede a borda e a **reporta**, em vez de arbitrar.
+
+**E a ambiguidade se desfaz assim** — os dois números descrevem **conjuntos diferentes**, e o erro foi
+meu por não dizer qual era qual:
+
+| conjunto | borda | por quê |
+|---|---|---|
+| o que a **caminhada produz** | `frio` só para `s < 45` | em 45 ela já teria subido para `morno` |
+| o que o **CHECK aceita** | `frio` até `s <= 45` | **permissivo de propósito** (§7.33): guarda contra deriva, não reconstrução da transição |
+
+O aceito é **superconjunto** do produzido, e tem de ser: um CHECK que só aceitasse o exatamente
+produzível rejeitaria escrita legítima na fronteira. A medição empírica dele confirma a propriedade
+que eu havia **declarado** sem medir.
