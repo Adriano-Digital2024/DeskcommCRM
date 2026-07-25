@@ -22,7 +22,7 @@ import * as fs from "node:fs";
 import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
-import { BASE, CARD_ATTR, EVIDENCE, login } from "./qa-helpers";
+import { BASE, CARD_ATTR, EVIDENCE, carimbar, login } from "./qa-helpers";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
 const env: Record<string, string> = {};
@@ -45,6 +45,15 @@ async function main(): Promise<void> {
   const lead = leads?.[0];
   if (!lead) throw new Error("sem lead para provocar");
 
+  // As dependências desta prova, DECLARADAS: se qualquer uma estiver suja, o
+  // resultado não é veredito e o print nasce marcado. Foi medindo o globals.css
+  // não commitado que esta sonda me fez desmentir uma previsão minha correta.
+  const sufixo = carimbar([
+    "app/globals.css",
+    "components/kanban/KanbanCard.tsx",
+    "hooks/kanban/useBoard.ts",
+  ]);
+
   const browser = await chromium.launch();
   // REDUCED=1 troca o contexto para movimento reduzido: é o caminho que o §5
   // promete ser IGUAL, não degradado, e a única promessa da wave que ninguém
@@ -64,7 +73,7 @@ async function main(): Promise<void> {
   await card.waitFor({ state: "visible", timeout: 20_000 });
 
   const repouso = await card.screenshot();
-  fs.writeFileSync(`${EVIDENCE}/sonda-pulso-repouso.png`, repouso);
+  fs.writeFileSync(`${EVIDENCE}/sonda-pulso-repouso${sufixo}.png`, repouso);
 
   // Evento REMOTO PURO: ninguém agiu nesta aba, então não há eco local a
   // consumir — é exatamente o caso que o pulso existe para anunciar.
@@ -80,7 +89,7 @@ async function main(): Promise<void> {
   const contador = await overlay.getAttribute("data-pulse");
 
   const durante = await card.screenshot();
-  fs.writeFileSync(`${EVIDENCE}/sonda-pulso-durante.png`, durante);
+  fs.writeFileSync(`${EVIDENCE}/sonda-pulso-durante${sufixo}.png`, durante);
 
   // O A/B QUE ISOLA A VARIÁVEL: durante × DEPOIS, não durante × antes.
   // Comparar com o repouso ANTERIOR seria confundido — o evento que dispara o
@@ -89,7 +98,7 @@ async function main(): Promise<void> {
   // overlay sai: uma variável. (O `repouso` fica gravado só como contexto.)
   await overlay.waitFor({ state: "detached", timeout: 15_000 });
   const depois = await card.screenshot();
-  fs.writeFileSync(`${EVIDENCE}/sonda-pulso-depois.png`, depois);
+  fs.writeFileSync(`${EVIDENCE}/sonda-pulso-depois${sufixo}.png`, depois);
 
   const iguais = hash(durante) === hash(depois);
   console.info(`overlay nasceu, data-pulse=${contador}`);

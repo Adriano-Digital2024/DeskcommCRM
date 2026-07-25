@@ -8,6 +8,7 @@
 
 import type { Locator, Page } from "@playwright/test";
 import * as crypto from "node:crypto";
+import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -198,4 +199,45 @@ export async function shotPage(page: Page, file: string, fullPage = true): Promi
   guardaEvidencia(file);
   await page.screenshot({ path: path.join(EVIDENCE, file), fullPage });
   console.info(`[evidencia] evidence/${file}`);
+}
+
+/**
+ * CARIMBO DE PROCEDÊNCIA — mecaniza a lei do §7.3/§7.11 em vez de confiar nela.
+ *
+ * Proposta do `@Arquiteto`, e o argumento dele é o que decide: o regente caiu na
+ * própria regra com o time assistindo. Isso não é falta de rigor, é limite de
+ * memória sob pressão — e a resposta para limite de memória é **artefato**, não
+ * promessa. Custou duas linhas por sonda.
+ *
+ * Duas coisas acontecem aqui, e a segunda vale mais que a primeira:
+ *
+ * 1. Imprime o commit e o estado das dependências. Verde contra árvore suja
+ *    deixa de ser possível de emitir sem aparecer.
+ * 2. **Obriga a declarar de que arquivos a prova depende** — o que força a
+ *    escrever a cadeia causal ANTES de medir. Foi exatamente isso que faltou nas
+ *    duas vezes em que uma medição desta wave valeu para a versão errada.
+ *
+ * Devolve o sufixo que deve ir no NOME da evidência: com árvore suja, o print
+ * nasce marcado como `-ARVORE-SUJA`. A evidência acusa a si mesma, em vez de
+ * depender de alguém lembrar de ler o log.
+ */
+export function carimbar(dependencias: string[]): string {
+  const head = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  const sujos = execSync(`git status --porcelain -- ${dependencias.join(" ")}`, {
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter(Boolean);
+
+  console.info(`[carimbo] HEAD=${head}`);
+  console.info(`[carimbo] dependências declaradas: ${dependencias.join(", ")}`);
+  if (sujos.length === 0) {
+    console.info("[carimbo] todas limpas — o veredito vale para este commit");
+    return "";
+  }
+  // Grita. Não bloqueia: iterar com a árvore suja é legítimo enquanto se
+  // desenvolve; o que não pode é o resultado sair parecendo veredito.
+  console.info("[carimbo] ⚠ ÁRVORE SUJA nas dependências — este resultado NÃO é veredito:");
+  for (const l of sujos) console.info(`[carimbo]   ${l}`);
+  return "-ARVORE-SUJA";
 }
