@@ -3196,3 +3196,39 @@ proposta de cena, e a ação em si é do humano.
 > debaixo do resultado. Foi o que aconteceu na execução anterior ao `c69fe66`.
 
 `typecheck` 0 · `lint` 0 · `test:unit` **918/918**.
+
+### Bloco 4.5 — a decisão humana chega no turno do agente
+
+O buraco era meu e estava na minha própria justificativa: eu argumentei que Ignorar precisa gerar
+atividade "senão o agente repropõe o que já foi negado", e **nunca conferi se alguém lê esse
+registro**. Não lia. `LeadContext` entregava `{lead_id, contact, conversation_id, messages}` — sem
+`lead_state`, sem `next_action`, sem `crm_lead_activities`. Evento sem consumer, anti-pattern nº 3
+do `CLAUDE.md`, derrubando a razão de existir do que a wave tinha acabado de gravar.
+
+`LeadContext` ganha `last_human_decision: { action, decision, at } | null`, lido do **barramento**
+(`crm_lead_activities`, filtrado por `contact_id`) — não de coluna nova. A timeline já é a memória
+compartilhada entre humano e agente; foi para isso que a Wave 3 a construiu, e outra fonte seria o
+segundo funil que o épico existe para acabar.
+
+O texto vem de `payload.next_action` e **não** do `reason`: `reason` é a frase legível para a TELA
+("Aprovou: ligar para o Carlos"), e usá-la obrigaria o modelo a desfazer o prefixo em português
+para recuperar um dado que já existe estruturado ao lado.
+
+O campo é **obrigatório** no tipo, não opcional — o compilador cobrou cinco fixtures, que é
+exatamente o efeito desejado: campo opcional deixa o próximo `LeadContext` nascer sem a decisão e
+ninguém percebe.
+
+**Prova — o valor, não o campo.** A sonda chama `getLeadContext`, a mesma função que monta o
+payload entregue ao modelo, contra o banco real, e confere o **payload serializado** (se o campo
+existisse mas caísse no corte de orçamento, o turno seguiria cego do mesmo jeito):
+
+| perna | resultado |
+|---|---|
+| o contexto do turno traz a decisão | ✅ `dismissed` · "Acompanhar dúvidas ou requisitos adicionais para o fechamento." |
+| a ação aparece no payload que vai ao modelo (902 tokens) | ✅ |
+| o sentido da decisão bate com o que o humano fez | ✅ |
+| **sabotagem**: `lastHumanDecision = null` | ✅ vira **FALHA** nas pernas 2 e 3, e volta a PASS ao restaurar |
+
+A decisão usada na prova veio da **interface**, na sonda anterior — não de um insert de teste.
+
+`typecheck` 0 · `lint` 0 · `test:unit` 919/919 · `test:db` 330.

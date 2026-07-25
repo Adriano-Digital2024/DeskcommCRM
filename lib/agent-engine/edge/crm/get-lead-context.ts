@@ -45,6 +45,23 @@ export interface LeadContextMessage {
   media_mime?: string | null;
 }
 
+/**
+ * A última decisão HUMANA sobre a próxima ação que o agente propôs.
+ *
+ * Sem isto, gravar a recusa não servia para nada: a Wave 4 mostrava a decisão ao
+ * humano e a escondia de quem precisava dela — evento sem consumer, e o agente
+ * reproporia o que já foi negado. A promessa do épico é que o que o humano
+ * decide vira contexto que a IA usa para retomar.
+ *
+ * `action` viaja junto porque "aprovado" sem dizer O QUÊ não serve ao próximo
+ * turno.
+ */
+export interface UltimaDecisaoHumana {
+  action: string;
+  decision: 'approved' | 'dismissed';
+  at: string;
+}
+
 /** Payload curado que o modelo recebe. */
 export interface LeadContext {
   lead_id: string;
@@ -57,6 +74,17 @@ export interface LeadContext {
     is_blocked: boolean;
   };
   conversation_id: string | null;
+  /**
+   * `null` quando nenhum humano decidiu nada sobre propostas deste contato.
+   *
+   * OPCIONAL no tipo, e não por preferência: `tests/invariants/**` é congelado
+   * por hook de governança, e um campo obrigatório obrigaria a editar o
+   * `fakeLeadContext` de um invariante existente. A garantia que interessa não
+   * é fixture de teste declarar o campo — é o PRODUTOR sempre preenchê-lo, e
+   * isso está coberto por `get-lead-context-decisao.test.ts`, que reprova se
+   * `getLeadContext` devolver um contexto sem a chave.
+   */
+  last_human_decision?: UltimaDecisaoHumana | null;
   /** Últimas N mensagens, da mais antiga para a mais nova. */
   messages: LeadContextMessage[];
 }
@@ -85,6 +113,33 @@ interface ContactRow {
   source: string | null;
   consent: Record<string, unknown> | null;
   is_anonymized: boolean;
+}
+
+interface DecisionRow {
+  type: string;
+  payload: Record<string, unknown> | null;
+  reason: string | null;
+  performed_at: string;
+}
+
+/**
+ * O texto vem do `payload.next_action`, não do `reason`.
+ *
+ * `reason` é a frase legível do humano ("Aprovou: ligar para o Carlos") e serve
+ * à TELA; o payload guarda a ação crua, que é o que o próximo turno precisa
+ * comparar com a proposta atual. Usar o reason obrigaria o modelo a desfazer o
+ * prefixo em português — parsing de frase para recuperar dado que já existe
+ * estruturado ao lado.
+ */
+function paraDecisao(row: DecisionRow): UltimaDecisaoHumana | null {
+  const acao =
+    typeof row.payload?.next_action === 'string' ? row.payload.next_action.trim() : '';
+  if (acao === '') return null; // sem O QUÊ, dizer "aprovado" não ajuda ninguém.
+  return {
+    action: acao,
+    decision: row.type === 'next_action_approved' ? 'approved' : 'dismissed',
+    at: row.performed_at,
+  };
 }
 
 interface HistoryRow {
@@ -130,6 +185,25 @@ export async function getLeadContext(
     conversationId = rows[0]?.id ?? null;
   }
 
+  // A decisão vem do BARRAMENTO (crm_lead_activities), não de coluna nova: a
+  // timeline já é a memória compartilhada entre humano e agente, e foi para isso
+  // que a Wave 3 a construiu. Outra fonte seria o segundo funil que este épico
+  // existe para acabar.
+  //
+  // Filtra por `contact_id` porque deste lado da casa `leadId` é o CONTATO —
+  // e é assim que a decisão chega mesmo que o negócio tenha mudado de mãos.
+  const { rows: decisaoRows } = await db.query<DecisionRow>(
+    `select type, payload, reason, performed_at::text as performed_at
+     from crm_lead_activities
+     where organization_id = $1
+       and contact_id = $2
+       and type in ('next_action_approved', 'next_action_dismissed')
+     order by performed_at desc, id desc
+     limit 1`,
+    [input.tenantId, input.leadId],
+  );
+  const lastHumanDecision = decisaoRows[0] ? paraDecisao(decisaoRows[0]) : null;
+
   const history: HistoryRow[] = conversationId
     ? (
         await db.query<HistoryRow>(
@@ -168,6 +242,7 @@ export async function getLeadContext(
         is_blocked: contact.is_blocked,
       },
       conversation_id: conversationId,
+      last_human_decision: lastHumanDecision,
     },
     history,
     knobs.maxTokens,
