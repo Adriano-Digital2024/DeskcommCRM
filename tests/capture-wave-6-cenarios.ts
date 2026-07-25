@@ -696,6 +696,29 @@ async function main(): Promise<void> {
     }
 
     // ---- 27: o irmão do mesmo contato ---------------------------------------
+    //
+    // PROVA DA CERCA, sem tocar em código de produção. Esta guarda nasceu DEPOIS
+    // do conserto, então nunca viu o defeito vivo — e guarda de regressão que
+    // nunca reprovou é guarda por afirmação: ela passa, e passaria também
+    // mirando no lugar errado, porque não há mais nada ali para pegá-la.
+    //
+    // Reverter o conserto seria a prova real e não é minha para fazer. Mas dá
+    // para construir o ESTADO que ela guarda: basta a atividade do irmão passar a
+    // pertencer ao lead sob teste. Se o critério não ficar vermelho aí, ele não
+    // morde.
+    if (process.env.SELFCHECK_D27 === "1") {
+      await admin
+        .from("crm_lead_activities")
+        .update({ lead_id: caso.leadComContato } as never)
+        .eq("organization_id", ORG)
+        .like("reason", `%ISTO PERTENCE AO OUTRO NEGOCIO%`);
+      await page.reload();
+      await page.locator("[data-rfd-draggable-id]").first().waitFor({ state: "visible" });
+      const { card: cRe } = await cardLocator(page, caso.tituloComContato);
+      await cRe.click();
+      await page.waitForTimeout(1500);
+      console.info("[selfcheck D27] a atividade do irmão foi ligada ao lead sob teste");
+    }
     // NÃO BASTA O TEXTO SUMIR. A atividade do irmão é do MESMO ator que o time,
     // então ela colapsaria DENTRO do bloco do time — e o motivo individual não
     // apareceria mesmo tendo vazado. "Não vejo a frase" também é o que se vê
@@ -704,10 +727,19 @@ async function main(): Promise<void> {
     // Quem distingue é a CONTAGEM: o time tem 3 atividades neste negócio. Se o
     // bloco anunciar 4, o irmão entrou. É o mesmo raciocínio do colapso — o bloco
     // que diz quantos é o único que separa agrupar de somar o que não é seu.
-    const blocoDoTime = texto.match(/E2E Manager\s*·\s*(\d+)\s+ações/i);
+    // LÊ A TELA AGORA, não a foto de antes. O `texto` foi capturado lá em cima,
+    // no bloco do colapso — e o selfcheck reabre o painel depois disso. A cerca
+    // não mordeu na primeira tentativa por isso: ela media o estado ANTERIOR à
+    // mutação que existia para fazê-la morder.
+    const textoAgora = ((await dossie(page).innerText()) ?? "").replace(/\s+/g, " ");
+    const blocoDoTime = textoAgora.match(/E2E Manager\s*·\s*(\d+)\s+ações/i);
     const quantasDoTime = blocoDoTime ? Number(blocoDoTime[1]) : -1;
-    const vazouIrmao =
-      /ISTO PERTENCE AO OUTRO NEGOCIO/i.test(texto) || (quantasDoTime > 0 && quantasDoTime !== 3);
+    // DUAS CLÁUSULAS, e cada uma pega um caso: o texto pega a atividade que
+    // aparece como linha INDIVIDUAL; a contagem pega a que entrou DENTRO de um
+    // bloco e some da tela. Sozinha, cada uma tem um ponto cego.
+    const porTexto = /ISTO PERTENCE AO OUTRO NEGOCIO/i.test(textoAgora);
+    const porContagem = quantasDoTime > 0 && quantasDoTime !== 3;
+    const vazouIrmao = porTexto || porContagem;
     record(
       "D27",
       "o dossiê de um negócio NÃO mostra as atividades do negócio IRMÃO",
@@ -715,9 +747,12 @@ async function main(): Promise<void> {
       !timelineCarregou
         ? "INCONCLUSIVO: a timeline não carregou nesta rodada"
         : vazouIrmao
-          ? `a atividade do OUTRO negócio do mesmo contato entrou neste dossiê (bloco do time ` +
-            `anuncia ${quantasDoTime}, deveria anunciar 3) — sem marcador dizendo de onde veio. ` +
-            `Vazio se lê como "nada aconteceu"; isto se lê como "aconteceu AQUI"`
+          ? `a atividade do OUTRO negócio do mesmo contato entrou neste dossiê, detectada ` +
+            `${porTexto ? "pelo TEXTO (apareceu como linha individual)" : ""}` +
+            `${porTexto && porContagem ? " e " : ""}` +
+            `${porContagem ? `pela CONTAGEM (bloco do time anuncia ${quantasDoTime}, esperado 3)` : ""}` +
+            ` — sem marcador dizendo de onde veio. Vazio se lê como "nada aconteceu"; isto se lê ` +
+            `como "aconteceu AQUI"`
           : `só as atividades deste negócio (bloco do time anuncia ${quantasDoTime}, que é o certo)`,
       timelineCarregou ? undefined : "BLOQUEADO",
     );
