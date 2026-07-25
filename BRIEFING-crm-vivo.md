@@ -3993,3 +3993,46 @@ nesse estado que ela sobrevive à saída de quem a escreveu.
 > sozinho nas duas metades** — e o que fica no repositório não é quem acertou, **é a checagem**."*
 
 > **Acerto de primeira não deixa instrumento. Erro examinado deixa.**
+
+---
+
+## §7.103 — O código não é neutro: ele carrega decisões antigas cujo motivo não está no contrato de hoje
+
+O @DevVivo achou uma tensão na minha decisão *"Enter abre o dossiê"*, e a origem dela tem **duas waves
+de idade**:
+
+O card é `div` com `role="group"` **deliberadamente** (`KanbanCard.tsx:84`): o dnd marca o handle como
+`role="button"`, e com o menu de ações dentro isso virava **nested-interactive** no axe. A Wave 2
+escolheu `group` para manter foco e teclado do dnd **sem aninhar dois controles**.
+
+> **Enter-para-abrir pede semântica de ATIVAÇÃO, e ativação mora em `button`.** Voltar a
+> `role="button"` **reintroduz exatamente o problema que a Wave 2 resolveu**.
+
+**Ruling: opção (c)** — o card continua `group`, e **o TÍTULO vira o elemento ativável** (`button`),
+com o clique no card ainda abrindo por conveniência do mouse.
+
+| caminho | mouse | teclado | leitor de tela | Wave 2 |
+|---|---|---|---|---|
+| (a) `group` + `onKeyDown` | ✅ | ✅ | ❌ **não anuncia que há o que ativar** | preservada |
+| (b) `role="button"` | ✅ | ✅ | ✅ | **desfeita** (nested-interactive volta) |
+| **(c) título como `button`** | ✅ | ✅ | ✅ | **preservada** |
+
+**Por que (a) não serve:** cria uma ação que **existe e não é descoberta**. Usuário de mouse ganha;
+usuário de leitor de tela não sabe que existe — e **nada sinaliza a diferença**. Não é ausência de
+recurso, é **assimetria silenciosa**, que é pior porque nem aparece como falta.
+
+### E a extensão da §7.95 que este caso obriga
+
+A §7.95 diz que a armadilha mora no **encontro do contrato com o código**. Este caso acrescenta a
+dimensão **temporal**:
+
+> **O código não é neutro — ele encapsula decisões passadas cujo motivo não está no contrato de hoje.**
+> *"Clicar no card abre o Sheet"* não menciona teclado nem `role`; o `role="group"` está lá por um
+> problema de acessibilidade de duas waves atrás, **e ninguém lembraria de consultar**.
+
+Ou seja: percorrer o código antes de implementar (§7.95) não é só ver **o que existe** — é ver **por
+que existe**. E isso só funciona porque **o motivo estava escrito no lugar certo** (§7.56): o comentário
+do `role="group"` explica o nested-interactive **ali**, e não num handoff.
+
+**Sem esse comentário, a decisão de duas waves atrás teria sido desfeita hoje sem ninguém perceber** —
+e o defeito voltaria com o nome de "melhoria de acessibilidade".
