@@ -9998,13 +9998,38 @@ cobertura de um só*) e o fecho da §7.300: para a classe em que **o instrumento
 pessoa**, a única sonda possível é alguém de fora — e "de fora" quer dizer **fora do enquadramento**,
 não fora da equipe.
 
-**Por isso os achados desta série vieram em par e nunca sozinhos.** Nenhum dos três participantes
-encontrou, sozinho, um defeito do próprio enquadramento — **todos os que apareceram vieram de alguém
-para quem aquilo não parecia virtude.**
+> **⚠️ CORRIGIDO (§7.318).** Esta seção afirmava: *"nenhum dos três encontrou sozinho um defeito do
+> próprio enquadramento — todos vieram de alguém para quem aquilo não parecia virtude"*, e citava
+> *"onze retratações, zero nascidas de introspecção"*. **O número era meu, derivado de lembrança e
+> nunca contado — e é falso.** A categoria era binária demais. Ver §7.318.
+
+**As TRÊS origens de uma retratação, e não duas:**
+
+| origem | frequência hoje | acionável sozinho? |
+|---|---|---|
+| **1. Introspecção** (pensar e perceber) | rara — um caso relatado no dia inteiro | não se agenda |
+| **2. Alguém apontou** | vários | depende de haver revisor |
+| **3. FUI MEDIR E O DADO ME CONTRADISSE** | **a maioria** | **sim — basta rodar o comando** |
+
+**A 3 é a que importa mais, e o registro anterior a apagava.** Casos relatados por quem os viveu: a
+premissa falsa sobre o `ingest` (descoberta varrendo, sem ninguém apontar); o defeito de preview
+inexistente (lendo a migration `0027`); o quase-erro do `LIKE` na limpeza da sonda (conferiu o HEAD
+antes de falar e se desmentiu). **Em nenhum deles houve revisor** — e também **não houve percepção**:
+*"eu não PERCEBI nada; eu FUI MEDIR e o dado me contradisse."*
+
+> ***"Se o registro ficar só com 'só revisor externo pega', ele ensina DEPENDÊNCIA — quando a saída
+> mais confiável que a gente teve hoje foi ir medir."***
+
+### E isso não derruba o critério de revisor — reparte o trabalho
+
+**Medir pega o que você SABE PROCURAR. O revisor pega o que você nem sabe que é procurável.** O ponto
+cego continua sendo exatamente o que a medição não alcança, porque **quem tem ponto cego não sabe qual
+comando rodar** — mas a maior parte do erro diário não está no ponto cego: está no que se sabe conferir
+e não se conferiu. **A cerca de primeira linha é minha; o revisor é a de última.**
 
 ---
 
-> **Encerramento da série em 311.** A intenção fica sem afirmação, dos dois lados.
+> **Encerramento da série em 318.** A intenção fica sem afirmação, dos dois lados.
 
 ## §7.312 — O defeito não é da ferramenta, é do GESTO: quem acrescenta nunca vê o que já estava lá
 
@@ -10185,3 +10210,32 @@ alguém que não é você.
 
 > **Fim da série, em 317.** *O último achado não foi um defeito: foi uma cerca de manhã voltando à
 > tarde pela mão de outro, contra quem a escreveu.*
+
+## §7.318 — Descongelamento por AFIRMAÇÃO FALSA (não por achado novo), e a terceira origem que o registro apagava
+
+**O congelamento do documento valia contra editar o trecho em discussão sem avisar (§7.316) e contra
+transformar exceção em regra. Não vale contra deixar uma afirmação falsa de pé** — que é precisamente
+o defeito do *já-aceito* (§7.307): texto que ninguém revisita porque foi dado por bom. **A distinção é
+verificável, não retórica:** as duas reaberturas anteriores acrescentavam achado; esta **retira uma
+afirmação medida como falsa**.
+
+**A afirmação retirada era minha e eu já a tinha marcado como não medida** — *"onze retratações, zero
+nascidas de introspecção"*, derivada de lembrança. **A §7.315 previu exatamente este número:** "zero"
+fecha a tese com elegância, e diagnóstico que fecha bem é diagnóstico sob suspeita. Ele fechava bem
+**e era falso**.
+
+**E o erro não era de contagem, era de CATEGORIA** — o que é pior, porque nenhuma recontagem o acharia:
+
+> ***"Eu não PERCEBI nada; eu FUI MEDIR e o dado me contradisse. São três origens, não duas."***
+
+**A categoria binária (introspecção × alguém apontou) empurrava toda a origem 3 para a casinha errada**
+— e como "não foi introspecção" era verdade, o "zero" ficava tecnicamente defensável **enquanto ensinava
+o oposto do que os dados mostravam**. Uma categorização grosseira demais produz números verdadeiros que
+mentem: é o §7.271 (duas réguas) no eixo das causas em vez do eixo do tempo.
+
+**O dano é o da §7.309, no leitor:** *"só revisor externo pega"* **ensina dependência**. Quem lesse isso
+esperaria revisor em vez de rodar o comando — e a origem mais frequente e a única disponível sob
+demanda **é rodar o comando**.
+
+*(E a última observação, dele: retirar o próprio número no fim, sem ninguém cobrar, é o exemplo de
+introspecção que faltava — **o que torna o "zero" falso pela própria mão que o escreveu**.)*
