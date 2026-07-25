@@ -2600,3 +2600,59 @@ cansaço.
 **Nota de rodapé, e ela reforça a lei:** ao enviar a resposta usando a própria receita, eu a quebrei —
 dois heredocs com o **mesmo delimitador** no mesmo bloco. A receita é boa; o uso dela ainda tem
 superfície. *Instrumento também precisa de instrumento.*
+
+---
+
+## §7.62 — Invariante que não guarda o que o consumidor lê é decorativo
+
+Achado do @QAVivo no **primeiro tiro** do aparato de tela, e verificado por mim contra o banco:
+
+| escrita | banco | tela |
+|---|---|---|
+| `{activity_ids:[…]}` | **aceita** | *"Sem evidências registradas"* |
+| `{factors:[…]}` | **recusa** (`23514`) | — |
+| as duas juntas | aceita | aparece |
+
+O `CHECK` soma `activity_ids + message_ids + checkpoint_ids`. O board lê
+`ai_probability_evidence.factors`. **A interseção é vazia.**
+
+> **A Lei do porquê está sendo cobrada numa chave que a UI nunca lê.** O score pode nascer *"com
+> evidência"* para o banco e *"sem evidência"* para o humano — que é **exatamente a pessoa para quem a
+> lei existe**.
+
+E nada obriga a segunda chave: o único payload que satisfaz a constraint **e** aparece na tela carrega
+as duas, **por acordo tácito entre dois arquivos que não se conhecem**.
+
+**Conserto:** o `CHECK` passa a exigir **as duas coisas** — pelo menos uma âncora (`activity_ids |
+message_ids | checkpoint_ids`) **e** `factors` não vazio. Uma sem a outra produz evidência **ilegível**
+(traceável e muda) ou **inrrastreável** (legível e sem destino). Migration com a tríplice, e **limpando
+linhas sem `factors` ANTES** da constraint — aqui são 0 de 2, mas um clone pode ter, porque o `CHECK`
+nunca exigiu.
+
+### E a parte que dói: isto já estava proibido por escrito
+
+O `CLAUDE.md` deste repositório lista, no item 6 dos anti-patterns: **"`jsonb` lock-in (UI lê path
+direto sem schema central)"**. É exatamente isto, e aconteceu assim mesmo.
+
+> A proibição era **texto**. É a §7.59-a aplicada à doutrina mais antiga da casa: **enquanto for texto,
+> ela compete com o cansaço** — e perde, porque `jsonb` é justamente onde a checagem de tipo termina e
+> nada avisa que dois arquivos discordaram.
+
+**Terceira ocorrência nesta entrega** de duas listas que precisavam concordar morando em arquivos
+diferentes (as duas anteriores: vocabulário de `agent_inbox_items`, e o `customer_redact` × `redact`
+do LGPD noutra frente). **A recorrência é o argumento**: não é distração de ninguém, é a ausência de um
+instrumento.
+
+## §7.63 — Rótulo que promete mais do que a asserção cobre
+
+Erro que o @QAVivo achou **em si mesmo** e que eu quero nomeado, porque é o mais silencioso da família:
+
+> O critério se chamava *"mostra as evidências que existem (2)"* e **não assertava isso** — só checava
+> a razão.
+
+**É a §7.48 no NOME em vez de no corpo.** E passa despercebido justamente porque o verde **parece**
+cobrir o que o título diz: quem lê o relatório lê o **rótulo**, não a asserção. O nome do teste é a
+única parte que a maioria das pessoas vai ler — e é a única parte que nada verifica.
+
+**Regra:** o nome do critério é **contrato com quem lê o placar**. Se ele promete `N`, a asserção conta
+`N`. Renomear é tão legítimo quanto assertar — o que não pode é a distância entre os dois.
