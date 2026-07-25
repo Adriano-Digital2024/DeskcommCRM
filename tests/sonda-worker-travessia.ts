@@ -16,6 +16,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 import { observaTravessias } from "@/lib/leads/risk-worker";
+import { apagaExatamenteUm } from "./qa-helpers";
 
 const e = Object.fromEntries(
   fs
@@ -39,6 +40,9 @@ async function hashDosLeads(): Promise<string> {
   return JSON.stringify(data);
 }
 
+/** A cobaia que esta rodada criou — lida pelo `finally` lá embaixo. */
+let leadCriado: string | null = null;
+
 async function main(): Promise<void> {
   // ── um negócio NOVO, quente, criado agora ────────────────────────────────
   const { data: base } = await admin
@@ -50,6 +54,7 @@ async function main(): Promise<void> {
   const b = base as { pipeline_id: string; stage_id: string };
 
   const leadId = randomUUID();
+  leadCriado = leadId;
   await admin.from("crm_leads").insert({
     id: leadId,
     organization_id: ORG,
@@ -126,8 +131,31 @@ async function main(): Promise<void> {
   console.info(`4. após interação real · estado=${await estado()} · ${r4.reativaram} reativações`);
   console.info(`   timeline: ${JSON.stringify(await linhas())}`);
 
-  await admin.from("crm_leads").delete().eq("id", leadId);
-  console.info("· cobaia removida");
 }
 
-void main();
+/**
+ * A LIMPEZA RODA MESMO QUANDO A SONDA MORRE NO MEIO.
+ *
+ * Estava no fim do caminho feliz, e sonda morre no meio o tempo todo. Cada
+ * morte dessas deixava uma cobaia no board do CRM Vivo contando como negócio de
+ * verdade — duas tinham ficado, e só apareceram porque entraram por acaso na
+ * screenshot de uma prova sobre outro assunto.
+ *
+ * A necessidade da limpeza e a chance de o caminho feliz completar são
+ * INVERSAMENTE proporcionais: finalização vai onde roda sempre.
+ */
+void main()
+  .catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    if (!leadCriado) return;
+    // `catch` aqui e só aqui: se a sonda já está morrendo, a falha da limpeza
+    // não pode substituir a causa original no log.
+    await apagaExatamenteUm(admin, "crm_leads", leadCriado)
+      .then(() => console.info("· cobaia removida"))
+      .catch((e: unknown) =>
+        console.error(`[limpeza] a cobaia ${leadCriado} ficou no banco: ${String(e)}`),
+      );
+  });
