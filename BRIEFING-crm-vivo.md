@@ -3269,3 +3269,47 @@ Ele contrariou **a própria decisão da Wave 1**, de propósito: aqui é `ON DEL
 
 **Mesmo mecanismo, decisão oposta, porque o significado difere.** Consistência de mecanismo entre
 coisas que significam coisas diferentes é a mesma **semelhança acidental** da §7.68.
+
+---
+
+## §7.80 — "A rota não emite" e "o tipo não existe" são diagnósticos diferentes
+
+Eu afirmei que editar um campo não gera atividade, medindo **a rota**. O @QAVivo verificou pelo
+**vocabulário** — a fonte única de escrita e leitura, **exaustiva por construção** — e o diagnóstico
+mudou de natureza. Verificado: **sete tipos**, e nenhum é *"o humano mudou um campo"*.
+
+| diagnóstico | natureza | custo |
+|---|---|---|
+| *"a rota não emite"* | **esquecimento** | uma linha |
+| *"o TIPO não existe"* | **estrutural** | **não há o que emitir** |
+
+E o segundo tem uma consequência que o primeiro não tem: criar o tipo **força um rótulo** (o mapa é
+`Record<ActivityType, string>`, fechado pelo compilador) — e portanto **força alguém a decidir como
+isso se chama para o usuário**. O cenário 20 não pede código novo; pede **vocabulário novo**.
+
+### E a assimetria tem origem: o vocabulário cresceu por um lado só
+
+**Cinco dos sete tipos nascem do que a IA faz** (`ai_turn`, `send_vetoed`, `handoff_triggered`,
+`next_action_approved`, `next_action_dismissed`).
+
+> **A IA deixa rastro; o humano, não.** Numa entrega cujo contrato é continuidade IA↔humano, **quem
+> some do registro é justamente o lado que precisa ser auditável quando algo dá errado — e é o lado que
+> responde por decisão.**
+
+**Vocabulário que cresce por um lado só registra um lado só**, e a falta não se anuncia: cada tipo novo
+parecia necessário quando foi criado, e nenhum momento apresentou a pergunta *"e o outro lado?"*. É a
+§7.67 numa escala maior — não é o caso que não se apresenta, é **a ausência** que não se apresenta.
+
+### As quatro armadilhas que ele encodou, e cada uma tem seu jeito de ficar verde à toa
+
+| cenário | a armadilha |
+|---|---|
+| **18** — o dossiê abre | *"o Sheet abriu"* **não é o cenário**: o cenário é a **ORDEM**, e ordem se mede por **posição vertical**, não por presença. Três seções fora de ordem passariam numa asserção de presença. |
+| **19** — colapso | precisa de **caso E vizinho**: três eventos do mesmo ator para agrupar **e um de outro ator ao lado**. Sem o vizinho, *"colapsou"* não distingue **agrupar** de **esconder**. |
+| **19** — colapso | e se prova pelo **NÚMERO**: o bloco diz quantos, e expandir revela **exatamente esses**. *"Aparece menos linha"* também é o que se vê quando a timeline **perdeu eventos**. |
+| **20** — editar | **duas metades que falham separado**: salvar pode funcionar **e** o registro não existir. Asserta o valor persistido **e** a linha com ator humano. |
+
+**E o banco barrou o seed dele, e estava certo:** `crm_lead_activities_ai_needs_evidence` recusou uma
+atividade de IA sem `run/trace/llm_call`. **A lei do porquê vale também para o REGISTRO**, e a
+constraint fez o trabalho dela contra um cliente descuidado — o próprio autor do teste. *E não é o caso
+do score: aqui a chave que o banco exige é a mesma que o consumidor usa.*
