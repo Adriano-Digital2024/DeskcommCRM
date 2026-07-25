@@ -201,10 +201,37 @@ async function tabelaVerdade(): Promise<void> {
       const recusou = erro !== null;
       const porCheck = erro?.code === VIOLACAO_DE_CHECK;
       const constraint = (erro?.message ?? "").match(/"([a-z_]+)"/)?.[1] ?? "-";
+
+      // VOLTA DE LEITURA nas linhas que devem ser ACEITAS.
+      //
+      // As pernas positivas já haviam salvado este aparato uma vez: quando a
+      // coluna sumiu de `crm_leads`, as seis linhas de recusa ficaram verdes
+      // erradas e só as duas positivas reprovaram — elas não têm como passar num
+      // banco onde a escrita não funciona. Mas o canário tinha um limite: ele
+      // detecta "a escrita quebrou", NÃO "a escrita foi para o lugar errado".
+      // Escrever na linha de outro lead deixaria tudo verde. Ler de volta fecha
+      // essa metade — a asserção deixa de ser "não deu erro" e passa a ser "o
+      // valor está lá".
+      let voltou: string | null = null;
+      let leuDeVolta = false;
+      if (!caso.recusar && !recusou && caso.campos.ai_probability !== null) {
+        leuDeVolta = true;
+        const { rows: lidas } = await client.query<{ p: string | null; r: string | null }>(
+          `select ai_probability::text as p, ai_probability_reason as r
+             from crm_lead_scores where lead_id = $1`,
+          [leadId],
+        );
+        const esperado = Number(caso.campos.ai_probability);
+        const obtido = lidas[0] ? Number(lidas[0].p) : null;
+        if (obtido !== esperado) {
+          voltou = `escreveu ${esperado} e leu de volta ${obtido ?? "(nenhuma linha)"} — a escrita não pousou onde devia`;
+        }
+      }
+
       record(
         caso.n,
         caso.nome,
-        caso.recusar ? porCheck : !recusou,
+        caso.recusar ? porCheck : !recusou && voltou === null,
         caso.recusar
           ? porCheck
             ? `recusado por ${constraint} (${erro?.code})`
@@ -213,7 +240,7 @@ async function tabelaVerdade(): Promise<void> {
               : "ACEITO — a lei não está no banco, está só no comentário da migration"
           : recusou
             ? `RECUSADO indevidamente: ${erro?.code} ${constraint}`
-            : "aceito, como tem de ser",
+            : (voltou ?? (leuDeVolta ? "aceito, e o valor voltou na leitura" : "aceito (sem score para reler)")),
       );
     }
   } finally {
