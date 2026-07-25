@@ -7768,3 +7768,57 @@ dentro de outro teste**.
 Controle que você **desenha** pode ser desenhado, sem intenção, para produzir a resposta que você
 espera. Controle que **cai de outra medição** não teve essa chance. **Quando um aparecer, registre-o:
 é a evidência mais barata e menos enviesada que existe.**
+
+## §7.253 — Redundância ACIDENTAL é robustez emprestada, e faz a peça parecer sã
+
+O inbox tem **redundância cruzada não declarada**: dois hooks de canal, e o de **mensagens** invalida
+`['conversations']` além de `['messages']`. A lista de conversas tem **dois caminhos** para se
+atualizar — e o segundo **só existe com uma conversa aberta**.
+
+> ***"A redundância cruzada é o motivo pelo qual o inbox PARECE mais saudável que o board. Não é —
+> ele só tem duas chances."***
+
+**E a consequência para quem mede é grave: medir o RESULTADO credita a peça errada.** Um critério que
+observa a tela do inbox e a vê atualizada conclui *"esta peça está boa"*, quando o que a salvou foi
+**outra peça, cobrindo por acidente**. A peça observada pode ter exatamente o mesmo defeito do board.
+
+**Regra:** ao avaliar robustez de um componente, **conte quantos caminhos independentes produzem o
+efeito observado**. Se for mais de um, o veredito é sobre **o conjunto**, nunca sobre a peça — e a
+diferença aparece no dia em que o caminho acidental deixar de existir (aqui: fechar a conversa).
+
+**E há duplicação pura junto:** **dois canais com o MESMO filtro e o MESMO usuário na mesma página**,
+porque dois componentes montam o mesmo hook. **Não ajuda em nada** — o socket é o mesmo, então os
+dois morrem juntos — e custa duas assinaturas por aba. **Redundância que compartilha o ponto de falha
+não é redundância; é custo com aparência de segurança.**
+
+### §7.253-a — E o "às vezes recupera" tem explicação sem mecanismo novo
+
+Hipótese forte, declarada como hipótese: **é o defeito já consertado hoje.** Todos os canais
+compartilham o socket, mas eram **registrados em momentos diferentes**, e a memo envenenada fazia o
+papel depender do instante do `subscribe`. **Na mesma página**, um canal nascia `anon` e outro
+`authenticated`. Se o de conversas nascia anon e o de mensagens authenticated, a lista se recuperava
+**pelo caminho cruzado** — e o observador via *"às vezes recupera"* **sem nada de aleatório
+acontecendo**.
+
+*"Três em quatro rodadas é exatamente o que uma corrida de inicialização produz."* E os três canais
+medidos agora estão **todos authenticated com o mesmo `sub`**, que é o que o conserto previa.
+
+**O que não se afirma:** as assinaturas daquele momento **não existem mais**, então não há como
+reconstruir. É hipótese que explica o padrão inteiro sem inventar mecanismo — e ainda assim hipótese.
+
+## §7.254 — Havendo uma mudança planejada E uma medição planejada, MEÇA PRIMEIRO
+
+A ordem proposta era: (1) remover a duplicação, (2) repetir a grade para ver se a intermitência
+sumiu, (3) decidir sobre a rede. **Inverto (1) e (2), e o motivo é o confundidor.**
+
+Medir **depois** de remover a duplicação junta **duas mudanças** — o conserto da memo (já ativo) e a
+remoção da duplicação — num **único resultado**. Se a intermitência sumir, não há como saber qual
+delas resolveu; e a hipótese da memo, que é a interessante, fica sem veredito **para sempre**, porque
+o estado anterior não volta.
+
+**Medir agora é grátis e não destrói nada:** com a memo consertada e a duplicação ainda presente, o
+resultado atribui **à memo, sozinha**. Depois remove-se a duplicação e mede-se de novo — **duas
+medições cercando uma mudança**, que é a única forma de atribuir.
+
+**Regra:** medição não destrutiva **sempre vem antes** da mudança que ela poderia explicar. O custo é
+uma rodada; o custo de inverter é perder a atribuição de forma irrecuperável.
