@@ -68,3 +68,42 @@ describe("eco local do pulso", () => {
     expect(ehEcoLocal(LEAD, T0 + 7_000)).toBe(true);
   });
 });
+
+describe("ações sobrepostas no mesmo lead", () => {
+  beforeEach(() => limparEcosLocais());
+
+  it("o onSettled da primeira NÃO libera a marca com a segunda em voo", () => {
+    // Reposicionar o mesmo card duas vezes seguidas. Sem contador, a marca
+    // seria liberada aqui e os eventos da segunda ação pulsariam na própria
+    // aba — o mesmo defeito do 12.c, só que intermitente e por timing.
+    marcarEcoLocal(LEAD, T0); // arrasto A
+    marcarEcoLocal(LEAD, T0 + 300); // arrasto B, com A ainda em voo
+    liberarEcoLocal(LEAD, T0 + 800); // A assenta; B continua
+
+    // Passou muito da folga de 1s contada a partir de A — se a marca tivesse
+    // sido liberada, aqui já estaria vencida.
+    expect(ehEcoLocal(LEAD, T0 + 2_500)).toBe(true);
+
+    liberarEcoLocal(LEAD, T0 + 2_600); // B assenta: agora sim conta a folga
+    expect(ehEcoLocal(LEAD, T0 + 3_500)).toBe(true);
+    expect(ehEcoLocal(LEAD, T0 + 3_601)).toBe(false);
+  });
+
+  it("o fallback conta da ação mais recente, não da primeira", () => {
+    marcarEcoLocal(LEAD, T0);
+    marcarEcoLocal(LEAD, T0 + 3_000); // segunda ação, nenhuma assenta
+    expect(ehEcoLocal(LEAD, T0 + 6_000)).toBe(true); // 3s da mais recente
+    expect(ehEcoLocal(LEAD, T0 + 7_001)).toBe(false);
+  });
+
+  it("liberar mais vezes do que marcou não deixa o contador negativo", () => {
+    // onSettled pode rodar sem par (retry, remount). Um contador negativo
+    // travaria a marca para sempre e o lead pararia de pulsar de vez.
+    marcarEcoLocal(LEAD, T0);
+    liberarEcoLocal(LEAD, T0 + 100);
+    liberarEcoLocal(LEAD, T0 + 150);
+    liberarEcoLocal(LEAD, T0 + 200);
+    expect(ehEcoLocal(LEAD, T0 + 1_150)).toBe(true); // folga da última
+    expect(ehEcoLocal(LEAD, T0 + 1_300)).toBe(false); // e ela acaba
+  });
+});

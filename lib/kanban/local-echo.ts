@@ -23,9 +23,18 @@
  * o pior caso é um pulso a mais — nunca um evento remoto silenciado.
  */
 interface Marca {
-  /** Quando a mutação começou. */
+  /**
+   * Quantas mutações minhas estão em voo sobre este lead.
+   *
+   * CONTADOR, e não booleano, porque as ações se sobrepõem: arrastar o mesmo
+   * card duas vezes seguidas é gesto comum, e o bulk mexe em vários leads com
+   * tempos diferentes. Com um valor só, o `onSettled` da primeira liberaria a
+   * marca com a segunda ainda rodando.
+   */
+  emVoo: number;
+  /** Quando a mutação mais recente começou (base do fallback). */
   aberta: number;
-  /** Quando ela assentou (`onSettled`), ou null se ainda está em voo. */
+  /** Quando a ÚLTIMA em voo assentou, ou null se ainda há alguma. */
   assentada: number | null;
 }
 
@@ -54,7 +63,16 @@ const FALLBACK_MS = 4_000;
 
 /** A ação começou (chamado antes de o evento voltar pelo realtime). */
 export function marcarEcoLocal(leadId: string, agora = Date.now()): void {
-  ECOS.set(leadId, { aberta: agora, assentada: null });
+  const marca = ECOS.get(leadId);
+  if (marca) {
+    // Segunda ação sobre o MESMO card antes de a primeira assentar —
+    // reposicionar duas vezes seguidas é gesto comum. Conta, não sobrescreve.
+    marca.emVoo += 1;
+    marca.aberta = agora;
+    marca.assentada = null;
+    return;
+  }
+  ECOS.set(leadId, { emVoo: 1, aberta: agora, assentada: null });
 }
 
 /**
@@ -62,10 +80,18 @@ export function marcarEcoLocal(leadId: string, agora = Date.now()): void {
  *
  * Não apaga na hora — o último evento da cascata costuma chegar DEPOIS da
  * resposta HTTP, e apagar aqui traria o defeito de volta pela porta dos fundos.
+ *
+ * Só começa a contar a folga quando a ÚLTIMA ação em voo assenta. Sem o
+ * contador, o `onSettled` da primeira liberaria a marca com a segunda ainda
+ * rodando, e os eventos dela pulsariam na própria aba — o mesmo defeito, agora
+ * intermitente e dependente de timing, que é a versão cara dele.
  */
 export function liberarEcoLocal(leadId: string, agora = Date.now()): void {
   const marca = ECOS.get(leadId);
   if (!marca) return;
+  marca.emVoo -= 1;
+  if (marca.emVoo > 0) return;
+  marca.emVoo = 0;
   marca.assentada = agora;
 }
 
