@@ -5406,3 +5406,58 @@ de timeline** (ninguém esfriou "agora"), **e UM item agregado com dono E AÇÃO
 borda de alerta, e uma borda que aparece em 73% do quadro não destaca nada. **Mantém-se assim mesmo,
 porque é verdade** — suavizar para o quadro ficar bonito seria simulação de saúde, a mesma família da
 simulação de atenção que o Arquiteto barrou. O agregado é o que transforma alarme em trabalho.
+
+## §7.139-a — Correção: guarda de regressão precisa do ESTADO de volta, não do DEFEITO
+
+Escrevi que restavam "duas saídas honestas, e nenhuma terceira": reverter o conserto, ou declarar a
+guarda como não-provada. **Havia uma terceira, e é a mais barata das três.**
+
+Reverter o conserto não é do QA para fazer — mas **construir o estado que a guarda vigia é**. Ligar
+a atividade do irmão ao lead sob teste recria a condição que a guarda existe para reprovar, sem
+tocar em uma linha de produção. Ela reprovou. Deixou de ser afirmação.
+
+**A regra correta:**
+
+| o estado ruim é… | como provar a mordida |
+|---|---|
+| construível pelos DADOS | construa-o e exija o vermelho — sem tocar no produto |
+| alcançável só pelo CÓDIGO | reverter o conserto, ou declarar não-provada |
+
+**E repare na recorrência:** minha §7.139 nasceu de um caso em que o defeito era de código, e foi
+enunciada para TODAS as guardas. É a §7.132-a se aplicando a uma lei escrita há duas mensagens —
+**lei nasce com a largura do caso que a gerou**, inclusive quando quem a escreve acabou de registrar
+que isso acontece.
+
+## §7.150 — Evidência capturada ANTES da mutação que ela julga
+
+A guarda não mordeu na primeira tentativa. Motivo: ela lia um texto capturado **lá em cima**, antes
+de o autocheck reabrir o painel. **Ela media o estado anterior à mutação que existia para fazê-la
+morder.**
+
+O engano é invisível porque o dado **é válido** — só que de antes. E a falha vai na direção mais
+cara: produz um NEGATIVO FALSO sobre o INSTRUMENTO. Quem parasse ali concluiria "a guarda não
+morde" e iria reescrever uma guarda que funciona.
+
+**Regra:** toda asserção declara em que MOMENTO a evidência foi capturada, relativo à mutação que
+julga. Foto reaproveitada de antes da mutação não é evidência sobre ela — é evidência sobre outra
+coisa, com o mesmo formato.
+
+### §7.150-a — O vermelho ESPERADO anestesia tanto quanto o verde
+
+O vermelho apareceu e a mensagem dizia *"anuncia 3, deveria anunciar 3"* — relato incoerente. Só foi
+visto porque alguém **leu a saída** em vez de comemorar que o vermelho veio.
+
+É a §7.136 pelo avesso: o verde anestesia porque não pede investigação; **o vermelho esperado
+anestesia porque confirma a expectativa** — e expectativa confirmada encerra a leitura tão bem
+quanto sucesso. **Vermelho que você previu ainda precisa ser lido pelo MOTIVO de estar vermelho.**
+
+## §7.144-a — Quando nenhum observável tem as duas propriedades, use dois — e nomeie qual disparou
+
+Naquele caso, **nenhum observável isolado tinha ESCOPO e INVARIÂNCIA ao mesmo tempo**: o texto pega a
+linha individual e é cego para o que entrou dentro de um bloco; a contagem pega o que sumiu no bloco
+e é cega para a linha solta. Cada um cobre o ponto cego do outro.
+
+Então a asserção é composta por necessidade — e cai direto na §7.133, que diz que **conjunção
+esconde qual metade agiu**. A saída é a mesma dos dois lados: **o relatório nomeia QUAL cláusula
+disparou.** Sem isso, um vermelho de duas cláusulas é indistinguível de um vermelho de uma, e o
+laudo pode contradizer a própria evidência sem que ninguém note.
