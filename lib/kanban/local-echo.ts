@@ -66,7 +66,22 @@ export function marcarEcoLocal(leadId: string, agora = Date.now()): void {
   const marca = ECOS.get(leadId);
   if (marca) {
     // Segunda ação sobre o MESMO card antes de a primeira assentar —
-    // reposicionar duas vezes seguidas é gesto comum. Conta, não sobrescreve.
+    // reposicionar duas vezes seguidas é gesto comum.
+    //
+    // Zerar `assentada` já ajuda sozinho: a sobrescrita REABRE a janela em vez
+    // de encurtá-la, então o desenho erra para o lado barato por conta própria.
+    // Com A assentando em 300 e B em 500, um evento de B em 1400 é suprimido
+    // COM ou SEM contador — nesse caso a sobrescrita bastaria.
+    //
+    // Ela deixa de bastar quando B demora. Sem o contador, o `onSettled` de A
+    // carimba `assentada` e a folga começa a correr com B ainda em voo: A
+    // assenta em 300, B só em 2600, e um evento de B em 2000 já achou a marca
+    // vencida — pulso espúrio na aba que agiu. É o caso do handler lento, que
+    // é justamente o motivo de termos abandonado a janela constante.
+    //
+    // O contador também fecha o caso residual: A assenta e B PENDURA (requisição
+    // que nunca volta). Com `emVoo > 0` a marca continua valendo pelo fallback
+    // de B, em vez de vencer em A + folga.
     marca.emVoo += 1;
     marca.aberta = agora;
     marca.assentada = null;

@@ -89,6 +89,28 @@ describe("ações sobrepostas no mesmo lead", () => {
     expect(ehEcoLocal(LEAD, T0 + 3_601)).toBe(false);
   });
 
+  it("a linha do tempo comum (B assenta logo após A) já funcionaria sem contador", () => {
+    // Documenta ONDE a sobrescrita basta sozinha: `marcarEcoLocal` zera
+    // `assentada`, o que REABRE a janela. Este caso passa nos dois desenhos —
+    // é o teste ao lado (B demorando) que separa um do outro.
+    marcarEcoLocal(LEAD, T0);
+    marcarEcoLocal(LEAD, T0 + 200);
+    liberarEcoLocal(LEAD, T0 + 300);
+    liberarEcoLocal(LEAD, T0 + 500);
+    expect(ehEcoLocal(LEAD, T0 + 1_400)).toBe(true);
+  });
+
+  it("A assenta e B PENDURA: a marca vale pelo fallback de B, não pela folga de A", () => {
+    // Caso residual sem o contador: `assentada` seria carimbada por A e a marca
+    // venceria em A+1s, com B ainda em voo. Com contador, `emVoo > 0` mantém o
+    // fallback da ação mais recente.
+    marcarEcoLocal(LEAD, T0);
+    marcarEcoLocal(LEAD, T0 + 200);
+    liberarEcoLocal(LEAD, T0 + 300); // A assenta; B nunca assenta
+    expect(ehEcoLocal(LEAD, T0 + 3_000)).toBe(true);
+    expect(ehEcoLocal(LEAD, T0 + 4_201)).toBe(false); // fallback de B (200+4000)
+  });
+
   it("o fallback conta da ação mais recente, não da primeira", () => {
     marcarEcoLocal(LEAD, T0);
     marcarEcoLocal(LEAD, T0 + 3_000); // segunda ação, nenhuma assenta
