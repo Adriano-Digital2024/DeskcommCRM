@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
-import { BASE, CARD_ATTR, login } from "./qa-helpers";
+import { apagaExatamenteUm, BASE, CARD_ATTR, login } from "./qa-helpers";
 
 const env = Object.fromEntries(
   fs.readFileSync(".env.local", "utf8").split("\n")
@@ -116,7 +116,7 @@ async function main(): Promise<void> {
   console.info(`3. a rede DENUNCIOU? divergências ${antes.div} → ${depois.div}`);
   await page.screenshot({ path: "evidence/wave7-rede-dossie.png" });
 
-  await admin.from("crm_leads").delete().eq("id", leadId);
+  await apagaExatamenteUm(admin, "crm_leads", leadId);
   await browser.close();
 }
 void main();

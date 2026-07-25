@@ -15,7 +15,7 @@ import { randomUUID } from "node:crypto";
 import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
-import { BASE, CARD_ATTR, login } from "./qa-helpers";
+import { apagaExatamenteUm, BASE, CARD_ATTR, login } from "./qa-helpers";
 
 const env = Object.fromEntries(
   fs.readFileSync(".env.local", "utf8").split("\n")
@@ -75,7 +75,15 @@ async function main(): Promise<void> {
     title: `rede de seguranca ${new Date().toISOString().slice(11, 19)}`,
     position_in_stage: 1,
   });
-  console.info("· lead criado com a ENTREGA MORTA (websocket bloqueado)");
+  // O log DIZ A CONDIÇÃO QUE REALMENTE VALEU. A frase era fixa em "ENTREGA
+  // MORTA" e a rodada de controle a imprimia igual — instrumento descrevendo
+  // errado o que fez. Quem lesse o log do controle leria "websocket bloqueado"
+  // sobre a rodada cuja razão de existir é o websocket estar aberto.
+  console.info(
+    MATAR
+      ? "· lead criado com a ENTREGA MORTA (websocket bloqueado)"
+      : "· lead criado com a ENTREGA VIVA (websocket passando)",
+  );
 
   // 8s: o canal teria entregue em ~2s se estivesse vivo.
   await page.waitForTimeout(8000);
@@ -94,7 +102,7 @@ async function main(): Promise<void> {
   console.info(`3. a rede DENUNCIOU? divergências ${antes.divergencias} → ${depois.divergencias}`);
   await page.screenshot({ path: "evidence/wave7-rede-de-seguranca.png" });
 
-  await admin.from("crm_leads").delete().eq("id", leadId);
+  await apagaExatamenteUm(admin, "crm_leads", leadId);
   await browser.close();
 }
 void main();
