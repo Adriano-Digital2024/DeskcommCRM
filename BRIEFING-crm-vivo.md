@@ -1875,3 +1875,59 @@ meu por não dizer qual era qual:
 O aceito é **superconjunto** do produzido, e tem de ser: um CHECK que só aceitasse o exatamente
 produzível rejeitaria escrita legítima na fronteira. A medição empírica dele confirma a propriedade
 que eu havia **declarado** sem medir.
+
+### §7.39-b — A fronteira da regra, senão ela vira licença para 1:1 pelo outro lado
+
+O @Arquiteto aceitou a substituição do corte (estado real × telemetria no lugar de máquina × humano)
+e nomeou o caso que **nenhum dos dois cortes separa**:
+
+> **Máquina escrevendo estado real, mas ORTOGONAL ao que o humano está fazendo.** A automação escreve
+> tags enquanto o usuário arrasta o card de estágio: é mudança de estado (não é telemetria), o 409
+> dispara — e não havia conflito nenhum entre as duas intenções.
+
+**Isto NÃO é caso de tirar tags da linha.** É a **super-rejeição inerente à trava de nível de LINHA**,
+e o conserto, se um dia doer, é **trava por CAMPO** — não tabela nova.
+
+Sem esta fronteira escrita, o próximo a ler a §7.39 usa *"mas gerou um 409 chato"* como argumento para
+separar mais uma tabela, e `crm_leads` se esfacela em nome de uma regra criada para proteger
+**telemetria**.
+
+**E o precedente de trava por campo já existe nesta casa** — verificado: `fn_conversation_assign`
+(migration 0032) recebe `p_expected_assignee` + `p_enforce_expected` e compara
+`v_from is distinct from p_expected_assignee` — o **campo que importa**, não o `mtime` da linha. É
+imune a esta classe inteira por construção, e as rotas de transferir/liberar do inbox já a usam.
+
+> O inbox e o kanban têm **granularidades diferentes** de trava otimista no mesmo repositório. Não é
+> escopo unificar agora e não está doendo. Fica registrado: **quando doer, a resposta já está escrita e
+> testada aqui dentro** — não precisa ser inventada.
+
+### §7.40 — Mensagem que era verdadeira quando foi escrita, e que a nossa própria evolução aposentou
+
+O 409 diz *"Lead foi modificado por **outro usuário**"*. Estava **certo** quando foi escrito: naquele
+dia, todo escritor concorrente **era** humano. Caiu no dia em que automações passaram a escrever no
+lead — e ninguém releu a frase, porque nada obrigava a reler.
+
+**É a terceira ocorrência da mesma forma nesta entrega:**
+
+| onde | premissa verdadeira que caiu |
+|---|---|
+| comentário do eco local | o eco só vinha da própria ação |
+| comentário do `?:` em `LeadContext` | o produtor era o único construtor |
+| mensagem do 409 | todo escritor concorrente era humano |
+
+> **Regra:** quando uma peça nova passa a escrever onde só humanos escreviam, as **mensagens de erro**
+> daquele caminho viram **suspeitas** — elas descrevem um mundo que acabou de mudar, e nada no
+> compilador ou nos testes aponta para elas.
+
+### O conserto, com escopo travado antes de crescer
+
+O princípio violado é **estreito**: *a mensagem afirma **QUEM** sem que o sistema tenha essa
+informação*. Não é falta de diagnóstico — é **asserção não verificada**.
+
+> Conserto certo: **parar de afirmar o ator**, e **não** passar a explicar o que mudou.
+> `"Este lead mudou desde que você abriu. Recarregue."` — uma string, verdadeira em todos os casos.
+
+**Correção da minha própria proposta:** eu havia escrito *"a mensagem tem de dizer O QUE mudou, ou pelo
+menos não afirmar QUEM"* — e a primeira metade é a armadilha. *"Mostrar o que mudou"* vira feature de
+diff, com releitura da linha e comparação campo a campo: **trabalho de wave para consertar uma frase**.
+Achado sem correção dimensionada volta grande.
