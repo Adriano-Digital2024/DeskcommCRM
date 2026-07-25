@@ -2186,3 +2186,53 @@ Das oito linhas, **duas** reprovaram — justamente *"score com razão e lastro 
 > **As pernas positivas que ele fez questão de incluir são o que expôs o verde falso das negativas.**
 > É o argumento mais forte que existe para nunca escrever uma tabela-verdade só de recusas: sem elas,
 > as oito linhas teriam ficado verdes e o instrumento estaria morto sem avisar.
+
+---
+
+## §7.49 — Explicar um número pelos "maiores contribuintes" é enviesado para o bem
+
+Achado do @Arquiteto **contra o próprio contrato**, ao especificar a fórmula — e é o defeito mais
+sutil da entrega.
+
+Ele havia escrito que as 3 evidências do score são *"os 3 maiores contribuintes, ordenados por
+`valor × peso`"*. Parece a definição óbvia de "as três razões principais". É enviesada:
+
+> Um fator com **valor 0** — três objeções e nenhum compromisso — contribui **zero** e por isso
+> **nunca entra no top 3**. Um lead com score 20 seria explicado **só pelas coisas boas**, e o que o
+> derrubou ficaria invisível.
+
+O resultado é a Lei D cumprida **ao contrário**: o número diz *"ruim"* e o porquê diz **só coisa boa**
+— e o humano perde exatamente a informação que o faria agir. Pior nos leads que mais precisam de
+atenção, que é onde uma explicação errada custa mais caro.
+
+**Correção:** ordenar por **`peso × |valor − 0,5|`** — por **quanto o fator afastou o score do meio**.
+O que puxa para baixo aparece com a mesma força do que puxa para cima.
+
+**E ele deixou o teste que discrimina**, que é o que separa correção de intenção: entrada dominada por
+objeções **tem de** trazer esse fator no top 3 — *falha com a ordenação antiga, passa com a nova*.
+
+> **Generalização, e vale para qualquer "top N razões" de qualquer produto:** ordenar por contribuição
+> faz o **zero desaparecer** — e zero costuma ser o valor **mais informativo** do conjunto. Ausência de
+> compromissos, nenhum contato, nenhuma resposta: são os que explicam o número, e são exatamente os que
+> a ordenação por contribuição esconde.
+
+## §7.50 — Grep no fonte é *tripwire*, não prova — nas duas direções
+
+A §7.45 registrou uma perna removida por afirmar comportamento a partir da **presença** de um texto no
+arquivo. A especificação da fórmula traz a forma **espelhada**: um teste que garante que
+`probability.ts` **não contém** literal de hora nem de dia, para provar que a recência vem só de
+`classifyRisk`.
+
+**A inversão não a torna prova.** Ela cobre a forma ingênua e nada além: `60 * 60`, uma constante
+importada, ou uma janela derivada de outro lugar passam pelo grep e reintroduzem o segundo
+classificador — que é justamente *"escondido dentro de um cálculo"*, o pior lugar possível.
+
+> Como **tripwire** contra a forma óbvia, vale e é barato — desde que **rotulado como tripwire**. O
+> risco é ser lido como garantia: aí ele ocupa o lugar mental da verificação que não foi feita (§7.47).
+
+**A forma que prova consumo em vez de ausência:** *mockar* `classifyRisk` e afirmar que o fator de
+recência **se move com ele** — mudou a saída do classificador, mudou o fator; não mudou, não mudou.
+Isso é impossível de satisfazer com uma janela própria, porque a janela própria **ignoraria o mock**.
+
+> **Ausência de um padrão prova que uma forma não está lá. Só o acoplamento observável prova que a
+> fonte certa está sendo usada.**
