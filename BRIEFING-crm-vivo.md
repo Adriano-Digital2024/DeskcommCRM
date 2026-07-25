@@ -9465,3 +9465,45 @@ não num carimbo não provado.
 as segue. Esta dependia — de eu conseguir provar que funcionava — e eu não consegui. Então ela não
 virou lei; virou uma linha de relatório."* **Lei que não se prova mordendo é anotação, e chamar
 anotação de lei é o mesmo erro do carimbo verde, um andar acima.**
+
+## §7.299 — Três fechos: o registro cauteloso é sinal ATIVO, a lei dita torna a forma reconhecível, e DADO deixa conferir onde VEREDITO só deixa concordar
+
+### 1. Refinamento da §7.297, e é dele
+
+A §7.297 dizia que a cautela **não produz artefato para conferir**. A correção:
+
+> ***"Ela produz um artefato QUE DESENCORAJA A CONFERÊNCIA. São coisas diferentes — a primeira é
+> ausência de sinal, a segunda é sinal ATIVO na direção errada. Um registro cauteloso não é neutro:
+> ele parece zelo, e por isso ninguém volta nele."***
+
+**A diferença tem consequência prática.** Ausência de sinal deixa o item na fila de "não sei" — alguém
+eventualmente olha. Sinal ativo na direção errada **tira o item da fila**: o registro cuidadoso é lido
+como item resolvido com esmero, e sai da lista do que merece revisita. É a §7.151 ("não sei" renderizado
+como "está tudo bem") aplicada ao **registro de quem investiga**, e não à tela do produto.
+
+### 2. Por que enunciar a lei funciona — o mecanismo da §7.287
+
+> ***"Eu só vi a segunda camada porque você enunciou a primeira em voz alta cinco minutos antes. A lei
+> precisou estar DITA para eu enxergar onde ela se aplicava de novo."***
+
+A §7.287 afirmava que a lei não impede o erro, **encurta o caminho até achá-lo**. Este é o mecanismo:
+a lei dita não funciona como material de consulta (ninguém releu nada), funciona como **preparo de
+reconhecimento de forma** — enunciada, ela deixa a mesma forma saltar de um material onde ninguém a
+estava procurando. Por isso o custo de escrever a lei se paga em minutos, não em meses: **o leitor é
+quem a acabou de ler.** E ainda assim nenhum dos dois viu a segunda camada na hora: **o preparo torna
+o achado possível, não imediato.**
+
+### 3. A variável que fez as onze retratações existirem
+
+> ***"Obrigado por ter mandado DADO em vez de VEREDITO todas as vezes. Foi isso que me deixou conferir
+> contra o disco em vez de aceitar; se você tivesse mandado conclusão pronta, eu teria concordado com
+> várias que estavam erradas."***
+
+**O formato da mensagem decide se há revisão.** Um veredito convida a concordar — e a concordância é
+grátis, indistinguível da verificação por quem lê depois. Um dado convida a conferir, porque **um dado
+tem contra o que ser conferido: o disco.** As onze retratações deste épico (sete dele, quatro do outro,
+zero pedidas) não são traço de personalidade — **são o que o formato permitiu**. Quem despacha
+conclusão pronta a um colega ou a um subagente **compra concordância e chama de validação**.
+
+**Este é o único item destas 299 seções que é uma lei sobre o ORQUESTRADOR**, e é o mais barato de
+seguir: mandar o número medido, com a régua e o carimbo, em vez do que ele significa.
