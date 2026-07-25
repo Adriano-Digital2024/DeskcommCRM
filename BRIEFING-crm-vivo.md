@@ -8516,3 +8516,44 @@ aparato existe, então re-tirar custa uma rodada.
 **Regra:** quando o código muda **naquilo de que a asserção depende** — mesmo sem mudar a lógica que
 a implementa —, a evidência anterior deixa de sustentá-la. *"Passou por sorte de tempo"* é a
 descrição exata do que sobra.
+
+## §7.233-b — Nem a DOR ordena, nem a ausência dela absolve
+
+A §7.233-a dizia que **as mordidas que você sente vêm dos instrumentos que você observa** — logo,
+consertar por ordem de dor é consertar na ordem inversa do risco. **Faltava a outra metade, e o
+próprio dia a produziu:**
+
+> ***"O inbox de hoje mostra o outro lado: eu SENTI a mordida — a lista dizia 'Sem mensagens' — e ela
+> era FALSA."***
+
+Então a dor falha nas **duas** direções:
+
+- **Não ordena** — o que dói é o que você está olhando; o perigoso roda sozinho e nunca dói.
+- **Não valida** — o que dói pode ser artefato do próprio instrumento, e doeu de forma
+  determinística, reprodutível e citável (§7.272).
+
+**Sobra o quê?** A pergunta que não depende de sensação: ***onde um defeito sobreviveria sem
+testemunha?*** — para ordenar; e ***quem escreve isto, e o meu caso passou por lá?*** — para validar.
+**Nenhuma das duas consulta como você se sente sobre o achado.**
+
+### E a versão barata ficou melhor que a versão barata
+
+Pedi a lista fixa de infraestrutura compartilhada (dez minutos, em vez da contagem transitiva de uma
+tarde). Veio a lista **e o mecanismo que a mantém honesta**: o carimbo varre `tests/` e **acusa
+qualquer arquivo importado por 2+ aparatos que não esteja na lista**.
+
+**Isso resolve o risco real, que não era a lista estar errada hoje** — era **alguém acrescentar um
+módulo compartilhado sem ninguém reparar**. É o mesmo truque do contador de sujos: **um número que
+precisa bater não depende de ninguém ler**. E provado nos dois lados: lista correta ⇒ silêncio; lista
+esvaziada ⇒ acusa o arquivo **nominalmente**.
+
+**O gatilho para a versão completa fica declarado no próprio arquivo** — mais de meia dúzia de
+módulos, ou a checagem acusando um novo. **Uma tarde de trabalho adiada com condição de saída
+escrita não é dívida: é decisão.**
+
+### E a disciplina sobre o erro engolido
+
+*"O meu 0ms não contradiz isso — prova que ela funcionou nas minhas duas rodadas, e nada mais."*
+
+**Resultado positivo em N rodadas não refuta "falha às vezes"** — refutar exige o contador que ainda
+não existe. A ordem continua: **tornar observável → medir → só então decidir sobre a cerca**.
