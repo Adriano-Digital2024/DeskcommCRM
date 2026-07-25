@@ -1223,3 +1223,26 @@ durante e depois distintos. **A contradição entre duas ferramentas disse qual 
 E o fecho, nas palavras dele, que é a tese da última hora desta wave:
 
 > ***"Trabalho feito que não chega a quem clona não está entregue."***
+
+## §7.23 — Nem todo delta invalida um veredito
+
+O `@QAVivo` assinou a Wave 3 com carimbo em `b73b0fe`, e o `HEAD` já tinha andado. A regra do
+`§7.3` diria "remeça" — e estaria errada aqui.
+
+**A pergunta não é *"o HEAD andou?"*, é *"o delta toca a CADEIA DECLARADA?"***. Verificado:
+`git diff --name-only b73b0fe..HEAD` devolveu apenas `BRIEFING` e `HANDOFF` — **zero arquivos de
+comportamento**. O veredito vale.
+
+> Sem esta cláusula a regra vira paralisia: cada linha de handoff escrita invalidaria todas as
+> provas do time, e a disciplina que existe para tornar o verde confiável passaria a impedir que
+> exista verde.
+
+É a `§7.16` (observação × invariante) aplicada ao **delta**: o que importa não é a distância em
+commits, é se algum deles cruza a cadeia que a prova declarou depender.
+
+**Como se checa, em uma linha:**
+```
+git diff --name-only <commit-medido>..HEAD | grep -vE '^(docs?/|.*\.md$|evidence/)'
+```
+Vazio → o veredito sobrevive. Não vazio → nomeie o que mudou e decida se aquilo podia mexer no
+resultado.
