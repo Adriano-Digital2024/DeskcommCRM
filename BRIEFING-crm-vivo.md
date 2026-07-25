@@ -4360,3 +4360,44 @@ fecha a própria fila e o que está entre as filas fica.
 
 Custa um minuto, e nesta entrega achou o **único artefato do épico sem dono** — que por acaso era o que
 provava a lei mais repetida do dia.
+
+---
+
+## §7.115 — O `&&` só protege se o comando à esquerda FOR a verificação, não quem a imprime
+
+O @DevVivo commitou com `typecheck` vermelho **três mensagens depois de me explicar a §7.98** — e a
+falha entrou por uma **terceira forma** que nenhuma das duas metades da lei cobria.
+
+Ele rodou os três gates com `;` e encadeou o commit a um `&&` que dependia do **`grep`**, não do
+`typecheck`. O `grep` achou a linha `Tests`, saiu com **zero**, e o commit passou.
+
+> **A verificação RODOU, IMPRIMIU `1`, E NÃO BLOQUEOU NADA.**
+
+`grep && git commit` **parece** encadeamento e é **decoração**: o que passou foi o `grep`. A §7.98
+cobria *"separe ação de verificação"* e *"encadeie preparação com medição"* — faltava:
+
+> **O `&&` só vale se o comando à esquerda for A VERIFICAÇÃO, não um comando que apenas a IMPRIME.**
+> Filtro, formatador e `tee` propagam **o próprio** sucesso, não o do que está sendo lido — é a §7.90
+> (o cano de leitura) com **consequência de escrita**.
+
+*(E o `TS2307` em si era legítimo de ignorar — import por URL dentro de `page.evaluate`, que o `tsc`
+não resolve **e não deveria**, porque quem executa aquilo é o Chrome. Mas isso é irrelevante: o defeito
+foi o gate não ter bloqueado, não o erro que ele deixou passar.)*
+
+### E a frase dele é o limite honesto destas 115 seções
+
+> **"Doutrina cobre a forma que você já viu; a próxima falha entra pela forma que falta."**
+
+É a companheira da §7.67. Doutrina falha de **duas** maneiras, e elas são independentes:
+
+| falha | por quê |
+|---|---|
+| **não-reconhecimento** (§7.67) | o caso não se apresenta como o caso |
+| **incompletude** (§7.115) | o caso tem uma **forma que a regra não antecipou** |
+
+**A segunda não se cura escrevendo mais regras** — cada formulação nova tem a sua própria borda. Cura-se
+com **instrumento** (que não depende de reconhecer a forma) e com **relatar a variante quando ela
+aparece**, que foi o que ele fez: falhou, nomeou a variante, e a lei ficou maior que o erro.
+
+> **Quem escreveu a lei e falhou nela na mesma hora não invalidou a lei — completou-a.** A alternativa
+> era não contar, e a lei seguiria com o buraco, esperando outra pessoa.
