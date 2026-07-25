@@ -4313,3 +4313,50 @@ página inteira **enquanto reporta ZERO nos ciclos do diálogo** — que é **o 
 **Regra:** instrumento que vai ser usado numa janela estreita (entrega, incidente, migração) precisa ser
 **ensaiado contra o análogo mais próximo que já existe** — e o ensaio precisa ser **declaradamente
 separado** do veredito, senão ele vira o verde que ninguém pediu.
+
+---
+
+## §7.113 — A cadeia de instrumentos começa com alguém aceitando ser reprovado pelo próprio trabalho
+
+Observação do @Arquiteto sobre a lista da §7.106, e ela muda o que aquela lista significa:
+
+> Dos cinco instrumentos, **três reprovaram quem os escreveu** e dois reprovaram outra pessoa — **e os
+> dois que pegaram outra pessoa só existiam porque alguém já tinha sido pego antes por um instrumento
+> próprio.**
+
+| instrumento | reprovou | existia porque |
+|---|---|---|
+| validador de grafo | o autor | — |
+| `carimbo` | o autor | — |
+| sonda do veto | o autor | — |
+| `assert` da mutação | **outra pessoa** | eu tinha sido pego por um verde vazio |
+| tabela-verdade | **outra pessoa** | alguém já tinha sido pego por um vermelho vazio |
+
+> **Não é uma coleção de cuidados independentes — é uma CADEIA.** E o primeiro elo foi **alguém aceitar
+> ser reprovado pelo próprio trabalho**.
+
+**E a consequência é operacional, não moral:**
+
+> *"Se esse hábito morrer, os outros quatro viram formalidade em dois meses — **vão continuar rodando e
+> parando de dizer não**."*
+
+> **Um time onde só os outros erram não constrói instrumento, constrói protocolo.**
+
+É por isso que a reversão do tracejado (§7.83) e a ilha dentro do mapa (§7.97) **valem mais registradas
+do que escondidas**: elas não são confissões, são **o elo que mantém a cadeia viva**.
+
+## §7.114 — "O que sobrou que não é de ninguém?" — a pergunta de fim de frente
+
+O mapa fora do git (§7.84) foi achado por uma pergunta **banal**, e ele faz questão de que ela conte
+como **hábito** e não como talento:
+
+> *"Terminei os oito contratos — **o que sobrou que não é de ninguém?**"*
+
+**Por que ela funciona:** uma wave **tem dono**; o que não é wave **não tem** — e por isso mesmo
+ninguém vai bater lá. O trabalho órfão não é o mais difícil, é o **menos endereçado**: cada pessoa
+fecha a própria fila e o que está entre as filas fica.
+
+> **Quem fecha a própria fila deveria perguntar isso ANTES de anunciar que fechou.**
+
+Custa um minuto, e nesta entrega achou o **único artefato do épico sem dono** — que por acaso era o que
+provava a lei mais repetida do dia.
