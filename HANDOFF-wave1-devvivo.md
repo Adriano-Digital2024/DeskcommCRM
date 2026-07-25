@@ -44,11 +44,11 @@ Instância própria do Playwright (o browser MCP estava com o QA), dev server da
 
 | # | Cenário | Resultado | Evidência |
 |---|---|---|---|
-| A | Atribuir lead a agente pelo menu do card | Card passa de "Sem responsável" para `LA · Lia — AgendaPlus` | `wave-1-dono-agente.png`, `wave-1-card-agente.png` |
+| A | Atribuir lead a agente pelo menu do card | Card passa de "Sem responsável" para `LA · Lia — AgendaPlus` | `wave-1-devvivo-dono-agente.png`, `wave-1-devvivo-card-agente.png` |
 | B | Agente é par do humano | avatar **24×24px** (igual ao humano), `font-family: IBM Plex Mono`, `background: rgba(0,0,0,0)` (vazado), `border 1px` + ring; sem emoji, sem badge "AI" | medido por `getComputedStyle`, não a olho |
 | C | Tooltip nome · versão | `Lia — AgendaPlus · v24` (versão **publicada hoje**, resolvida por join) | log da prova |
-| D | Transferência de volta | Volta a "Sem responsável" e persiste | `wave-1-revertido.png` |
-| E | Board inteiro | Humanos (`EM`, `EA` preenchidos) e agentes (`LA`, `BE` vazados) lado a lado | `wave-1-dono-agente.png` |
+| D | Transferência de volta | Volta a "Sem responsável" e persiste | `wave-1-devvivo-revertido.png` |
+| E | Board inteiro | Humanos (`EM`, `EA` preenchidos) e agentes (`LA`, `BE` vazados) lado a lado | `wave-1-devvivo-dono-agente.png` |
 
 Screenshots em `/private/tmp/claude-501/-Users-rafaelmelgaco-DeskcommCRM/9579c957-fb23-4342-9df1-c208137c2c03/scratchpad/` (não escrevi em `evidence/`, que é do QA — copiar para lá se quiser referenciar no handoff oficial).
 
