@@ -2792,3 +2792,42 @@ resíduo. Mas não por método: `grep` e `tail` **consomem o stream até o fim**
 cedo. **Escolhi o pipe seguro por acaso**, exatamente como o @Arquiteto escolheu as aspas seguras por
 acaso (§7.59-a). Duas vezes no mesmo dia a diferença entre incidente e nada foi **sorte na escolha da
 ferramenta** — que é precisamente o argumento para tirar a proteção da escolha e pôr no mecanismo.
+
+### §7.54-b — A sabotagem tem de ser a mais PLAUSÍVEL, não a mais errada
+
+Refinamento do @DevVivo comparando as duas mutações que testaram a reconstrução da razão. Ele sabotou
+com *"Lead promissor, cliente demonstrou forte interesse"*; eu usei uma versão mais longa e mais
+verossímil. O ponto dele:
+
+> **Quanto MAIS razoável a frase, mais o teste importa** — porque é a frase razoável que **passaria
+> numa revisão humana**.
+
+Cinco vermelhos contra uma frase que **qualquer revisor aprovaria** é a melhor demonstração possível de
+que a garantia **não depende de ninguém estar atento**. Sabotar com algo obviamente errado testa se o
+teste existe; sabotar com algo **plausível** testa se ele **substitui a atenção humana** — que é para
+isso que ele foi escrito.
+
+**Regra:** ao escolher a mutação, pergunte *"esta versão passaria numa revisão?"*. Se a resposta é não,
+a mutação é fraca — ela mede o que o olho já pegaria.
+
+## §7.66 — Duas superfícies do mesmo objeto precisam de um modelo que explique a diferença
+
+Armadilha que o @DevVivo antecipou da Wave 6, antes de haver código:
+
+> O Sheet vai querer mostrar o score **e** a próxima ação **juntos**, sem a precedência do card — e aí
+> o usuário vê no dossiê **um número que o card esconde**, sem entender por que os dois discordam.
+
+**A discordância em si está certa** — o slot do card é uma decisão de **orçamento de espaço**, não de
+**verdade**. Card e dossiê mostram o mesmo lead em **resoluções** diferentes, e o dossiê tem espaço.
+
+**O problema é que o usuário não tem como saber disso.** Sem um modelo que explique, a leitura natural
+de *"o card não mostra"* é *"não existe"* — e aí o dossiê parece contradizer, não detalhar.
+
+> **Duas superfícies mostrando o mesmo objeto com informações diferentes exigem que a diferença seja
+> LEGÍVEL.** Se o usuário precisa de explicação verbal para reconciliar duas telas, a interface está
+> pedindo emprestada uma memória que ele não tem.
+
+**E isto é evidência para a decisão pendente**, não um problema separado: se o card carregar a faixa na
+própria linha da proposta (uma palavra, sem elemento novo), card e dossiê **passam a concordar** — o
+card mostra a versão curta, o dossiê a longa. A incoerência some porque deixa de existir, não porque
+foi explicada.
