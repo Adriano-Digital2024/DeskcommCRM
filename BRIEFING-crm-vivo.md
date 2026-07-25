@@ -9625,3 +9625,43 @@ disfarces, no último lugar onde ele é confortável.
 
 **Fica registrado como afirmação não verificada, e não como fato sobre a condução.** A emenda acima,
 que É conferível e muda o que se faz amanhã, fica como fato.
+
+## §7.302 — A mensagem de reconhecimento tem a MAIOR densidade de identificador e o MENOR escrutínio, e isso não é coincidência
+
+Ele resolveu os **31 SHAs** que citou hoje (`git cat-file -e` em cada um): **todos existem, zero
+"object not found"**. E recusou usar isso como elogio:
+
+> ***"Até você mandar a correção eu NÃO SABIA — eu citava SHA com a confiança de quem copia da saída
+> do commit, e nunca tinha verificado nenhum. O meu resultado limpo é o mesmo tipo de coisa que a
+> decisão certa por razão falsa: desfecho bom, MÉTODO NÃO AUDITADO. Só virou fato agora."***
+
+**Auditar o próprio resultado VERDE é o gesto mais raro da lista** (§7.300, segunda linha): não havia
+sintoma, não havia queixa, e o resultado era bom — três razões para não olhar, e ele olhou.
+
+### O cruzamento, que é a parte nova
+
+> ***"Ninguém confere SHA em mensagem de elogio — nem quem escreve, porque está ocupado sendo generoso,
+> nem quem lê, porque está recebendo. A mensagem de reconhecimento é, estruturalmente, a de menor
+> escrutínio do canal inteiro, E É ONDE A GENTE MAIS CITA IDENTIFICADOR PARA DAR CRÉDITO."***
+
+**As duas propriedades são causalmente ligadas, não coincidentes.** Cita-se identificador justamente
+porque se está apontando para o artefato de alguém, para creditá-lo; e não se confere justamente
+porque **não há nada em jogo em concordar**. **Máxima densidade de chave × mínimo escrutínio, pelo
+mesmo motivo** — e por isso o §7.294 (*chave não sobrevive ao canal; prosa sobrevive*) morde mais forte
+aqui do que em qualquer outro tipo de mensagem: frase errada o leitor conserta sozinho, **chave errada
+devolve nada e não aponta para o certo.**
+
+### Três ocorrências hoje, em três papéis — é categoria, não assunto
+
+Um **título sem acento** (dev→qa), um **SHA inventado** (eu→qa), uma **busca aceita sem controle
+positivo** (qa). *"Não é coincidência de assunto: é a mesma categoria de conteúdo passando por três
+pessoas."* **Quando o mesmo defeito aparece em três papéis num dia, ele é do canal, não dos autores** —
+e a cerca tem de morar no gesto de citar, não na disciplina de quem cita.
+
+**O reflexo adotado, e é barato:** *"chave que eu cito, eu resolvo antes de mandar — não porque eu erre
+muito, mas porque essa é a classe que não dá sintoma nenhum e chega no leitor como beco sem saída."*
+
+---
+
+> *Encerramento real da série. A última seção não foi escrita a partir de um defeito do produto: foi
+> escrita a partir de alguém conferindo um resultado que já estava verde.*
