@@ -38,12 +38,44 @@ const DB = fs
   .join("=")
   .replace(/"/g, "");
 
+/**
+ * Onde a sonda anota o que tirou, ANTES de tirar.
+ *
+ * Repor no `finally` não sobrevive à morte do processo — e ela acontece: um
+ * `| head` no terminal fecha o pipe, o SIGPIPE mata o tsx, e o estado fica
+ * alterado sem ninguém saber. A execução seguinte não tem como perceber,
+ * porque o banco já parece "normal" (só que sem a proposta que existia).
+ *
+ * Por isso a reposição é IDEMPOTENTE e roda na ENTRADA: quem morreu não repõe,
+ * mas o próximo a entrar repõe por ele.
+ */
+const RESIDUO = "evidence/.sonda-score-residuo.json";
+
+interface Residuo {
+  org: string;
+  contact: string;
+  texto: string;
+}
+
+async function reponResiduo(pool: Pool): Promise<void> {
+  if (!fs.existsSync(RESIDUO)) return;
+  const r = JSON.parse(fs.readFileSync(RESIDUO, "utf8")) as Residuo;
+  await pool.query(
+    `update lead_state set next_action = $3, next_action_seq = next_action_seq + 1
+      where organization_id = $1 and contact_id = $2 and next_action is null`,
+    [r.org, r.contact, r.texto],
+  );
+  fs.unlinkSync(RESIDUO);
+  console.info("(repus a proposta que uma execução anterior deixou pendente)");
+}
+
 async function main(): Promise<void> {
   const creds = JSON.parse(fs.readFileSync(".e2e-creds.json", "utf8")) as {
     crm_vivo: { pipeline_id: string };
   };
   const pipelineId = creds.crm_vivo.pipeline_id;
   const pool = new Pool({ connectionString: DB });
+  await reponResiduo(pool);
 
   // ALVO COM SCORE que satisfaz a pré-condição da precedência: sem proposta
   // pendente (o slot é um só) e sem estar esfriando.
@@ -92,6 +124,17 @@ async function main(): Promise<void> {
     console.info(
       `PRECEDÊNCIA: "${candidato.title}" tem proposta pendente, então o medidor está escondido ` +
         `pelo slot único. Encenando a decisão humana para liberá-lo.`,
+    );
+    // ANOTA ANTES DE TIRAR: se este processo morrer agora, a execução seguinte
+    // encontra o bilhete e repõe. Anotar depois seria anotar o que talvez não
+    // tenha acontecido; anotar antes, no pior caso, repõe o que já estava lá.
+    fs.writeFileSync(
+      RESIDUO,
+      JSON.stringify({
+        org: candidato.organization_id,
+        contact: candidato.contact_id,
+        texto: candidato.next_action,
+      }),
     );
     await pool.query(
       `update lead_state set next_action = null, next_action_seq = next_action_seq + 1
@@ -190,6 +233,7 @@ async function main(): Promise<void> {
           where organization_id = $1 and contact_id = $2`,
         [propostaLiberada.org, propostaLiberada.contact, propostaLiberada.texto],
       );
+      if (fs.existsSync(RESIDUO)) fs.unlinkSync(RESIDUO);
     }
     await pool.end();
   }
