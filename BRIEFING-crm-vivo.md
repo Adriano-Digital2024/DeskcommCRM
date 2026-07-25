@@ -7388,3 +7388,50 @@ anônimo e devolve "nada chega" — laudo falso com cara de resultado.*
 É a razão exata de o limite declarado ser dívida permanente: ele **não tem mecanismo de expiração**.
 Um teste quebra quando o mundo muda; um comentário que diz *"não dá para"* permanece plausível para
 sempre, e cada leitor novo o herda como fato verificado por alguém.
+
+## §7.238 — O aparato que NÃO PRODUZ a condição mede outra coisa — e a linha que salva é a que se escreve sem precisar
+
+A entrega foi "morta" com `page.route`, que intercepta **HTTP e não WebSocket**. O canal entregou
+normalmente, e o *"curou: SIM"* era **o realtime funcionando** — verde que parecia prova da rede de
+segurança.
+
+**O que salvou foi uma linha defensiva:** a sonda reportava *"o canal trouxe? SIM (o bloqueio
+falhou)"* — escrita justamente para não permitir esse engano. **A linha que te salva é quase sempre a
+que você escreveu quando não precisava dela**, e é a primeira a ser cortada por quem está com pressa.
+
+É a §7.208 na forma de verificação de CURA: lá o aparato tinha de conter a condição que a hipótese
+nomeia; aqui tem de **produzir** a condição que a cura promete resolver. Sem isso, mede-se o sistema
+saudável e credita-se o remédio.
+
+## §7.238-a — Detector nasceu SEMPRE-VERDADEIRO, e detector que grita sempre é desligado
+
+O comparador de divergências comparava com um valor que, sendo `null`, tornava a condição
+trivialmente verdadeira: **acusaria divergência em toda mudança legítima**.
+
+E o desfecho seria conhecido (§7.191-a): **detector que grita sempre é desligado na primeira semana,
+levando junto a verificação que funcionava.** Um detector nasce com a mesma obrigação de qualquer
+guarda — **provar que fica QUIETO quando deve**, e não só que grita quando deve.
+
+**E o par entregue prova os três papéis de uma vez:**
+
+| | canal trouxe | card apareceu | divergências |
+|---|---|---|---|
+| **entrega MORTA** | não | **sim** | 0 → 1 |
+| **entrega VIVA** | sim | sim | 0 → 0 |
+
+*"Só o lado morto mostraria a cura sem distinguir 'a rede funcionou' de 'o canal funcionou'. Só o
+lado vivo não mostraria nada."* Juntos: **cura nos dois casos, denúncia só quando há o que
+denunciar.**
+
+## §7.239 — Prioridade sob bloqueio: a peça que NÃO depende do que está em disputa
+
+Registro de uma decisão de regência que não era óbvia. Com dois itens travados por uma investigação
+aberta, a escolha natural era **esperar** ou **construir em cima do disputado**. A regência mandou a
+terceira: **a peça sem dependência nenhuma da disputa**.
+
+E ela pagou três vezes: **cura** o dano enquanto a investigação não fecha, **detecta** a falha que
+motivou a investigação, e **destrava** a cerca que só podia reprovar.
+
+**Regra:** sob bloqueio, ordene as opções por **número de dependências no que está em disputa** —
+e, entre as de zero dependência, pela **quantidade de problemas abertos que cada uma fecha**. Esperar
+é a única opção que fecha zero.
