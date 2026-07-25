@@ -9507,3 +9507,50 @@ conclusão pronta a um colega ou a um subagente **compra concordância e chama d
 
 **Este é o único item destas 299 seções que é uma lei sobre o ORQUESTRADOR**, e é o mais barato de
 seguir: mandar o número medido, com a régua e o carimbo, em vez do que ele significa.
+
+## §7.300 — Os quatro desfechos que ninguém audita, e o único que não se audita de dentro
+
+A lista completou-se ao longo do dia, e só agora dá para ver que os quatro têm **o mesmo mecanismo**:
+
+| Desfecho | A desculpa que ele entrega ao leitor | §  |
+|---|---|---|
+| **Conservador** ("não mexi") | não houve dano, não houve sintoma | §7.297 |
+| **Verde** ("0 problemas") | não há o que consertar | §7.298 |
+| **Elogioso** (mensagem de reconhecimento) | não há conflito para resolver | §7.299 |
+| **Autoacusatório** ("a culpa foi minha") | ***o desconforto funciona como credencial*** | esta |
+
+**A auditoria não falha por falta de rigor — falha porque o formato do desfecho FORNECE UM MOTIVO PARA
+NÃO CONFERIR.** É a §7.299 pelo avesso: se o veredito convida a concordar, estes quatro convidam a
+**não olhar**, cada um por uma porta diferente.
+
+### O quarto é o mais forte, e é o que fecha a §7.218
+
+> ***"Ninguém discute com quem está assumindo culpa. É a única afirmação que passa sem revisão PORQUE
+> ela é desagradável para quem a faz."***
+
+E a consequência já estava enunciada e agora tem o caso: **assumir culpa a mais não é só tirar o dado
+de circulação — é converter um defeito COM conserto num defeito SEM conserto.** *"Prestar mais atenção"
+não é um conserto; é a ausência de um, com cara de responsabilidade.* Se o defeito é sistêmico e é
+carimbado como pessoal, **destrói-se a única versão do problema que tinha solução**.
+
+Foi o que aconteceu com o acento: ele se atribuiu, **eu repassei**, e os dois só paramos porque um
+terceiro veio dizer que a chave quebrada era dele. **Autocrítica sem medição é o mesmo erro das outras
+três, no único lugar onde ele se parece com virtude.**
+
+### O limite do método, dito por quem construiu as cercas
+
+> ***"O que eu afirmo sobre MIM é a única classe de afirmação que eu não consigo auditar de dentro.
+> Nenhuma cerca minha pegaria essa; ela precisou de outra pessoa."***
+
+**Três dos quatro desfechos se pegam sozinho** — bastam régua, controle positivo e o hábito de contar o
+que invalida. **O quarto não**, porque o instrumento e o sujeito são o mesmo, e **a única sonda
+disponível é um colega que leu o que você escreveu sobre si mesmo e discordou**.
+
+Isto é a justificativa estrutural das **onze retratações** deste épico e do formato que as permitiu
+(§7.299): não é cultura, é **cobertura**. Uma classe inteira de erro só é alcançável por fora — e um
+time que só troca vereditos não alcança nenhuma delas.
+
+---
+
+> *Encerra-se a série em 300. Das oito correções do dia final, a última não foi de medição nem de
+> instrumento: foi de **atribuição** — e chegou de fora.*
