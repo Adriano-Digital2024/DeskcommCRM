@@ -7897,3 +7897,45 @@ atribuição: destrói a possibilidade de atribuir**, porque nenhum dos dois est
 **Regra:** ao consertar em série, **cada conserto é a última chance de aprender sobre os anteriores**.
 A ordem dos consertos determina o que permanece cognoscível — e isso não aparece em nenhuma lista de
 prioridade, porque prioridade ordena por gravidade e esta pergunta é sobre **reversibilidade**.
+
+## §7.257 — Um VERMELHO pode ser o único registro de um requisito operacional; apagá-lo à mão esconde o requisito
+
+A cadeia real do envio tem **três setas e três consumidores diferentes**:
+
+```
+cron_jobs  ──►  job_queue  ──►  turno do agente  ──►  mensagem
+        (tick)          (agent-worker: drain)   (LLM, custo, escrita real)
+```
+
+O tick avançou a **primeira**. A segunda **não tem rota de cron** — o dispatcher está `@deprecated` e
+é **no-op permanente** por decisão registrada. O único consumidor de `job_queue` é o mesmo processo
+separado que ninguém sobe.
+
+**Decisão: E4/E6 ficam VERMELHOS DECLARADOS.** E não é resignação — é a entrega melhor:
+
+**Este vermelho é a única coisa que documenta o requisito de deploy da §7.256.** Torná-lo verde
+subindo o worker à mão **apagaria o achado**: o placar diria que o ciclo fecha, e o self-hoster que
+instalar o kit descobriria sozinho, em produção, que a mensagem nunca sai. **O verde obtido por ação
+manual mente sobre o que o produto faz quando ninguém está olhando.**
+
+**Regra:** antes de transformar um vermelho em verde por uma ação fora do fluxo normal, pergunte **o
+que aquele vermelho está documentando**. Se ele é o único lugar onde um requisito operacional está
+visível, **o verde custa o requisito** — e o requisito reaparece na máquina de quem instalou.
+
+**Versão contável, e ela fecha a §7.256:** numa cadeia assíncrona, conte **quantos consumidores
+precisam estar vivos** entre o gatilho e o efeito. Aqui são **dois**, e o código não mostra isso em
+lugar nenhum — cada seta parece uma chamada.
+
+### E um fato de escopo que vale para a wave 8 inteira
+
+`tentativas = 0` nos 22 `cron_jobs`, e agora **`0` também nos 7 da `job_queue`** — o mesmo padrão um
+andar acima. **Se o agent-worker nunca rodou neste ambiente, nenhum fluxo de follow-up jamais foi
+executado ponta a ponta aqui.** Qualquer critério da wave 8 que dependa dele está medindo um
+subsistema **que nunca funcionou nesta máquina** — e precisa dizer isso antes de reprovar qualquer
+coisa.
+
+### E o gate de ação externa funcionou como devia
+
+Antes de rodar, foi verificado que os 7 destinatários são contatos de teste **sem número**, e que o
+WAHA aponta para `localhost`. *"Se os destinatários fossem reais, eu teria pedido confirmação
+antes."* **A verificação de destino veio antes da ação, não depois do susto.**
