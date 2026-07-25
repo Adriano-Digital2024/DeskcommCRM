@@ -73,9 +73,21 @@ async function main(): Promise<void> {
       const token = body.data?.access_token;
       if (!token) return "sem_token";
 
-      const mod = await import(
-        /* webpackIgnore: true */ "https://esm.sh/@supabase/supabase-js@2"
-      );
+      // Import por URL dentro do browser: o `tsc` não resolve especificador
+      // remoto (TS2307), e não deve mesmo — quem executa isto é o Chrome, não o
+      // Node. A indireção pela variável tira a string do olhar do compilador
+      // sem esconder nada de quem lê.
+      const cdn = "https://esm.sh/@supabase/supabase-js@2";
+      const mod = (await import(/* @vite-ignore */ cdn)) as {
+        createClient: (u: string, k: string) => {
+          realtime: { setAuth: (t: string) => void };
+          channel: (n: string) => {
+            on: (e: string, f: unknown, cb: (p: { new?: { type?: string } }) => void) => {
+              subscribe: (cb: (st: string) => void) => void;
+            };
+          };
+        };
+      };
       const sb = mod.createClient(url, anon);
       sb.realtime.setAuth(token);
       return await new Promise<string>((resolve) => {
