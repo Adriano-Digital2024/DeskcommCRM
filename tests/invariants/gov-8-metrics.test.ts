@@ -117,6 +117,13 @@ beforeAll(() => {
       ('${ORG}', '${CONV_B}',  '${SESSION}', '${C_B}',  'text', 'inbound',  'crm', null,          '${IN}'),
       ('${ORG}', '${CONV_B}',  '${SESSION}', '${C_B}',  'text', 'outbound', 'user','${AGENT_B}',  '2026-07-10T12:00:30+00');
   `);
+
+  // ANALYZE depois dos seeds: este arquivo tem um teste que mede ESCOLHA DE
+  // PLANO, e escolha de plano sem estatística é chute do planner. Sem isto o
+  // EXPLAIN passava por sorte — e qualquer coluna nova em crm_leads mudava a
+  // estimativa de largura e virava o chute, reprovando por motivo que não é o
+  // do teste.
+  sql("analyze public.crm_leads;");
 });
 
 // Set the JWT claims SILENTLY (a `select set_config(...)` emits a line that
