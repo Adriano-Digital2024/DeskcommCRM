@@ -6924,3 +6924,48 @@ dois, senão a retratação leva junto o que era útil:
 ***"quando a entrega morre, por qualquer motivo, nenhuma tela avisa — e isso já aconteceu por 2h13
 hoje, com 15 mudanças escritas e nenhuma entregue"***. O raio do silêncio **nunca dependeu de qual era
 a raiz**, e por isso é a única parte que atravessou três retratações intacta.
+
+## §7.218 — Erro próprio classificado como VERGONHA sai do conjunto de evidências
+
+*"Eu tratei 'a minha sonda estava anon' como erro MEU, arquivei como lição de instrumento e segui.
+Eu tinha o dado na mão e classifiquei errado o que ele era."*
+
+O mesmo fato, classificado como **"minha falha"**, vira lição pessoal e **deixa o conjunto de
+evidências**. Classificado como **"hipótese sobre o sistema compartilhado"**, permanece disponível — e
+neste caso apontava para o produto, que faz a mesma sequência com a mesma biblioteca.
+
+**A perda é sistemática, e o disfarce é que a auto-crítica PARECE responsabilidade.** Assumir o erro
+encerra o assunto com dignidade; e encerrar é exatamente o que não se pode fazer com um dado que
+ainda não foi usado.
+
+**Regra:** todo defeito encontrado no próprio trabalho recebe **duas classificações obrigatórias**:
+*"o que eu faço diferente"* **e** *"que hipótese isto levanta sobre o resto do sistema"*. A segunda é a
+que ninguém escreve, e é a que tem valor fora de quem errou.
+
+## §7.219 — Em medição conjunta, reporte POR EVENTO — placar igual esconde, placar diferente não localiza
+
+Desenho da janela conjunta, e o item que o torna decisivo: **cada observador reporta evento a
+evento** (*"o evento do lead X chegou / não chegou"*), **nunca o placar**.
+
+- **Placar igual** (2/2 e 2/2) é compatível com **discordância evento a evento** — cada um recebeu
+  dois, e não necessariamente os MESMOS dois.
+- **Placar diferente** confirma que há divergência e **não diz onde**, então não isola nada.
+
+Só o relato granular transforma a rodada em isolamento num passo. É a §7.164 (relate raízes, não
+contagens) na medição concorrente: **agregado é onde a informação morre**.
+
+E o resto do desenho está certo: **um só dispara** (o dono da grade), o outro **não escreve nada** e
+sobe só o observador; **os dois assinam ANTES do primeiro disparo e ficam até o último**; e mantém-se
+**a separação no tempo**, porque a simultaneidade é a variável suspeita de quem a usou.
+
+### Decisão sobre a dúvida residual da corrida de conexão
+
+Foi oferecido instrumentar o hook para forçar `subscribe` antes de a conexão existir. **Não vale a
+pena, e o motivo é doutrina:** construir um aparato que altera o hook para provocar a corrida é
+**mexer no mecanismo sob teste** (§7.152) — e o que se ganharia já está coberto pelo par com 401
+injetado (com conserto → `authenticated`; sem → `anon`).
+
+**A dúvida residual se DECLARA, não se persegue:** o caminho normal nasce autenticado (3/3 medido), a
+condição adversa conhecida está coberta, e a corrida rara fica **escrita no comentário** como limite
+conhecido. Se `supabase-js` expuser um sinal de conexão estabelecida, esperá-lo antes do `subscribe`
+**remove a possibilidade** e custa uma linha — isso sim vale, porque é cerca e não medição.
