@@ -5954,3 +5954,47 @@ desnecessário.
 
 **Regra:** atribuição de autoria é fato verificável em um comando. Onde houver um comando, não há
 lugar para inferência — e a existência de histórico é motivo para conferir, não para dispensar.
+
+## §7.175 — Controle ERRADO não erra para o lado seguro: ele ABSOLVE
+
+A perna que "inocentou a publicação, o filtro e a autorização" assinava um lead do pipeline
+**Pedidos**, enquanto o navegador olhava o pipeline **CRM Vivo**. Duas variáveis, uma conclusão — o
+teste confundido, cometido justamente na peça que servia de **controle**.
+
+**E a assimetria importa:** um caso de teste confundido devolve um resultado duvidoso; um CONTROLE
+confundido devolve **absolvições**. Ele não gera dúvida — gera certeza falsa, e certeza falsa fecha
+linhas de investigação inteiras. Três camadas foram declaradas inocentes sem nunca terem sido
+testadas na condição que importa.
+
+**Regra:** o controle recebe o MESMO rigor do caso — mesmo sujeito, mesma condição, uma variável. Na
+prática, mais rigor: **o caso, quando erra, atrasa; o controle, quando erra, encerra.**
+
+## §7.175-a — Ao retratar um confundido, verifique se o substituto não repetiu o erro uma camada acima
+
+Medido no banco, e é o que pode repetir a armadilha: há **cinco organizações** e **cinco pipelines
+"Pedidos"**, um por org. O "CRM Vivo — Clínica" é único, na org `6e567068` — que **também tem um
+Pedidos, com 38 leads**.
+
+Logo, se o lead de Pedidos da nova medição não for da org `6e567068`, **pipeline e organização
+variaram juntos outra vez**, e a conclusão "a diferença é o pipeline" tem exatamente o defeito que
+acabou de ser retratado, um nível acima.
+
+**A comparação limpa existe e está disponível:** dois leads da MESMA org `6e567068`, um em cada
+pipeline. Se o de Pedidos entrega e o de CRM Vivo não, a organização morre como hipótese e o
+pipeline fica confirmado.
+
+**A lei geral:** retratação cria urgência, e **urgência é exatamente quando se recomete o mesmo erro
+uma camada acima**. Ao substituir um teste confundido, a primeira pergunta sobre o substituto é a
+mesma que derrubou o original — *o que mais mudou junto?*
+
+### O que ESTÁ eliminado por medição estrutural (feita aqui, não suposta)
+
+- **Todas as 8 tabelas da publicação têm PK e replica identity `default`** — nenhuma tabela
+  publicada sem identidade utilizável, que é o quebrador clássico do decodificador.
+- **Tamanho de linha não explica:** Pedidos média 287B / máx 336B; CRM Vivo média 330B / máx 448B —
+  mesma ordem de grandeza, muito abaixo de qualquer limite de payload.
+- **Os cinco triggers de `crm_leads` são de TABELA, sem cláusula por pipeline** — nenhum caminho de
+  gatilho pode ser específico de um pipeline.
+
+Isso não nomeia o mecanismo. Estreita onde ele **não** está — e a distinção entre "sei onde não
+está" e "sei o que é" continua sendo a diferença entre laudo e palpite.
