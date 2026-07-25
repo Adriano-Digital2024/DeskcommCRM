@@ -7716,3 +7716,55 @@ linha em vez de deixar o "2" falar sozinho.
 raiz"* é honesto; *"2 bloqueados"* não é. É a §7.164 tornada mecânica: em vez de pedir que alguém
 *lidere por raízes* (regra de julgamento), exige-se **um segundo número que ninguém consegue omitir
 sem que a ausência apareça**.
+
+## §7.251 — Bloqueio DISSOLVIDO não é bloqueio resolvido — e às vezes é melhor
+
+O cenário 22 (card muda para *esfriando* **sem reload**) estava declarado BLOQUEADO pela investigação
+do realtime. Ele passou — **e não foi o realtime que resolveu: foi a REDE DE SEGURANÇA.**
+
+> *"O bloqueio não foi removido atacando a causa dele. Foi removido por uma peça construída para
+> OUTRO problema, que tornou a causa **irrelevante para este caso**."*
+
+**Nem todo bloqueio se resolve pela frente.** Há dois caminhos, e o segundo quase nunca é procurado:
+
+- **Resolver** — remover a causa. Exige entender a causa, e às vezes ela está em disputa.
+- **Dissolver** — tornar a causa **irrelevante para o caso**, construindo por outra via. Não exige
+  entender nada da causa, e o bloqueio cai enquanto a investigação segue aberta.
+
+**E isto valida a §7.239 além do que ela prometia:** a peça sem dependências não só cura o próprio
+problema — **ela pode derrubar bloqueios para os quais não foi apontada**. Esperar teria mantido dois
+itens travados por uma investigação que segue sem veredito até agora.
+
+**Consequência de escopo:** a peça 3 deixa de ser "a única via" e vira **otimização de latência**. Um
+bloqueio dissolvido rebaixa a prioridade do que o causava, e isso precisa ser reescrito onde estava
+declarado — *"documento que envelhece em silêncio é o que passamos o dia combatendo"*.
+
+## §7.252 — O TIMEOUT DO TESTE é um requisito que ninguém escreveu
+
+A primeira medição esperou 7s e reportou *"o ciclo não chegou à tela"*. A busca por *"o que
+consertar"* levaria a dobrar requisição — porque a lista tem polling próprio de 60s, e **ali não há
+perda a curar, há latência**.
+
+> ***"Eu estava medindo a minha impaciência, não o produto. O contrato pede SEM RELOAD, não
+> instantâneo."***
+
+**Todo `waitFor` de teste codifica um requisito de desempenho que ninguém especificou** — e ele entra
+em vigor silenciosamente, com a autoridade de um teste. Quando falha, a pressão natural é **mudar o
+produto** para satisfazer um número que quem escreveu o teste escolheu sozinho.
+
+É a §7.129 na sua forma mais pura: **critério mal escrito não só reprova errado — empurra para o
+defeito**, e aqui o defeito seria dobrar carga para satisfazer uma impaciência.
+
+**Versão contável:** quantos tempos de espera a suíte contém que **não estão no contrato**. Cada um é
+um requisito de performance clandestino, e o contrato aqui diz *sem reload* — não diz *em N
+segundos*.
+
+### §7.252-a — Controle NÃO PLANEJADO é mais confiável que o planejado
+
+Durante a janela, `data-refetch-divergencias` **ficou em 0 o tempo todo, com o canal vivo**: a rede
+não acusou nada. É a prova de que **ela fica quieta quando deve** (§7.238-a) — e apareceu **de graça,
+dentro de outro teste**.
+
+Controle que você **desenha** pode ser desenhado, sem intenção, para produzir a resposta que você
+espera. Controle que **cai de outra medição** não teve essa chance. **Quando um aparecer, registre-o:
+é a evidência mais barata e menos enviesada que existe.**
