@@ -454,13 +454,23 @@ async function garantirProximaAcao(
   const PROPOSTAS: Record<string, string> = {
     "Carlos — Clínica Vida Odonto":
       "Confirmar a data da manutenção do protocolo e enviar o orçamento revisado",
-    "Sônia Vasconcelos": "Retomar contato — sem resposta desde a última proposta",
+    "P A N A R O": "Retomar contato — sem resposta desde a última proposta",
   };
 
   let postos = 0;
+  const naoResolvidos: string[] = [];
   for (const [nome, acao] of Object.entries(PROPOSTAS)) {
-    const contactId = contactIds.get(nome);
-    if (!contactId) continue;
+    const contactId = contactIds.get(nome) ?? (await resolverPorExibicao(orgId, nome));
+    if (!contactId) {
+      // GRITA. A versão anterior fazia `continue` calado, e o @QAVivo achou:
+      // o alvo "Sônia Vasconcelos" não existe como contato (o lead dela está
+      // com contact_id nulo), então metade desta garantia era INERTE — e o
+      // board parecia protegido com 3 propostas quando só UMA era garantida.
+      // A função vizinha (`resolveContacts`) avisa quando um alvo não existe;
+      // este laço pulava em silêncio, no arquivo ao lado do que faz certo.
+      naoResolvidos.push(nome);
+      continue;
+    }
 
     const { data: atual } = await admin
       .from("lead_state")
@@ -481,6 +491,31 @@ async function garantirProximaAcao(
     postos += 1;
   }
   if (postos > 0) console.log(`   próxima ação semeada em ${postos} contato(s) que estavam sem`);
+  if (naoResolvidos.length > 0) {
+    console.warn(
+      `   ⚠ próxima ação NÃO garantida para: ${naoResolvidos.join(", ")} — ` +
+        `contato inexistente na org. O board pode mostrar a proposta destes por dado VIVO do ` +
+        `agente, que o seed não protege: se sair, a demo encolhe sem ninguém saber.`,
+    );
+  }
+}
+
+/**
+ * Segunda tentativa de resolver o alvo: por `display_name`.
+ *
+ * Contato do WhatsApp costuma chegar com `name` nulo e só o `display_name`
+ * preenchido — foi o caso do "P A N A R O Especialista", que tem proposta viva
+ * do agente e ficava fora da garantia por causa da coluna consultada.
+ */
+async function resolverPorExibicao(orgId: string, nome: string): Promise<string | null> {
+  const { data } = await admin
+    .from("contacts")
+    .select("id")
+    .eq("organization_id", orgId)
+    .ilike("display_name", `%${nome}%`)
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
 }
 
 async function main(): Promise<void> {
