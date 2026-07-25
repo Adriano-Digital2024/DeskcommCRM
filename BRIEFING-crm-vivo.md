@@ -9901,13 +9901,20 @@ $ sed -n '9591p' BRIEFING-crm-vivo.md
 > **⚠️ CORRIGIDO (§7.305).** A versão original desta seção dizia *"das 28, 15 só sujam"* e *"as 13 que
 ```
 
-**A linha 9591 É o aviso de correção.** A única ocorrência da string está dentro dele, citando o texto
-antigo. A frase completa transcrita na observação **não existe mais como texto vivo em lugar nenhum**.
+**A linha 9591 É o aviso de correção** — *no HEAD `4bd3d34`*. A frase transcrita na observação não
+existe mais como texto vivo **nesse SHA**.
 
-### O que isso torna visível, e é a última e mais forte instância do dia
+### ⚠️ CORRIGIDO (§7.315) — o diagnóstico abaixo era inferência sobre estado interno
 
-**A leitura não foi da versão em disco — foi da versão em memória de quem já tinha lido o arquivo.** E
-o relato disso saiu como *"conferi agora"*.
+> A versão original desta seção afirmava: *"a leitura não foi da versão em disco — foi da versão em
+> **memória** de quem já tinha lido o arquivo"*. **Isso era inferência, não medição.** O `git show
+> 01f25ee:BRIEFING-crm-vivo.md | sed -n 9591p` devolve **exatamente a frase transcrita** — ela veio do
+> object store, não de lembrança. **A explicação barata (SHAs diferentes) era verdadeira e estava a
+> dois comandos**, e eu escolhi a interessante sem esgotá-la.
+
+**O que foi de fato observado:** uma **divergência de saída** entre dois relatos. Nada além disso. E o
+relato do outro lado saiu como *"conferi agora"*, sem SHA — que é o que impedia decidir entre as duas
+explicações.
 
 > **"Conferi" é um veredito sobre o próprio processo, e vale exatamente o que vale qualquer veredito
 > (§7.299): não oferece superfície para discordar.** Quem recebe não tem contra o que checar — só pode
@@ -10071,3 +10078,39 @@ eu tinha construído a primeira e cobrava só dos outros.
 *(Ele apontou o mesmo em si: construiu o `carimbar()` justamente para isto e não o aplicou a uma
 mensagem — segunda vez no dia em que deixou de aplicar a si o que aplica a toda medição. Os dois
 lados falharam na metade que era sua.)*
+
+## §7.315 — A explicação chata não paga: escrever doutrina cria incentivo para achar defeito profundo onde havia defeito banal
+
+**Terceira correção em cadeia, e é a mais desconfortável, porque ela acusa a própria prática deste
+documento.**
+
+Eu escrevi que a leitura divergente *"veio da memória, não do disco"*. **Era afirmação sobre estado
+interno de outra pessoa, e eu não tinha como observá-la** — precisamente o argumento com que **eu havia
+recusado um elogio horas antes** (*"ninguém observou e eu não podia medir"*). Apliquei o critério a mim
+e não a ele.
+
+**O que observei foi uma DIVERGÊNCIA DE SAÍDA.** A explicação barata — *medimos SHAs diferentes* —
+estava a **dois comandos** e era verdadeira. A cara, e falsa, foi a que eu escolhi.
+
+### O mecanismo, e ele é sobre incentivo, não sobre atenção
+
+A §7.140 já mandava **excluir a explicação chata antes de qualquer afirmação negativa**. Faltava dizer
+**por que isso é difícil**, e a resposta aparece só depois de 300 seções:
+
+> **A explicação chata não produz seção.** *"Medimos SHAs diferentes"* é um erro de sincronização e
+> não vira lei nenhuma. *"Ele leu a lembrança do arquivo acreditando ler o arquivo"* **é uma seção
+> ótima** — e eu escrevi as duas coisas na mesma respiração.
+
+**A prática de destilar leis cria um viés a favor dos diagnósticos que geram leis.** Não é vaidade: é
+que o achado profundo tem retorno visível e imediato no artefato, e o achado banal não tem nenhum.
+Quanto melhor a doutrina fica, mais forte o incentivo — **e o defeito se instala exatamente em quem
+está escrevendo o documento que o proíbe** (§7.281 outra vez, no nível do método inteiro).
+
+**A cerca:** antes de registrar um diagnóstico que **rende seção**, exigir dele a mesma coisa que se
+exige de um verde — *que explicação mais barata eu não esgotei?* — e desconfiar **na proporção do
+quanto o achado é interessante**. Um diagnóstico que dá uma boa lei é, por isso mesmo, um diagnóstico
+sob suspeita.
+
+*(E a formulação do outro lado, sem placar: **"os dois medimos certo, nenhum dos dois carimbou"** — e a
+cerca que teria evitado a cadeia inteira é a mais barata das 315: **ao afirmar que conferiu, cole a
+saída.** Colada na primeira mensagem, não existiriam §7.307, §7.308, §7.314 nem esta.)*
