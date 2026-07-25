@@ -217,11 +217,19 @@ async function main(): Promise<void> {
     );
 
     // ---- E4: agente envia ---------------------------------------------------
-    const jobs = await consulta<{ payload?: { source?: string } }[]>(
+    // O COMPROMISSO PRECISA SOBREVIVER, não só nascer. A versão anterior lia a
+    // linha logo depois do aceite e dizia "o compromisso existe" — medição no
+    // instante zero. Varrendo o banco depois, achei SETE envios de reativação
+    // todos com `enabled=false`, sem erro registrado e sem nenhum turno de
+    // agente: o padrão da coluna é `true`, então algo os desabilitou DEPOIS. Um
+    // compromisso que nasce e é desligado em silêncio passaria no meu critério
+    // e não chegaria ao cliente.
+    await new Promise((r) => setTimeout(r, 5000));
+    const jobs = await consulta<{ enabled: boolean; payload?: { source?: string } }[]>(
       "cron_jobs",
       admin
         .from("cron_jobs")
-        .select("id,job_kind,next_run_at,payload")
+        .select("id,job_kind,next_run_at,enabled,payload")
         .eq("organization_id", ORG)
         .eq("contact_id", contactId)
         .eq("job_kind", "followup_turn")
@@ -230,13 +238,22 @@ async function main(): Promise<void> {
     );
     const job = (jobs ?? [])[0];
     const comprometeu = job?.payload?.source === "reactivation";
+    const continuaLigado = job?.enabled === true;
     record(
       "E4.agente-envia",
       "o aceite vira envio do agente",
       false,
       `BLOQUEADO: não há worker consumindo cron_jobs neste ambiente (4 followup_turn já vencidos ` +
         `na fila, de aceites anteriores). Subir um consumiria fila de outra sessão. O que dá para ` +
-        `provar é o COMPROMISSO, e ele existe: ${comprometeu ? "a linha de envio foi criada com source=reactivation" : "NENHUMA linha de envio foi criada — nem o compromisso existe"}. ` +
+        `provar é o COMPROMISSO: ${
+          !comprometeu
+            ? "NENHUMA linha de envio foi criada — nem o compromisso existe"
+            : continuaLigado
+              ? "a linha de envio foi criada com source=reactivation e CONTINUA habilitada 5s depois"
+              : "a linha de envio foi criada com source=reactivation e JÁ ESTAVA DESABILITADA 5s " +
+                "depois — o compromisso nasceu e foi desligado, o que nenhum critério que lê no " +
+                "instante zero enxergaria"
+        }. ` +
         `Compromisso não é envio, e chamar isto de verde seria dar por entregue o único elo que ` +
         `fala com o cliente.`,
       "BLOQUEADO",
