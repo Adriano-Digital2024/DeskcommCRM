@@ -33,6 +33,12 @@ export interface Contact {
  */
 export interface TimelineItem {
   id: string;
+  /**
+   * Declarado porque a rota SEMPRE pediu esta coluna. O tipo é que omitia — e
+   * omissão em contrato de borda não é neutra: some do portão de exaustividade
+   * e vira campo que ninguém sabe que existe.
+   */
+  organization_id: string;
   lead_id: string;
   contact_id: string | null;
   source_module: string;

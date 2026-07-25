@@ -35,8 +35,41 @@ export const dynamic = "force-dynamic";
  *
  * Campo novo em `TimelineItem` → campo novo AQUI, no mesmo commit.
  */
-const TIMELINE_COLS =
-  "id, organization_id, lead_id, contact_id, source_module, source_id, type, payload, metadata, performed_at, performed_by_user_id, actor_kind, actor_agent_id, reason, evidence";
+const TIMELINE_COL_LIST = [
+  "id",
+  "organization_id",
+  "lead_id",
+  "contact_id",
+  "source_module",
+  "source_id",
+  "type",
+  "payload",
+  "metadata",
+  "performed_at",
+  "performed_by_user_id",
+  "actor_kind",
+  "actor_agent_id",
+  "reason",
+  "evidence",
+] as const satisfies readonly (keyof TimelineItem)[];
+
+/**
+ * O PORTÃO, em tempo de compilação — o comentário acima virou regra executável.
+ *
+ * `satisfies keyof TimelineItem` pega a primeira direção: pedir coluna que o
+ * tipo não conhece não compila. O `Faltando` abaixo pega a segunda, que é a que
+ * doeu de verdade: campo novo no tipo e esquecido no SELECT deixa de ser um
+ * bug silencioso (opcional vira `undefined`, tela cai no fallback, tudo verde)
+ * e passa a ser erro de tipo, com o nome do campo que falta na mensagem.
+ */
+type ColunasPedidas = (typeof TIMELINE_COL_LIST)[number];
+type Faltando = Exclude<keyof TimelineItem, ColunasPedidas>;
+const _todoCampoDoTipoEstaNoSelect: Faltando extends never
+  ? true
+  : ["TIMELINE_COL_LIST não pede estes campos de TimelineItem:", Faltando] = true;
+void _todoCampoDoTipoEstaNoSelect;
+
+const TIMELINE_COLS = TIMELINE_COL_LIST.join(", ");
 
 interface Cursor {
   performed_at: string;
@@ -140,9 +173,15 @@ export async function GET(
     return fail("internal_error", leadRes.error.message, 500, { requestId });
   }
 
+  // Cast duplo porque a lista de colunas agora é montada com `join()`: o
+  // supabase-js infere o shape a partir da STRING LITERAL do select, e a
+  // string dinâmica apaga essa inferência (vira GenericStringError[]). A troca
+  // é deliberada — perde-se uma inferência que já não protegia contra o bug
+  // real (campo do tipo fora do SELECT compilava verde) e ganha-se o portão de
+  // exaustividade acima, que protege.
   const merged = new Map<string, TimelineItem>();
-  for (const row of (directRes.data ?? []) as TimelineItem[]) merged.set(row.id, row);
-  for (const row of (leadRes.data ?? []) as TimelineItem[]) merged.set(row.id, row);
+  for (const row of (directRes.data ?? []) as unknown as TimelineItem[]) merged.set(row.id, row);
+  for (const row of (leadRes.data ?? []) as unknown as TimelineItem[]) merged.set(row.id, row);
 
   const sorted = Array.from(merged.values()).sort((a, b) => {
     if (a.performed_at !== b.performed_at) {
