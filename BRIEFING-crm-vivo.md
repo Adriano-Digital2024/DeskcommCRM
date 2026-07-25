@@ -8032,3 +8032,43 @@ aplicada com a autoridade de um invariante.**
 afrouxado até coincidir. E o gate que pegou este pegou **o próprio autor sendo mais rigoroso que a
 própria decisão** — que é exatamente o caso que nenhuma revisão humana encontraria, porque parece
 zelo.
+
+## §7.262 — Contar "difere" sobre grandeza CONTÍNUA produz número verdadeiro e enganoso
+
+Investigando o *"Sem mensagens"* com a mensagem aberta ao lado, medi: **27 de 28 conversas com
+`last_message_at` mais velho que a última mensagem**. Ia reportar *"96% das conversas com carimbo
+defasado"* — **verdadeiro e gravemente enganoso**.
+
+Uma consulta a mais: **defasagem mediana 0,0h; máxima 1653h (~69 dias)**. A esmagadora maioria
+difere por **segundos** — ordem de escrita, não defeito. **O defeito está na cauda**, e a contagem
+binária o afogou numa estatística que sugeria colapso geral.
+
+**Contar `campo_a <> campo_b` transforma uma distribuição num booleano** — e booleano sobre grandeza
+contínua sempre infla, porque *"diferente por 1 segundo"* e *"diferente por 69 dias"* somam igual.
+
+**Regra:** quando a diferença entre dois valores é **contínua**, o achado é a **distribuição** —
+mediana, cauda, máximo — nunca a contagem de não-zeros. E o número que interessa é quase sempre **o
+extremo**, não a proporção.
+
+**Diagnóstico corrigido, e ele é melhor porque é acionável:** `last_message_preview` e
+`last_message_at` são **colunas desnormalizadas em `conversations`**, e **não há trigger em
+`messages` que as atualize** (só `emit_event` e `updated_at`). São mantidas por **caminho de
+aplicação** — que funciona no fluxo comum (mediana 0,0h) e **não cobre todos os escritores**: há uma
+conversa com `preview` NULO tendo mensagens, e uma defasada em 69 dias.
+
+**A pergunta certa deixou de ser "está quebrado?" e passou a ser "QUAL caminho de escrita não
+atualiza?"** — e ela é respondível, porque os escritores são contáveis. É o anti-pattern que o
+próprio `CLAUDE.md` lista: *duplicação sem source of truth declarado*, mantida fora do banco.
+
+### §7.262-a — O RECARREGAMENTO é o discriminador mais barato entre "não atualiza" e "está errado"
+
+O que tornou este achado possível em três consultas foi uma linha acrescentada **antes** de reportar:
+recarregar a página.
+
+| observação | defeito | dono |
+|---|---|---|
+| não atualiza ao vivo | **leve** — o operador resolve com F5 | transporte/tela |
+| **não atualiza nem recarregando** | **grave** — lista errada que continua errada | **dado no servidor** |
+
+*"Sem essa leitura eu teria entregue o defeito leve."* **Custa um F5 e muda o defeito, a gravidade e
+quem é chamado para consertar.**
