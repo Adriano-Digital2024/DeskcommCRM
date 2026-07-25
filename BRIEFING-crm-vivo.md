@@ -1656,3 +1656,59 @@ sobrepostos que exigiriam dois consertos.
 
 > Quando instrumentos independentes **divergem** no conjunto, há mais de um defeito (ou um dos
 > instrumentos está errado) — e essa é a hora de parar de consertar e voltar a medir.
+
+---
+
+## §7.36 — Defeito latente muda de severidade quando a trava que o codifica entra
+
+Achado do @Arquiteto, e é o tipo de interação que só aparece quando alguém olha **duas peças ao mesmo
+tempo**. Nenhum de nós tinha conectado.
+
+O defeito da caminhada (`frio` sobrevivendo com score 72) era **latente e visual**: a faixa nem chega
+ao card ainda. Mas o CHECK de coerência que acabamos de endurecer diz `frio ⇒ score ≤ 45`. Então
+`frio` com 72 **viola a trava**. No instante em que o delta de coerência entrar, o defeito deixa de
+ser rótulo errado e vira **falha de escrita 23514** — o worker do score **para de persistir**.
+
+**Medido, e é o mesmo conjunto pelos três caminhos:**
+
+| instrumento | viola |
+|---|---|
+| não-mentira (contra a régua crua) | 9/303 |
+| fidelidade (contra o comentário virado código) | 9/303 |
+| **CHECK de coerência (erro na escrita)** | **9/303** |
+| os três simultaneamente | **9** |
+
+> **Regra de ordem:** o código que **produz** o estado entra **junto ou antes** da constraint que o
+> **valida**. Nunca depois. Invertida a ordem, troca-se um rótulo errado por um worker que não grava
+> — sintoma barato por sintoma caro.
+
+**E o inverso é a parte bonita, que justifica o desenho inteiro:** a caminhada é exatamente o que
+torna o CHECK **satisfazível**. `frio` só sobrevive com score < 45 (senão teria subido), `morno` só
+entre 35 e 75, `quente` só acima de 65. **O CHECK é a imagem algébrica da caminhada** — a mesma regra
+em duas linguagens, uma imperativa e uma declarativa. É *por isso* que a divergência vira
+**impossível** em vez de improvável: não há duas fontes de verdade, há uma regra escrita duas vezes,
+e a segunda recusa o que a primeira não produziria.
+
+> **Corolário:** quando uma constraint e um algoritmo codificam a mesma regra, eles **nascem juntos**.
+> Separados no tempo, o primeiro a chegar define um comportamento que o segundo vai quebrar.
+
+### Três detalhes da caminhada, todos do @Arquiteto
+
+1. **Salto de dois degraus emite UMA atividade, não duas.** Score indo de 30 a 90 num recálculo passa
+   por `morno`, mas `morno` **nunca existiu no tempo** — emitir duas linhas fabricaria uma história
+   que não aconteceu. Mesma lei da marca d'água: não mentir sobre **quando**.
+2. **`band_since` é carimbado uma vez, na faixa final.** Carimbar no degrau intermediário registraria
+   uma permanência de zero segundo.
+3. **A assimetria da primeira leitura é deliberada:** com `anterior = null` vale a régua crua (42
+   nasce `morno`), embora *subir* de `frio` exija 45. Primeira leitura **não tem história para
+   proteger**. Sem esta frase escrita, alguém "uniformiza" os dois caminhos e reintroduz o problema
+   pelo outro lado.
+
+### E a resposta à pergunta de modelagem
+
+Régua de três faixas com **banda única** está certa; a banda não é o defeito, a **formulação** é.
+Banda por transição seriam **quatro números sem dado de calibração para girá-los** — o "botão que
+ninguém sabe girar" que já rejeitamos nos pesos. O ruído é uniforme ao longo da escala (um campo BANT
+vale 8,75; a virada de vitalidade vale 10,5), então não há razão para uma fronteira ter mais atrito
+que a outra. Se um dia uma fronteira **provar** ser mais barulhenta, aí vira quatro — com a medição
+na mão.
