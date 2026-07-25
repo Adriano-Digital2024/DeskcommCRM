@@ -6168,3 +6168,61 @@ a garantia que ninguém tinha escrito**.
 fazer o que já se faz; ela **protege a prática de perder a razão pela qual ela é indispensável**. E
 distinguir "eu previ" de "eu tropecei e depois entendi" é o que permite saber quais das nossas
 práticas ainda estão apoiadas em conveniência.
+
+## §7.185 — Default de coluna só age no INSERT — e o "conserto" trocou uma janela por uma condição permanente
+
+O worker abortava por violar o CHECK de `since_no_passado`. Causa: **dois relógios na mesma
+decisão** — `since` deriva de `last_activity_at`, carimbado com o `now()` do BANCO; `detected_at`
+vinha do processo Node. Medido: **o banco está 2 segundos à frente**.
+
+**E a primeira tentativa de conserto era pior que o defeito.** Omitir a coluna no upsert para "deixar
+o default resolver" só funciona no INSERT. **No UPDATE — que é o caminho de TODA travessia depois da
+primeira — a coluna mantém o valor ANTIGO**, e o `since` novo passa a ser maior que um `detected_at`
+de dias atrás. Trocou-se uma falha na janela de dois segundos por uma que **acontece sempre**.
+
+Duas coisas ficam:
+
+1. **`default` é regra de INSERT.** Qualquer conserto que dependa dele é no-op no caminho de
+   atualização — e o caminho de atualização costuma ser o comum depois da primeira vez.
+2. **Só a RE-EXECUÇÃO pegou.** O raciocínio aprovava o conserto; rodar de novo reprovou. Conserto que
+   piora a frequência do defeito é indistinguível de conserto bom até alguém repetir o teste.
+
+E o veredito sobre a trava: **a constraint estava CERTA** e pegou o que ninguém teria visto. O
+conserto não é afrouxá-la — é **tirar do cliente a chance de errar** (o trigger carimba `detected_at`
+no banco).
+
+## §7.186 — A precisão exigida é propriedade da COMPARAÇÃO, não do dado
+
+O relógio do processo continua **classificando**, e está certo: `classifyRisk` compara janelas de
+HORAS, onde 2 segundos não mudam bucket. O CHECK compara **INSTANTES**, onde mudam. **Grandezas
+diferentes toleram precisões diferentes** — e confundi-las foi o defeito.
+
+O que NÃO foi feito merece o mesmo destaque que o conserto: não se "aumentou a precisão de tudo por
+segurança". Essa é a supercorreção preguiçosa — ela apaga a informação de **qual** comparação exigia
+precisão, e o próximo leitor não sabe mais o que pode relaxar.
+
+**Regra:** ao encontrar imprecisão, pergunte qual COMPARAÇÃO quebrou, e conserte no escopo dela. O
+mesmo timestamp pode ser bom para um consumidor e insuficiente para outro, e isso é normal.
+
+## §7.187 — Invariante TRANSVERSAL não pertence a nenhum subconjunto temático
+
+O invariante de "evidência citada" estava vermelho **desde a wave 6** e ninguém viu — porque, sendo
+a mudança de banco, rodou-se `test:db` e não os unitários. **O raciocínio estava certo e a cobertura
+errada.**
+
+Invariantes de documentação, evidência e vocabulário **não pertencem a nenhum tema**: nenhuma
+mudança os afeta "obviamente", então toda heurística de *"rode a suíte relevante"* os perde
+**permanentemente** — não às vezes, sempre. É o oposto do teste de unidade, que a heurística acerta.
+
+**Regra:** a suíte tem duas classes, e só uma admite recorte por tema. Os transversais rodam sempre,
+ou não rodam nunca.
+
+### §7.185-a — `−0` não é a meta; declarar o que sai é
+
+Um pedido de exceção anterior ajustou a forma para conseguir `+23 −0`, e estava certo: o `−1` era
+reformatação, incidental. Este trouxe **`−28` substantivo** (as listas transcritas saindo) e o
+declarou em vez de escondê-lo atrás de forma aditiva — **também certo**.
+
+A regra não é "sempre alcançar `−0`". É: **remoção incidental se evita; remoção substantiva se
+declara.** Disfarçar a segunda de primeira é o que a exigência de `−0` existe para impedir, e quem
+persegue o número em vez do sentido acaba fazendo exatamente isso.
