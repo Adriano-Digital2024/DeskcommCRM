@@ -111,6 +111,42 @@ export async function gotoBoard(page: Page): Promise<void> {
   console.info(`[nav] board por clique → ${page.url()} (${n} cards)`);
 }
 
+/**
+ * ESCOLHE UM ALVO E SE RECUSA A SORTEAR.
+ *
+ * O alvo sorteado (`limit(1)` sem `order by`) me mordeu depois de eu apontá-lo
+ * em sonda alheia no mesmo dia — porque, no momento do erro, ele não parece a
+ * armadilha: parece "pegar um lead qualquer para disparar". Lembrar da regra
+ * compete com pressa; o instrumento, não.
+ *
+ * Então a escolha passa por aqui, e aqui:
+ *   - lista vazia FALHA ALTO, em vez de virar `undefined` e um critério pulado
+ *     em silêncio — que foi como um elo inteiro da sonda do canal sumiu sem que
+ *     o veredito "zero quadros" deixasse de ser impresso;
+ *   - a ordenação é EXPLÍCITA e feita aqui, então duas execuções escolhem o
+ *     mesmo alvo mesmo que o banco devolva em outra ordem;
+ *   - o log diz QUAL foi escolhido e entre QUANTOS, porque reprodução começa
+ *     por saber contra o que se mediu.
+ */
+export function escolherAlvo<T>(
+  candidatos: T[],
+  chave: (item: T) => string,
+  contexto: string,
+): T {
+  if (candidatos.length === 0) {
+    throw new Error(
+      `[alvo] nenhum candidato para "${contexto}" — sem alvo não há medição, e um critério ` +
+        `pulado em silêncio deixa o veredito de pé sem nada ter sido disparado`,
+    );
+  }
+  const ordenados = [...candidatos].sort((a, b) => chave(a).localeCompare(chave(b)));
+  const escolhido = ordenados[0]!;
+  console.info(
+    `[alvo] "${contexto}": escolhi ${chave(escolhido).slice(0, 8)} entre ${candidatos.length} candidato(s), por ordem determinística`,
+  );
+  return escolhido;
+}
+
 /** O card do board: o container arrastável, ancestral do título. */
 export async function cardLocator(
   page: Page,

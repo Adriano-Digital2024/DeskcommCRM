@@ -30,7 +30,7 @@ import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import * as fs from "node:fs";
 
-import { CARD_ATTR, CREDS, carimbar, gotoBoard, login } from "./qa-helpers";
+import { CARD_ATTR, CREDS, carimbar, escolherAlvo, gotoBoard, login } from "./qa-helpers";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
 const env: Record<string, string> = {};
@@ -173,15 +173,19 @@ async function main(): Promise<void> {
     .eq("status", "open")
     .order("id")
     .limit(1);
-  const alvo = (leads ?? [])[0] as { id: string; title: string; stage_id: string } | undefined;
+  const alvo = escolherAlvo(
+    (leads ?? []) as { id: string; title: string; stage_id: string }[],
+    (l) => l.id,
+    "lead do board para o gatilho",
+  );
   const { data: estagios } = await admin
     .from("crm_stages")
     .select("id")
     .eq("pipeline_id", (CREDS.crm_vivo as { pipeline_id: string }).pipeline_id)
     .order("id");
-  const destino = ((estagios ?? []) as { id: string }[]).find((e) => e.id !== alvo?.stage_id);
+  const destino = ((estagios ?? []) as { id: string }[]).find((e) => e.id !== alvo.stage_id);
   const outro = destino ? { stage_id: destino.id } : undefined;
-  if (!alvo || !outro) {
+  if (!outro) {
     console.info("\n[elo 4] sem lead aberto ou sem segundo estágio no pipeline — não dá para disparar");
   } else {
     const antes = quadrosDeMudanca;

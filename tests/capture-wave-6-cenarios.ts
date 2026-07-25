@@ -314,6 +314,44 @@ async function main(): Promise<void> {
       );
     }
 
+    // ---- 24: a FONTE devolve eventos; quem agrupa é a TELA -------------------
+    //
+    // Se o agrupamento descer para a consulta, a paginação passa a contar BLOCOS
+    // e um INSERT chegando por realtime não sabe em que bloco entrar. Então a
+    // pergunta não é estética: é se o colapso é apresentação ou modelagem.
+    // Mede-se comparando o que a ROTA devolve com o que a TELA mostra.
+    const respostaTimeline = await page.evaluate(async (id: string) => {
+      const r = await fetch(`/api/v1/leads/${id}/timeline`, { credentials: "include" });
+      if (!r.ok) return { status: r.status, itens: -1 };
+      const b = (await r.json()) as { data?: unknown[] };
+      return { status: r.status, itens: Array.isArray(b.data) ? b.data.length : -1 };
+    }, caso.leadId);
+    record(
+      "D24",
+      "a fonte devolve EVENTOS; quem agrupa é a tela",
+      respostaTimeline.status === 200 && respostaTimeline.itens >= 4,
+      respostaTimeline.status !== 200
+        ? `GET /api/v1/leads/<id>/timeline devolveu ${respostaTimeline.status} — a rota por lead ainda não existe`
+        : `a rota devolveu ${respostaTimeline.itens} item(ns) para as 4 atividades semeadas — ` +
+          `menos que isso significa agrupamento na CONSULTA, e aí a paginação conta blocos`,
+      respostaTimeline.status === 404 ? "BLOQUEADO" : undefined,
+    );
+
+    // ---- 25: âncora sem alvo NÃO vira link, e isso NÃO é defeito -------------
+    //
+    // Sob LGPD a mensagem referenciada pode ter sido removida. Lançar exceção ou
+    // fabricar um link morto reintroduziria o vazamento que a anonimização
+    // fechou. O critério afirma o comportamento BOM: texto simples, sem quebrar.
+    const quebrou = await page.evaluate(() => document.body.innerText.includes("Application error"));
+    record(
+      "D25",
+      "âncora sem alvo vira TEXTO, não link nem exceção (LGPD, e não é defeito)",
+      !quebrou,
+      quebrou
+        ? "a tela caiu em error boundary com uma âncora sem alvo"
+        : "o dossiê renderizou sem quebrar — evidência removida por anonimização é caso legítimo",
+    );
+
     // ---- 23: o vazamento que teste curto NUNCA pega -------------------------
     //
     // Abrir e fechar UMA vez não revela assinatura que não é desfeita: o canal
