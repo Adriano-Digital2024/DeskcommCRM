@@ -2536,3 +2536,33 @@ O modelo de base + parcelas é imune ao viés da §7.49 **por construção**: "t
 vai **escrito no ponto onde alguém mudaria a modelagem** (§7.56) — não no handoff, não no topo do
 arquivo: **na definição do modelo**. É o único aviso que a pessoa vai ler no instante em que estiver
 prestes a apagá-lo.
+
+### §7.54-a — Invertibilidade exige explicação COMPLETA: o que não cabe nomeado aparece somado
+
+Limite descoberto pelo @DevVivo ao implementar, e é o que a lei precisava para ser aplicável:
+
+> **A invertibilidade exige que a explicação seja completa** — e o contrato pedia *no máximo três
+> parcelas*. Truncar quebraria a reconstrução. **O que não cabe nomeado tem de aparecer somado, nunca
+> omitido.**
+
+Por isso o resto virou uma linha agregada (`−8 outro fator`) em vez de sumir. Quem aplicar a §7.54 com
+qualquer limite de tamanho vai bater nisto, e a saída é sempre a mesma.
+
+**Prova contra o caso real** (mutação com âncora, árvore limpa em `6ae6f9e`): substituí o `reason` por
+*"Lead promissor: o cliente demonstrou forte interesse e o momento é favorável"* — uma frase que **um
+humano leria como perfeitamente razoável**. Resultado: **5 vermelhos**, entre eles *"somar os números
+da frase reproduz o score"*, *"a frase não cita parcela que a conta não usou"* e *"quando o clamp atua,
+a frase diz que atuou"*. Restaurado: 20 verdes.
+
+> A frase passa no olho e **morre na máquina**. É exatamente o que se queria.
+
+### §7.44-a — O efeito útil do assert não é impedir; é você SABER
+
+Formulação do @DevVivo sobre a minha mutação que abortou, e ela corrige o foco da lei:
+
+> *"O efeito útil não foi impedir a mutação errada — foi você **SABER** que o verde era vazio. A
+> diferença entre **'não mediu'** e **'mediu e deu certo'** é invisível no exit code, e é por isso que
+> a asserção precisa ser barulhenta."*
+
+O `assert` não protege o código; protege **a conclusão**. Sem ele, os dois estados produzem o mesmo
+`0` — e o mais confortável dos dois é o errado.
