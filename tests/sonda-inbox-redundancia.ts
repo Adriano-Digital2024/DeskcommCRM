@@ -66,6 +66,7 @@ async function main(): Promise<void> {
 
   // O CAMINHO CRUZADO: uma MENSAGEM nova atualiza a LISTA DE CONVERSAS?
   const antes = (await page.locator("body").textContent())?.length ?? 0;
+  const marca = `sonda-${Date.now()}`;
   await admin.from("messages").insert({
     organization_id: ORG,
     conversation_id: c.id,
@@ -73,13 +74,32 @@ async function main(): Promise<void> {
     type: "text",
     body: `sonda de redundância ${new Date().toISOString().slice(11, 19)}`,
     status: "received",
-    external_id: `sonda-${Date.now()}`,
+    external_id: marca,
   });
   await page.waitForTimeout(6000);
   const depois = (await page.locator("body").textContent())?.length ?? 0;
   console.info(`INSERT em messages → a tela mudou? ${depois !== antes ? "SIM" : "NÃO"} (${antes} → ${depois} chars)`);
 
   await page.screenshot({ path: "evidence/wave7-inbox-redundancia.png" });
+
+  // ⚠️ A SONDA LIMPA O QUE CRIOU, e isto não é higiene: mensagem inserida
+  // DIRETO em `messages` não passa pelo produto (nem pelo ingest, nem pela
+  // API), então a conversa não recebe o carimbo de última mensagem que os dois
+  // caminhos reais escrevem. O rastro fica com a assinatura de um defeito que
+  // não existe — e em 25/07 duas linhas assim me fizeram reportar um defeito
+  // inventado e quase mover uma migration de schema por causa dele.
+  //
+  // Confere quantas apagou pelo MESMO motivo: delete que não conta pode não
+  // ter casado com nada e ninguém saberia. Foi assim que as duas linhas de
+  // 25/07 sobreviveram a uma limpeza que "rodou".
+  const { data: apagadas, error: erroLimpeza } = await admin
+    .from("messages")
+    .delete()
+    .eq("external_id", marca)
+    .select("id");
+  if (erroLimpeza) console.error(`LIMPEZA FALHOU: ${erroLimpeza.message} — a linha ${marca} ficou no banco`);
+  else if ((apagadas ?? []).length !== 1)
+    console.error(`LIMPEZA NÃO CASOU: apagou ${(apagadas ?? []).length} linhas, esperava 1 (${marca})`);
   await browser.close();
 }
 void main();
