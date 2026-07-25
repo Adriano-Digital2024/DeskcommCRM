@@ -388,10 +388,21 @@ export function criarPlacar(nome: string, esperados: string[]) {
     for (const l of linhas.filter((x) => x.estado !== "PASS")) {
       console.info(`  ${l.estado} [${l.n}] ${l.titulo}: ${l.detalhe}`);
     }
+    // E SE A ÁRVORE ESTAVA SUJA, ISTO NÃO É VEREDITO — e quem diz isso tem de ser
+    // o CÓDIGO DE SAÍDA, não uma linha de aviso. Se a ação necessária depende de
+    // alguém ler, o veredito tem de ser vermelho: verde com instrução é
+    // instrução perdida.
+    if (arvoreSuja !== "") {
+      console.info(
+        `  SEM VEREDITO: a árvore estava suja nas dependências declaradas (${arvoreSuja}). ` +
+          `Os estados acima descrevem uma execução, não um veredito — o código medido não é o ` +
+          `código do commit, e comparar esta saída com outra rodada compara coisas diferentes.`,
+      );
+    }
     // INCONCLUSIVO conta como falha: ele está mais perto de vermelho que de
     // verde, e o único jeito de o "não deu para saber" não ser engolido pelo
     // verde é ele custar o mesmo que um vermelho.
-    return conta("FALHA") + ausentes + inconclusivos;
+    return conta("FALHA") + ausentes + inconclusivos + (arvoreSuja === "" ? 0 : 1);
   }
 
   return { record, fechar };
@@ -417,6 +428,18 @@ export function criarPlacar(nome: string, esperados: string[]) {
  * nasce marcado como `-ARVORE-SUJA`. A evidência acusa a si mesma, em vez de
  * depender de alguém lembrar de ler o log.
  */
+/**
+ * O QUE O CARIMBO VIU, para o placar poder OBEDECER em vez de só avisar.
+ *
+ * O carimbo imprimia "⚠ ÁRVORE SUJA — este resultado NÃO é veredito" e o placar,
+ * logo abaixo, anunciava "13 verdes · 0 vermelhos" e saía com código 0. Veredito
+ * e mensagem discordando na mesma saída — e o veredito é o único canal com
+ * consequência mecânica: é ele que propaga pela suíte e pelo código de saída. A
+ * frase "não é veredito" ficava num papel que ninguém abre, e o verde,
+ * especificamente, REMOVE o motivo de ler.
+ */
+let arvoreSuja = "";
+
 export function carimbar(dependencias: string[]): string {
   const head = execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim();
 
@@ -442,14 +465,21 @@ export function carimbar(dependencias: string[]): string {
   // vêm de quem chama, e interpolar isso numa linha de comando seria injeção
   // esperando acontecer. Não há entrada hostil aqui hoje — mas helper de teste
   // é justamente o código que alguém copia para outro lugar.
-  const sujos = execFileSync("git", ["status", "--porcelain", "--", ...dependencias], {
+  // A MAQUINARIA COMPARTILHADA ENTRA SEMPRE, sem ninguém precisar lembrar.
+  // Todo aparato depende deste arquivo — placar, carimbo, seleção de alvo,
+  // guarda de evidência — e uma mudança aqui muda o que TODOS eles medem. Deixar
+  // que cada sonda lembre de declará-lo é regra de autoavaliação: quem esquece é
+  // exatamente quem está com pressa. Declarar por construção custa uma linha.
+  const todas = [...new Set(["tests/qa-helpers.ts", ...dependencias])];
+  const sujos = execFileSync("git", ["status", "--porcelain", "--", ...todas], {
     encoding: "utf8",
   })
     .split("\n")
     .filter(Boolean);
 
   console.info(`[carimbo] HEAD=${head}`);
-  console.info(`[carimbo] dependências declaradas: ${dependencias.join(", ")}`);
+  console.info(`[carimbo] dependências declaradas: ${todas.join(", ")}`);
+  arvoreSuja = sujos.length > 0 ? sujos.join(" · ") : "";
   if (sujos.length === 0) {
     console.info("[carimbo] todas limpas — o veredito vale para este commit");
     return "";
