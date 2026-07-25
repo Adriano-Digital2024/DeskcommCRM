@@ -163,6 +163,162 @@ async function tabelaVerdade(): Promise<void> {
   }
 }
 
+
+/**
+ * COERÊNCIA faixa × score (§7.36) — descobre o intervalo, não o adivinha.
+ *
+ * A trava é a imagem algébrica da caminhada: `frio` só sobrevive com score
+ * baixo, `quente` só com score alto. Ela ainda não existe no banco quando isto
+ * é escrito, e por isso o estado inicial destas linhas é BLOQUEADO — recurso que
+ * ninguém escreveu ainda acusa quem planejou, não quem construiu.
+ *
+ * DUAS DECISÕES DE MÉTODO, e a segunda é a que evita um vermelho injusto:
+ *
+ * 1. Em vez de afirmar bordas, eu VARRO 0..100 por faixa e leio de volta o
+ *    intervalo que o banco aceita. O intervalo vira saída — documenta a borda em
+ *    vez de disputá-la.
+ * 2. Não asserto o valor exato da borda. O próprio §7.36 escreve "score ≤ 45" num
+ *    parágrafo e "score < 45" no outro; reprovar por essa diferença seria reprovar
+ *    por ambiguidade de especificação. O que eu asserto é o que os dois textos
+ *    concordam: o intervalo é contíguo, contém o claramente coerente e exclui o
+ *    claramente incoerente — que é justamente a zona dos 9 casos da caminhada.
+ */
+async function coerenciaFaixaScore(): Promise<void> {
+  const existe = await pool.query<{ nome: string; def: string }>(
+    `select conname as nome, pg_get_constraintdef(oid) as def
+       from pg_constraint
+      where conrelid = 'public.crm_leads'::regclass and contype = 'c'
+        and pg_get_constraintdef(oid) like '%ai_probability_band%'
+        and pg_get_constraintdef(oid) like '%ai_probability %'`,
+  );
+  if (existe.rowCount === 0) {
+    record(
+      "15.i",
+      "COERÊNCIA faixa × score: o banco recusa faixa que o score não sustenta",
+      false,
+      "nenhuma constraint em crm_leads confronta ai_probability_band com ai_probability — a trava do §7.36 ainda não entrou",
+      "BLOQUEADO",
+    );
+    return;
+  }
+  console.info(`[coerência] trava encontrada: ${existe.rows[0]!.nome}`);
+
+  const { rows } = await pool.query<{ id: string }>(
+    `select id from crm_leads where organization_id = $1 and status = 'open' order by id limit 1`,
+    [ORG],
+  );
+  const leadId = rows[0]!.id;
+  const client = await pool.connect();
+  const aceitos: Record<string, number[]> = { frio: [], morno: [], quente: [] };
+  try {
+    await client.query("begin");
+    for (const banda of ORDEM) {
+      for (let score = 0; score <= 100; score++) {
+        await client.query("savepoint c");
+        try {
+          await client.query(
+            `update crm_leads set ai_probability = $2, ai_probability_reason = 'varredura de coerência',
+                    ai_probability_evidence = $3::jsonb, ai_probability_band = $4 where id = $1`,
+            [leadId, score, JSON.stringify(LASTRO), banda],
+          );
+          aceitos[banda]!.push(score);
+        } catch {
+          await client.query("rollback to savepoint c");
+        }
+      }
+    }
+  } finally {
+    await client.query("rollback").catch(() => null);
+    client.release();
+  }
+
+  const contiguo = (xs: number[]) => xs.length > 0 && xs[xs.length - 1]! - xs[0]! === xs.length - 1;
+  const intervalo = (xs: number[]) => (xs.length === 0 ? "(nenhum)" : `${xs[0]}..${xs[xs.length - 1]}`);
+  const contem = (xs: number[], v: number) => xs.includes(v);
+
+  const problemas: string[] = [];
+  for (const b of ORDEM) {
+    if (!contiguo(aceitos[b]!)) problemas.push(`"${b}" aceita um conjunto NÃO contíguo: ${aceitos[b]!.join(",")}`);
+  }
+  // Claramente coerente: o miolo de cada faixa TEM de passar.
+  for (const [b, v] of [["frio", 20], ["morno", 50], ["quente", 85]] as [ScoreBand, number][]) {
+    if (!contem(aceitos[b]!, v)) problemas.push(`"${b}" recusa ${v}, que é o miolo da própria faixa`);
+  }
+  // Claramente incoerente: exatamente a zona dos 9 casos da caminhada.
+  for (const [b, v] of [["frio", 72], ["frio", 74], ["quente", 36], ["quente", 39]] as [ScoreBand, number][]) {
+    if (contem(aceitos[b]!, v)) problemas.push(`"${b}" com score ${v} passa — é um dos 9 casos da caminhada`);
+  }
+
+  record(
+    "15.i",
+    "COERÊNCIA faixa × score: intervalo contíguo, miolo aceito, zona dos 9 recusada",
+    problemas.length === 0,
+    `intervalos aceitos — frio ${intervalo(aceitos.frio!)} · morno ${intervalo(aceitos.morno!)} · ` +
+      `quente ${intervalo(aceitos.quente!)}` +
+      (problemas.length ? ` | PROBLEMAS: ${problemas.join(" · ")}` : ""),
+  );
+}
+
+
+/**
+ * §7.36 OBSERVADA, não deduzida — a caminhada escrevendo no banco de verdade.
+ *
+ * A tabela do §7.36 diz que os três instrumentos batem em 9/303, e o terceiro é
+ * "CHECK de coerência (erro na escrita)". Mas esse terceiro foi obtido por
+ * RACIOCÍNIO sobre a definição da constraint. Aqui ele é obtido TENTANDO
+ * ESCREVER: para cada um dos 303 estados, pergunto à função de produção que faixa
+ * ela devolve e mando esse par (faixa, score) para o Postgres.
+ *
+ * A diferença importa porque muda o que a frase significa. Deduzido, "o worker
+ * pararia de gravar" é previsão. Observado, é fato — o par que a função produz
+ * volta 23514 do banco, e é o mesmo caminho que o worker percorreria.
+ */
+async function caminhadaContraATrava(): Promise<void> {
+  const { rows } = await pool.query<{ id: string }>(
+    `select id from crm_leads where organization_id = $1 and status = 'open' order by id limit 1`,
+    [ORG],
+  );
+  const leadId = rows[0]!.id;
+  const client = await pool.connect();
+  const rejeitados: Violacao[] = [];
+  try {
+    await client.query("begin");
+    for (const anterior of ORDEM) {
+      for (let score = 0; score <= 100; score++) {
+        const faixa = resolveBand(score, anterior);
+        await client.query("savepoint c");
+        try {
+          await client.query(
+            `update crm_leads set ai_probability = $2, ai_probability_reason = 'saída da função de produção',
+                    ai_probability_evidence = $3::jsonb, ai_probability_band = $4 where id = $1`,
+            [leadId, score, JSON.stringify(LASTRO), faixa],
+          );
+        } catch (e) {
+          await client.query("rollback to savepoint c");
+          if ((e as { code?: string }).code === "23514") {
+            rejeitados.push({ anterior, score, obtido: faixa, esperado: faixaCrua(score) });
+          } else {
+            throw e;
+          }
+        }
+      }
+    }
+  } finally {
+    await client.query("rollback").catch(() => null);
+    client.release();
+  }
+
+  record(
+    "15.j",
+    "a faixa que a função PRODUZ é aceita pelo banco — worker não trava",
+    rejeitados.length === 0,
+    rejeitados.length === 0
+      ? "303 estados percorridos, todos gravaram — caminhada e trava concordam"
+      : `${rejeitados.length}/303 rejeitados com 23514: ${comprimir(rejeitados)} — ` +
+        `o worker do score PARA DE GRAVAR nesses estados`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // B) a histerese com o valor dançando
 // ---------------------------------------------------------------------------
@@ -412,6 +568,8 @@ async function main(): Promise<void> {
 
   try {
     await tabelaVerdade();
+    await coerenciaFaixaScore();
+    await caminhadaContraATrava();
     histerese();
   } finally {
     await pool.end().catch(() => null);
