@@ -3169,3 +3169,54 @@ reportar viva**, como qualquer outra peça (item 4 do checklist do sistema vivo)
 Ele conectou o próprio achado da §7.74 à caça: **se alguma sonda roda depois de um teste que reaplica
 migration, ela pode estar medindo um schema do passado.** Vale conferir a ordem de execução antes de
 confiar em qualquer vermelho que dependa de schema — inclusive os já arquivados.
+
+---
+
+## §7.77 — A resposta a um incidente não reproduzido é instrumentar, não caçar mais
+
+O @QAVivo usou o tempo depois do alarme retirado no lugar certo. A frase que decide:
+
+> **O problema de hoje não foi a falha: foi ela ter voltado sozinha levando junto o estado que a
+> explicaria.**
+
+Incidente não reproduzido não se resolve caçando com mais empenho — **a janela em que a evidência
+existia já fechou**. O que se pode fazer é garantir que **a próxima ocorrência nasça explicada**.
+
+O estado do canal da aba B passa a ser **coletado sempre** e impresso quando a entrega falha: status
+declarado na tela, quantos *joins*, se levaram `access_token`, que papel o JWT diz, quantas respostas,
+quantos quadros chegaram.
+
+> **Registro que só guarda o sintoma condena a próxima pessoa a repetir a caça inteira.** A diferença
+> entre um relatório que diz *"não chegou"* e um que diz **qual elo caiu** é a diferença entre uma
+> tarde e cinco minutos.
+
+## §7.78 — Diagnóstico que nunca rodou é diagnóstico não testado
+
+E o coletor **é exercitado**: `DIAG=1` imprime **no caminho feliz** (verificado — a linha só suprime o
+diagnóstico quando o evento chegou **e** `DIAG` não está ligado).
+
+> **Descobrir que o coletor estava quebrado NO DIA da falha custaria a única janela em que o estado
+> existia.**
+
+É a mesma lógica do `SELFCHECK` da cerca (§7.38): **instrumento que nunca foi exercitado é promessa,
+não instrumento**. E vale mais para diagnóstico do que para teste, porque diagnóstico **só roda quando
+já é tarde** — o único momento em que ele é usado é o único em que não dá para consertá-lo.
+
+**E ele achou dois descuidos nesse trecho pequeno**, os dois da família do dia: o diagnóstico era
+**calculado e só interpolado no ramo de falha**, então `DIAG=1` não mostrava nada. **Cálculo sem
+destino** — idêntico ao carimbo que voltava vazio. *Achou porque rodou o modo forçado em vez de confiar
+que funcionava.*
+
+### Fecho da §7.67 — a versão dele é mais dura, e encerra a doutrina do dia
+
+> *"Eu apontei o alvo sorteado em sonda alheia de manhã e escrevi o meu à tarde. Conhecer a armadilha
+> não imuniza porque, **no momento do erro, ela não parece a armadilha** — parece 'pegar um lead
+> qualquer para disparar'. O que imuniza não é lembrar da regra, é **o instrumento se recusar a rodar
+> sem alvo determinístico**."*
+
+> **Regra na cabeça compete com pressa. Regra no código, não.**
+
+É o fecho de tudo o que foi escrito hoje. As 80+ seções deste documento **não protegem ninguém
+enquanto forem texto** — protegem quando viram `assert`, `CHECK`, `satisfies`, carimbo, `SELFCHECK`,
+bloco literal, ponteiro para arquivo. **A doutrina é o rascunho do instrumento**, e o instrumento é a
+única parte que sobrevive ao cansaço.
