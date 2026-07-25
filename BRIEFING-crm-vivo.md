@@ -5623,3 +5623,38 @@ que ninguém viu, porque nada aconteceu e nada avisou*. O time passou o dia enco
 das próprias ferramentas** e **dentro do próprio produto**, em camadas que nada tinham a ver umas com
 as outras. Não é coincidência temática: é o mesmo hábito de engenharia produzindo o mesmo buraco em
 todo lugar onde alguém precisou representar "não sei".
+
+## §7.159 — Ler a propriedade CSS errada devolve valor VÁLIDO e constante
+
+Pergunta deixada em aberto: depois de a faixa convergir, a borda seguiu transparente — inconsistência
+real ou seletor errado? **Rastreado no componente, e é o seletor.**
+
+O marcador de estado é `<span aria-hidden class="absolute inset-y-0 left-0 w-0.5 bg-warning">` —
+**cor de FUNDO**, não de borda. Aquele elemento **não tem borda nenhuma**, então
+`borderColor` devolve `rgba(0,0,0,0)` para sempre, em qualquer estado. Não é erro, não é vazio: é o
+valor correto de uma propriedade que ninguém define.
+
+**E o agravante é o mesmo `span[aria-hidden]` do overlay de pulso**, que renderiza ANTES quando
+existe pulso. Logo o primeiro match do seletor **muda conforme houve ou não evento recente** — o
+instrumento lê elementos diferentes em momentos diferentes, sem avisar.
+
+Duas correções, as duas de uma linha: ler `backgroundColor`, e escopar pelo que só o marcador tem
+(`w-0.5` + `left-0`), nunca por `aria-hidden` sozinho.
+
+**E repare que é a §7.158 outra vez, em CSS:** a ausência de uma propriedade se lê como um ESTADO
+("sem alerta"). O idioma entrega um valor plausível para o que não existe, e o instrumento o aceita
+como resposta. Mesmo hábito, oitava superfície.
+
+## §7.160 — A escolha acontece ANTES da asserção existir; depois, o palpite virou objeto de defesa
+
+Síntese dos acertos de construção da wave 7, e vale como regra de trabalho: **mesmo sujeito**,
+**observável escolhido pelo par escopo+invariância**, **perna positiva antes da negativa** — as três
+são decisões tomadas *antes de a asserção existir*.
+
+Depois que o texto está escrito, ele **já carrega o palpite dentro**, e mexer nele deixa de ser
+escolha e vira discussão — inclusive consigo mesmo, porque agora há uma frase para defender. Antes,
+custa nada.
+
+É a §7.131 pelo lado prático: o critério nasce antes da peça e por isso só pode citar a forma
+imaginada — **o antídoto não é escrever depois, é decidir SUJEITO, OBSERVÁVEL e ORDEM DAS PERNAS
+enquanto ainda não há frase.**
