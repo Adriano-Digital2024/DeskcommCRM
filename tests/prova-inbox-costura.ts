@@ -30,7 +30,7 @@ import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 
-import { BASE, CREDS, carimbar, criarPlacar, login } from "./qa-helpers";
+import { BASE, CREDS, carimbar, criarPlacar, login, mensagemDeSonda } from "./qa-helpers";
 
 /**
  * LINHA DE BASE DECLARADA, medida em 25/07 no commit e65eb5f, ANTES da wave 8.
@@ -120,44 +120,25 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
   if (antes.includes(marca)) throw new Error("a marca já estava na tela antes da ação");
 
   const t0 = Date.now();
-  // A ESCRITA PASSA PELO MESMO MARCADOR QUE O CAMINHO DE PRODUÇÃO USA.
+  // ESCRITA PELO HELPER DO @DevVivo, não à mão. Ele insere E chama
+  // `fn_mark_conversation_message` — o mesmo escritor do ingest — e devolve um
+  // `apaga()` que remove PELO ID e estoura se não casar exatamente uma linha.
   //
-  // A primeira versão inseria direto em `messages` — e a lista NUNCA atualizava.
-  // Eu ia entregar isso como defeito de produto. Não é: `lib/waha/ingest.ts`
-  // chama a RPC `fn_mark_conversation_message` DEPOIS do insert, e é ela que
-  // mantém `last_message_preview`/`last_message_at`. Inserindo à mão eu pulei o
-  // escritor e medi uma coluna que ninguém tinha mandado atualizar.
-  //
-  // É a lei que eu venho cobrando dos outros mordendo em mim: INSERT à mão prova
-  // a tela e MENTE SOBRE A ORIGEM. A tela estava certa — ela mostra o que a
-  // coluna diz, e a coluna não tinha por que mudar.
-  const { error } = await admin.from("messages").insert({
-    organization_id: ORG,
-    conversation_id: conversaId,
-    contact_id: contactId,
-    channel_session_id: sessionId,
+  // As duas coisas consertam erros meus de hoje: a minha versão inseria direto e
+  // media uma coluna que ninguém tinha mandado atualizar (achado falso de
+  // produto), e a minha limpeza casava por `LIKE` no corpo — que apaga zero em
+  // silêncio quando o padrão não bate, e foi assim que duas mensagens minhas
+  // sobreviveram a uma limpeza que "rodou". Dois aparatos chegaram ao mesmo
+  // conserto no mesmo dia; usar o dele é mais barato que manter o meu igual.
+  const msg = await mensagemDeSonda(admin, {
+    organizationId: ORG,
+    conversationId: conversaId,
+    contactId,
+    channelSessionId: sessionId,
     direction: "inbound",
-    type: "text",
-    // A MARCA VAI NO COMEÇO. A linha da lista mostra uma PRÉVIA truncada — se o
-    // marcador ficar no fim, a apresentação o corta e eu leria "a lista não
-    // acompanhou" sobre uma lista que acompanhou e só não coube. Exigir o que o
-    // truncamento remove é o falso vermelho por forma, de novo.
     body: `${marca} mensagem de costura`,
-    status: "delivered",
-    sent_at: new Date().toISOString(),
-  } as never);
-  if (error) throw new Error(`gatilho: ${error.message}`);
-  const { error: erroMarca } = await admin.rpc("fn_mark_conversation_message" as never, {
-    p_conv: conversaId,
-    p_direction: "inbound",
-    p_preview: `${marca} mensagem de costura`,
-    p_at: new Date().toISOString(),
-  } as never);
-  if (erroMarca) throw new Error(`marcador da conversa: ${erroMarca.message}`);
+  });
 
-  // A LISTA é lida DENTRO da coluna da esquerda, não na página inteira: a
-  // conversa aberta também contém a marca, e procurar no corpo todo faria a
-  // lista "acertar" por causa do painel vizinho. Teste confundido clássico.
   // A LINHA DA CONVERSA ABERTA, não a coluna inteira. `ConversationListItem`
   // marca a selecionada com `aria-current="true"` — é o único atributo estável
   // que a lista expõe, e isola exatamente o painel que se contradizia com a
@@ -206,7 +187,7 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
     apoRecarga = (await lista()).includes(marca) ? "SIM, depois de recarregar" : "NEM recarregando";
   }
   const textoDaLinha = (await lista()).slice(0, 110);
-  await admin.from("messages").delete().like("body", `${marca}%`);
+  await msg.apaga();
   // A DEVOLUÇÃO É POR UPDATE DIRETO, e aqui isso é o certo: não estou simulando
   // uma operação do produto, estou DESFAZENDO a minha contaminação. Usar a RPC
   // para restaurar incrementaria o contador de novo — o "conserto" repetindo o
