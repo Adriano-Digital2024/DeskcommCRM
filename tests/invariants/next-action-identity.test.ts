@@ -12,8 +12,13 @@
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+// A porta vem do harness (`TEST_DB_PORT`), não de um número escrito aqui:
+// hardcodar 54329 fazia este invariante quebrar por ECONNREFUSED quando a suíte
+// roda noutra porta — que é justamente o que se faz para não disputar o
+// ambiente com outra sessão. Erro de instrumento com cara de erro de produto.
+const PORTA = process.env.TEST_DB_PORT ?? "54329";
 const CONN =
-  process.env.TEST_DB_URL ?? "postgres://postgres:postgres@127.0.0.1:54329/postgres";
+  process.env.TEST_DB_URL ?? `postgres://postgres:postgres@127.0.0.1:${PORTA}/postgres`;
 
 const ORG = "00000000-0000-4000-8000-0000000000f1";
 const CONTATO = "00000000-0000-4000-8000-0000000000f2";

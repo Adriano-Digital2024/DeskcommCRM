@@ -48,6 +48,15 @@ const PARES: Array<{ tabela: string; coluna: string; ts: string[]; origem: strin
   },
   {
     tabela: "crm_leads",
+    coluna: "ai_probability_band",
+    // lib/kanban/score-band.ts → ScoreBand. Nasce com o par no mesmo commit da
+    // migration: a taxa deste eixo é de quatro pares em dois dias, e todos os
+    // que divergiram divergiram por terem nascido sozinhos.
+    ts: ["frio", "morno", "quente"],
+    origem: "ScoreBand (lib/kanban/score-band.ts)",
+  },
+  {
+    tabela: "crm_leads",
     coluna: "status",
     // lib/types/leads.ts → LeadStatus.
     //
