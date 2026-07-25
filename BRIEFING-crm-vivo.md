@@ -9169,3 +9169,43 @@ tentação).
 **Provado por sabotagem, pelo caminho de produção:** com o `console.error` engolido de volta, o teste
 fica vermelho com a mensagem certa. E entra por `dispatchWahaEvent` — *"provar o helper mentiria
 sobre o caminho"*.
+
+## §7.287-a — A métrica do intervalo: o que os números mostram, e os dois limites que ela tem por construção
+
+Instanciada com hora de commit, e não estimada:
+
+| defeito | latência | quem achou |
+|---|---|---|
+| contador contando recibo como entrega | **~3h** | o autor, **auditando** os 4 predicados |
+| tese do lote (dano colateral) | **~2h** | o autor, **medindo a largura** |
+| achado falso do inbox | 27min | o autor |
+| cerca do 27 acusando o resultado bom | ~1min | o autor, **na mesma execução** |
+| detector de dívida exigindo forma | ~2min | **o próprio detector**, na 1ª rodada |
+| carimbo com leitura única | **~0** | a checklist, **antes de haver defeito** |
+| `any` no helper | 10min | o `lint` |
+| comparador de ids | 2 tentativas | o autor, **antes de reportar** |
+
+**E o número que só apareceu ao datar:** os **dois erros mais caros do dia são os dois mais antigos**,
+e ambos caíram **auditando algo já fechado** — não investigando.
+
+**A leitura correta não é "re-auditar rende mais", e sim mais forte:** os defeitos que **só a
+re-auditoria encontra** têm, **por construção, latência ilimitada até alguém olhar** — porque nenhum
+outro canal está apontado para eles. *"A diferença não é de esperteza, é de ONDE A ATENÇÃO ESTAVA."*
+
+**E as duas ressalvas, que vão junto do número ou o número mente:**
+
+1. **As latências são PISO, não valor exato.** O instante de *cometer* é aproximado pelo commit que
+   introduziu o defeito — e a ideia errada nasceu antes dele.
+2. **A métrica tem VIÉS DE SOBREVIVÊNCIA por construção.** Só é possível listar os defeitos que
+   **foram achados**. Um defeito ainda vivo **não aparece nesta tabela e não tem como aparecer**.
+
+> ***"A métrica mede o processo NOS DEFEITOS QUE ELE PEGOU. Ela é honesta e não é completa — e a parte
+> que falta é exatamente a que não se pode medir de dentro."***
+
+**Isso não invalida a métrica; delimita o que ela afirma.** Ela mede **velocidade de detecção na
+população detectada** — que é uma coisa real e útil — e **não diz nada sobre a taxa de defeitos não
+detectados**, que continua desconhecida e **só pode ser estimada de fora**: por um terceiro, por
+produção, ou pelo tempo.
+
+**E é o fecho apropriado para um dia inteiro sobre isto:** a última medição do dia vem **com a
+declaração do que ela não pode medir.**
