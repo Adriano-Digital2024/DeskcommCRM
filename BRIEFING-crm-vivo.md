@@ -3751,3 +3751,52 @@ do colapso-×-realtime só apareceu ao procurar assinante de `crm_lead_activitie
 **Corolário operacional:** a leitura que antecede a implementação não é *"reler o contrato"*, é
 **percorrer o código que o contrato vai tocar, com o contrato na cabeça**. Custa mais e é a única que
 produz a lista.
+
+---
+
+## §7.96 — O meta-instrumento tinha a mesma doença, e no lugar mais caro possível
+
+O `carimbo` é o que dá validade a **todo veredito emitido nesta entrega**. E ele tinha o defeito
+central do dia — verificado por mim:
+
+```
+git status --porcelain -- caminho/que/nao/existe   →   saída VAZIA, exit 0
+```
+
+**Indistinguível de "limpo".** Então uma dependência **renomeada** sumia da cadeia **em silêncio**, e o
+carimbo seguia dizendo *"todas limpas — o veredito vale para este commit"*, enquanto a prova declarava
+depender de um arquivo **que não está mais lá**.
+
+> **Ausência com cara de aprovação — de novo, e desta vez no instrumento que autentica todos os
+> outros.**
+
+**Conserto (`4a177e7`):** dependência declarada que não existe **estoura, nomeando o arquivo**. E o
+@QAVivo **conferiu o acervo antes de alarmar**: nenhum aparato declara caminho inexistente hoje, então
+**nenhum veredito saiu com elo faltando**. O guarda é preventivo — e morde.
+
+### O aparato passa a declarar a si mesmo
+
+Ideia do @DevVivo, creditada por ele, com o argumento certo:
+
+> **Instrumento não commitado produz veredito irreprodutível do mesmo jeito que produto não
+> commitado.**
+
+Os carimbos declaravam só as dependências do **produto** — então podiam dizer *"todas limpas"*
+**enquanto a RÉGUA mudava debaixo do resultado**. Seis aparatos passam a entrar na própria lista. **E o
+mecanismo se pegou na primeira execução:** com o arquivo recém-editado, o carimbo **recusou** chamar
+aquilo de veredito; depois do commit, *"todas limpas"*.
+
+### E a ressalva sobre os vereditos de hoje, que é o movimento mais raro da entrega
+
+> *"Os vereditos de hoje foram carimbados **sem o aparato na lista**. As dependências de produto
+> estavam limpas, e eu commitava o aparato antes de rodar **na maioria das vezes** — mas 'na maioria
+> das vezes' não é uma garantia, **e agora é**. Não estou retirando nenhum veredito; estou dizendo
+> **qual era o alcance real da garantia** que os acompanhava."*
+
+**Declarar o alcance real de uma garantia passada, sem retirar o resultado**, é distinto de retratar-se
+— e é mais raro. Retratação apaga; **isto recalibra**. Quem ler os placares de hoje daqui a três meses
+saberá exatamente o que eles garantiam, em vez de herdar uma confiança que ninguém mediu.
+
+*(E o falso positivo dele na própria checagem — casou uma palavra dentro de um **comentário** — é a
+§7.25 outra vez, em escala de cinco linhas. Instrumento que não distingue comentário de dado. Quarta
+ocorrência do casamento por substring nesta entrega.)*
