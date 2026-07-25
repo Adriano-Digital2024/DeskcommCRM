@@ -8761,3 +8761,44 @@ quase nunca para a que está em jogo.
 | repetição | intermitência | premissa errada, construção enviesada |
 | limpeza da linha | resíduo direto | **coluna derivada, contador, carimbo** |
 | verde/vermelho do teste | comportamento do código | precondição de ambiente, régua trocada |
+
+## §7.280 — EXISTÊNCIA NO INSTANTE ZERO NÃO É EXISTÊNCIA
+
+O critério lia a linha de envio **logo após o aceite** e concluía *"o compromisso existe"*. **Medição
+no instante zero.** Um compromisso que **nasce e é desligado em silêncio** passaria por ela — e o
+critério seguiria afirmando que a única coisa provável estava provada, **sobre o único elo que fala
+com o cliente**.
+
+**E a lei explica retroativamente três defeitos deste mesmo dia:**
+
+| o que se mediu no nascimento | o que era a vida |
+|---|---|
+| canal responde `SUBSCRIBED` | **nasce surdo** e nunca entrega (assinatura anônima) |
+| job entra na fila | **nunca é consumido** (`attempts = 0`, 56 minutos) |
+| coluna derivada correta ao inserir | **defasa** porque ninguém recompõe |
+
+> ***"Em todos, eu media o NASCIMENTO e concluía sobre a VIDA."***
+
+**A criação é o momento mais fácil de observar e o menos informativo** — é quando tudo está certo por
+construção, porque acabou de ser construído. O que interessa é o que **sobrevive ao instante
+seguinte**, e nada na criação prevê isso.
+
+**Regra:** toda asserção sobre algo que deve **durar** mede **duas vezes** — no nascimento e depois de
+um intervalo declarado. E o relatório distingue os **três** estados que isso revela: *não nasceu* /
+*nasceu e continua* / ***nasceu e já foi desfeito***. O terceiro é invisível na medição única, e é o
+único que engana.
+
+### E a verificação de "zero contaminação" achou sete linhas inertes — e um sinal
+
+Sete `cron_jobs` de reativação, **inertes e sem risco externo** (desabilitados, contatos de teste,
+**sem telefone** — conferido antes de qualquer preocupação). Mas: **o padrão da coluna é habilitado**,
+então **nasceram ligados e algo os desligou depois**, sem erro gravado e sem turno de agente nas
+últimas horas.
+
+**Declarado como pergunta, não como acusação** — *"pode ter sido limpeza, pode ser rotina de
+vencimento"*. E foi essa observação que expôs a lacuna do critério acima: **a linha existia; a
+pergunta era se ela continuava existindo.**
+
+**E "zero contaminação" passou de afirmada a VERIFICADA em sete tabelas** — leads, atividades,
+mensagens, pipelines, estados de risco, reativações e a fila. A diferença entre as duas é a mesma do
+dia inteiro.
