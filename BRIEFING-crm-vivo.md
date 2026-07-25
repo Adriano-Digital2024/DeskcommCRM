@@ -1246,3 +1246,36 @@ git diff --name-only <commit-medido>..HEAD | grep -vE '^(docs?/|.*\.md$|evidence
 ```
 Vazio → o veredito sobrevive. Não vazio → nomeie o que mudou e decida se aquilo podia mexer no
 resultado.
+
+## §7.24 — Armadilha acoplada, e a exceção que se cobra sozinha
+
+Revisão do `@MaestroConexoes` no check de evidência: quatro buracos, e o terceiro é o que separa
+revisão de **lista de defeitos**.
+
+> Ele mandou **não consertar o segundo sozinho** — porque a correção óbvia **ativa** o terceiro:
+> ampliar a cobertura sem corrigir a normalização transformaria o check em **máquina de falso
+> positivo**, reprovando documentos corretos *por um caminho que ele mesmo inventou*.
+
+**Achar dois defeitos é bom. Achar que consertar um deles dispara o outro é revisão de verdade.**
+Antes de aplicar um conserto óbvio, pergunte: *o que este conserto passa a exercitar que hoje não
+é exercitado?*
+
+### E a exceção que não apodrece
+
+A cobertura nova revelou que a doença era do **repositório**: 15 documentos de outras épicas com
+referência morta. Duas saídas ruins e uma boa:
+
+| saída | por quê não |
+|---|---|
+| portão duro contra todos | quebra a suíte de todo mundo por dívida que não é de quem entrega |
+| excluí-los em silêncio | é a lista arbitrária que esta wave já reprovou |
+| **quarentena enumerada** | o passivo fica **visível e contável**, e o portão fica duro para o que nasce daqui em diante |
+
+> **E a quarentena EXIGE que o item ainda esteja quebrado.** Consertou, sai da lista, ou o vermelho
+> aparece.
+>
+> **Lista de exceção que ninguém revisa vira permissão permanente.** A que se cobra sozinha é a
+> única honesta — e custa três linhas.
+
+Provado por mutação: um documento limpo colocado na quarentena faz o teste acusar
+(*"está em LEGADO e já não tem referência morta — REMOVA-O da lista"*).
