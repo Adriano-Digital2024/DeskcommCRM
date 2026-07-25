@@ -3943,3 +3943,53 @@ esquecimento** — e quem lê depois não tem como saber a diferença.
 **E o carimbo do caso fabricado virou mecanismo:** `-CASO-CONSTRUIDO` no nome do arquivo, como o
 `-ARVORE-SUJA`. Antes, que a prova usava caso construído só se percebia pelo **título do lead dentro do
 print** — **acidente, não declaração**.
+
+---
+
+## §7.101 — Auditar o próprio contrato antes de despachá-lo (a §7.91 aplicada a si)
+
+O @Arquiteto rodou as premissas do **próprio contrato da Wave 6** contra o `HEAD` **antes** de eu
+despachá-lo. **Duas das três mudaram, as duas para melhor** — verificado por mim:
+
+| premissa do contrato | estado real |
+|---|---|
+| *"o cabeçalho do dossiê depende de alargar o `CardInput`"* | **já alargado**: `probability`, `band`, `scoreFactors`, `scoreReason` |
+| *"cuidado com `TIMELINE_COLS` sem `actor_kind`"* | **já inclui**, e o arquivo carrega a cicatriz: *"Já custou uma vez"* |
+| cenário 20 (PATCH não emite atividade) | **de pé** — único que ainda exige trabalho |
+
+> Contrato escrito há horas e despachado **sem auditoria** manda alguém construir **o que já existe**.
+> É a lição da Wave 7 (§7.79) aplicada **preventivamente**, e ao próprio documento.
+
+**E a autocrítica mais dura é sobre o segundo item:**
+
+> ***"Eu apontei um risco que já era cicatriz. Meu aviso chegou depois do prejuízo, não antes."***
+
+**Aviso que chega depois do dano é registro, não prevenção** — e há um jeito barato de saber em qual
+dos dois você está: **procure a cicatriz no código**. Se o comentário já explica o estrago, o seu
+alerta é eco.
+
+## §7.102 — Doutrina que virou raciocínio para de ser citada
+
+O sinal mais forte de que tudo isto valeu não é o tamanho deste documento. É o que ele viu de passagem
+no `card-state.ts`:
+
+> Os comentários carregam a doutrina **sem citá-la** — *"`null` e `0` são COISAS DIFERENTES"*, *"a
+> faixa PERSISTIDA, nunca derivada aqui"*, *"lastro inventado passa na constraint"*.
+
+> ***"O contrato sobreviveu ao contato com o teclado, que é o único teste que importa para um
+> contrato. Quem escreveu não estava seguindo regra — estava usando o RACIOCÍNIO da regra."***
+
+**Doutrina citada é doutrina ainda externa** — a pessoa lembra que existe uma regra e vai buscá-la.
+**Doutrina que virou raciocínio aparece como o motivo local, em português, sem número de seção** — e é
+nesse estado que ela sobrevive à saída de quem a escreveu.
+
+> **Meta destas 100 seções:** não serem lidas. Serem **instrumento** (§7.59-a) ou **raciocínio**
+> (§7.102). Enquanto forem citação, ainda dependem de alguém lembrar.
+
+### E o fecho sobre erro examinado
+
+> *"Você reverteu o tracejado e eu transformei o seu erro em checagem; eu errei o eixo do símbolo e
+> você nomeou a forma do meu erro melhor do que eu tinha nomeado. **Nenhum de nós dois teria chegado
+> sozinho nas duas metades** — e o que fica no repositório não é quem acertou, **é a checagem**."*
+
+> **Acerto de primeira não deixa instrumento. Erro examinado deixa.**
