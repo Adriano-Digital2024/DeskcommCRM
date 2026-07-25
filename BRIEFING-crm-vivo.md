@@ -4274,3 +4274,42 @@ handler), **sob o controle de acesso do audit** — que é onde esse dado deve m
 
 **Dado sensível não se copia para onde é mais fácil de ver. A pergunta não é "quem pode acessar?", é
 "onde esta tela vai parar?".**
+
+---
+
+## §7.112 — Ensaiar o instrumento contra alvo análogo, antes de o alvo real existir
+
+O @QAVivo estendeu a §7.78 a um caso que ela não cobria: **critério armado e bloqueado também é
+diagnóstico que só roda quando já é tarde.**
+
+> Sete critérios do aparato da Wave 6 **nunca rodaram**. Eles destravam **todos de uma vez** no dia em
+> que o dossiê nascer — **exatamente o dia em que ninguém tem tempo de descobrir que um localizador não
+> resolve.**
+
+**A solução:** `ENSAIO=1` exercita a maquinaria contra o `EditLeadDialog` — o diálogo com campos que
+**existe hoje**. E a disciplina que torna isso honesto:
+
+> **O resultado do ensaio NÃO entra no placar.** Misturar *"o instrumento funciona"* com *"o cenário
+> passa"* seria **fabricar verde** — o dossiê continua não existindo.
+
+### E o ensaio achou dois defeitos, os dois invisíveis até então
+
+| defeito | o que teria acontecido no dia da entrega |
+|---|---|
+| a medição de **ordem** devolvia `null` para o cabeçalho (o título é `value` de input, não texto, e o localizador só olhava texto) | o critério **falharia por defeito do MEDIDOR**, e o vermelho apontaria **para quem construiu** |
+| o contador de assinatura marcava **0 entradas e 0 saídas** (`page.on('websocket')` só vê sockets abertos **depois** de anexado) | **BLOQUEADO FALSO**: acusaria **ausência de recurso** onde havia **ausência de escuta** |
+
+**A segunda distinção é a mais fina do dia:**
+
+> **Ausência de recurso e ausência de escuta produzem o mesmo zero** — e o placar as confundiria. É a
+> §7.64 aplicada ao **próprio instrumento de medida**: dois estados, uma observação.
+
+**Depois do conserto:** a ordem resolve (cabeçalho `300.9`, campos `272.9`) e o contador marca `3/5` na
+página inteira **enquanto reporta ZERO nos ciclos do diálogo** — que é **o certo**, porque o
+`EditLeadDialog` não assina nada.
+
+> **Zero MEDIDO, não zero cego.** *"Ontem eu não saberia distinguir os dois; hoje a saída distingue."*
+
+**Regra:** instrumento que vai ser usado numa janela estreita (entrega, incidente, migração) precisa ser
+**ensaiado contra o análogo mais próximo que já existe** — e o ensaio precisa ser **declaradamente
+separado** do veredito, senão ele vira o verde que ninguém pediu.
