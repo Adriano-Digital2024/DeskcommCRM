@@ -6831,3 +6831,48 @@ consertou.
 **E o mesmo vale na outra direção:** o aparato que reportou `0/2` precisa ter o papel conferido antes
 de o veredito valer. Um assinante `anon` receberia zero de TUDO (a RLS filtra tudo) — o que é
 incompatível com `2/2` em Pedidos —, mas *verificar* custa uma linha e **presumir já custou caro hoje**.
+
+## §7.214 — A pergunta que unifica dois erros: "o aparato estava no ESTADO que eu assumi?"
+
+Dois erros do mesmo dia, aparentemente distintos:
+
+- **Um promoveu OBSERVAÇÃO NÃO ISOLADA a fato**, por ter uma explicação boa (§7.207).
+- **O outro quase promoveu RESULTADO DE INSTRUMENTO NÃO VERIFICADO a fato**, por ele ser plausível —
+  três rodadas de *"nada chega"* com a própria sonda **anônima**, apesar de login e `setAuth` antes do
+  `subscribe`.
+
+**Faltava a mesma pergunta nos dois: *o aparato estava no estado que eu assumi?*** — e ela é anterior
+a qualquer leitura de resultado, porque o resultado é sempre lido como se a resposta fosse sim.
+
+E a forma específica no nosso domínio merece ficar citável: **o ACK do canal não diz nada sobre o
+PAPEL com que ele foi registrado.** `SUBSCRIBED` responde *"o servidor aceitou"*, não *"você tem
+permissão"* — e a diferença é invisível até alguém consultar `realtime.subscription`.
+
+## §7.215 — Atividade que É o registro da decisão × atividade que é RASTRO de mutação já ocorrida
+
+Na rota de decisão da reativação, falhar ao gravar a atividade devolve **500 e não deixa passar**. É
+o oposto do padrão de auditoria fire-and-forget do repo — **e está certo, pela razão que decide o
+caso**:
+
+- **`lead_edited`** é **rastro** de uma mutação que **já aconteceu**: perder o rastro é ruim, mas
+  desfazer a mutação por causa dele seria pior.
+- **`reactivation_accepted`** **É** o registro da decisão humana: sem ele, a decisão **não existe** —
+  não há o que rastrear, porque o rastro era o fato.
+
+**Regra:** antes de escolher entre fire-and-forget e bloquear, pergunte se a atividade **descreve**
+algo que existe sem ela, ou se ela **é** a coisa. Descreve → não bloqueia. É → bloqueia.
+
+**E a trava da corrida está um degrau adiante da wave 4:** lá era contra o AGENTE reescrever a
+proposta; aqui é contra **o RELÓGIO tê-la encerrado**. Com `eq(status,'pending')` **dentro do
+UPDATE** — ler e depois escrever deixaria a janela aberta exatamente onde a corrida acontece.
+Resultado: proposta vencida antes do clique dá 409 com motivo legível, e duplo clique dá 409 no
+segundo com **uma linha só**.
+
+### §7.215-a — Campo de resposta que afirma o que não aconteceu é a doença do dia na API
+
+A rota responde `envio_agendado: true` **e não agenda nada** — declarado no código, não escondido.
+**Mas o comentário protege o próximo programador, não o próximo consumidor da API.** Um cliente que
+leia esse campo vai afirmar ao usuário que a mensagem está a caminho.
+
+**Enquanto o envio não existir, o campo diz `false` ou não existe.** Stub que devolve o valor
+otimista é o `?? false` da wave inteira, do outro lado do fio.
