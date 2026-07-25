@@ -159,7 +159,12 @@ async function montarCaso(): Promise<{
     { type: "ai_turn", actor_kind: "ai", actor_agent_id: agenteId, reason: `${RUN} · a IA respondeu sobre prazo`, ms: 0 },
     { type: "ai_turn", actor_kind: "ai", actor_agent_id: agenteId, reason: `${RUN} · a IA respondeu sobre preço`, ms: 5_000 },
     { type: "ai_turn", actor_kind: "ai", actor_agent_id: agenteId, reason: `${RUN} · a IA confirmou o horário`, ms: 10_000 },
+    // TRÊS DO TIME, consecutivas: sem um BLOCO do time não dá para comparar como
+    // o bloco do CLIENTE se lê. Eu tinha uma nota solta, e uma linha única não é
+    // bloco — o critério exigia um rótulo que o caso nunca produziria.
     { type: "note", actor_kind: "user", actor_agent_id: null, reason: `${RUN} · anotação do humano`, ms: 90_000 },
+    { type: "note", actor_kind: "user", actor_agent_id: null, reason: `${RUN} · segunda anotação do time`, ms: 95_000 },
+    { type: "note", actor_kind: "user", actor_agent_id: null, reason: `${RUN} · terceira anotação do time`, ms: 100_000 },
     // TRÊS DO CLIENTE, também consecutivas. Existem porque `filled` cobre
     // `user` E `contact`: um bloco colapsado de ações do CLIENTE tem de se ler
     // diferente de um do TIME, e a forma não consegue fazer essa distinção —
@@ -487,14 +492,19 @@ async function main(): Promise<void> {
 
     // ---- 19: colapso com vizinho de outro ator ------------------------------
     const texto = ((await painel.innerText()) ?? "").replace(/\s+/g, " ");
-    const anunciaQuantos = /\b3\s+(ações|eventos|atividades)/i.test(texto);
-    const vizinhoSeparado = /anotação do humano/i.test(texto);
+    // DOIS blocos, um por ator. A primeira versão exigia que a linha individual
+    // do humano CONTINUASSE VISÍVEL — e ela some, corretamente, porque as três
+    // notas do time também colapsam. Eu estava exigindo que o produto NÃO
+    // agrupasse o segundo ator, que é o oposto do cenário.
+    const blocos = texto.match(/·\s*3\s+(ações|eventos|atividades)/gi) ?? [];
+    const naoEngoliu = blocos.length >= 2;
     record(
       "D19",
-      "CENÁRIO 19: colapsa os 3 do mesmo ator e NÃO engole o vizinho de outro ator",
-      anunciaQuantos && vizinhoSeparado,
-      `bloco anuncia a contagem=${anunciaQuantos} · a linha do humano continua visível=${vizinhoSeparado} ` +
-        `· painel diz: "${texto.slice(0, 140)}"`,
+      "CENÁRIO 19: colapsa por ATOR — dois blocos de 3, não um de 6",
+      naoEngoliu,
+      `blocos de 3 anunciados: ${blocos.length} (esperado 2 — cliente e time) · ` +
+        `painel diz: "${texto.slice(0, 150)}"` +
+        (blocos.length === 1 ? " — um bloco só significa que os dois atores foram engolidos juntos" : ""),
     );
 
     // ---- 19.rótulo: o bloco do CLIENTE não pode se ler como o do TIME -------
@@ -504,14 +514,19 @@ async function main(): Promise<void> {
     // bloco colapsado NÃO pode sair da forma: tem de vir do texto, onde há cinco
     // nomes para cinco atores. Sem isso, três ações do CLIENTE se leem como três
     // do TIME, e o dossiê passa a mentir sobre quem fez o quê.
+    // A INTENÇÃO, não a letra. A primeira versão exigia a string "Você/time" —
+    // e o produto nomeia a PESSOA ("E2E Manager"), que é mais específico que o
+    // rótulo genérico. Eu teria reprovado um acerto por não estar escrito com as
+    // palavras que eu tinha na cabeça. O que o critério afirma é que os dois
+    // blocos se LEEM DIFERENTE e que cada um nomeia o seu ator.
     const dizCliente = /cliente/i.test(texto);
-    const dizTime = /você\/time|voce\/time|time/i.test(texto);
+    const dizTime = /você\/time|voce\/time|E2E Manager/i.test(texto);
     record(
       "D19.rotulo",
-      "o bloco colapsado nomeia o ATOR pelo texto — CLIENTE não se lê como TIME",
+      "cada bloco nomeia o SEU ator pelo texto — CLIENTE não se lê como TIME",
       dizCliente && dizTime,
-      `no painel: "Cliente"=${dizCliente} · "Você/time"=${dizTime} — a forma não distingue os ` +
-        `dois (ambos preenchidos), então o rótulo tem de vir de actorLabel`,
+      `no painel: cliente nomeado=${dizCliente} · time nomeado=${dizTime} — a forma não ` +
+        `distingue os dois (ambos preenchidos), então quem distingue é o texto`,
     );
 
     // ---- 20: as duas metades, medidas separado -----------------------------
@@ -523,12 +538,19 @@ async function main(): Promise<void> {
       await campoValor.fill(novo);
       await painel.getByRole("button", { name: /salvar|guardar/i }).first().click().catch(() => null);
       await page.waitForTimeout(2500);
-      const { data: linha } = await admin.from("crm_leads").select("title").eq("id", caso.leadId).single();
+      // O LEAD CERTO: depois de o dossiê principal passar a ser o do irmão COM
+      // contato, esta verificação continuava lendo o outro — e reprovava o
+      // produto porque eu conferia um lead que ninguém editou.
+      const { data: linha } = await admin
+        .from("crm_leads")
+        .select("title")
+        .eq("id", caso.leadComContato)
+        .single();
       const persistiu = (linha as { title: string } | null)?.title === novo;
       const { data: ativs } = await admin
         .from("crm_lead_activities")
         .select("type,actor_kind")
-        .eq("lead_id", caso.leadId);
+        .eq("lead_id", caso.leadComContato);
       const humana = ((ativs ?? []) as { type: string; actor_kind: string; reason: string | null }[]).find(
         (a) => a.actor_kind === "user" && a.type === "lead_edited",
       );

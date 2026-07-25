@@ -3,10 +3,9 @@ import { useRef } from "react";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useLeadTimeline } from "@/hooks/leads/useLeadTimeline";
-import { bandLabel } from "@/lib/kanban/score-band";
-import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/types/leads";
 import { LeadFieldsForm } from "./LeadFieldsForm";
+import { ScoreSlot } from "./ScoreSlot";
 import { LeadTimeline } from "./LeadTimeline";
 import { OwnerBadge } from "./OwnerBadge";
 import { resolveLeadOwner } from "@/lib/kanban/owner";
@@ -84,23 +83,20 @@ export function LeadDossier({
             agentVersion={owner.agentVersion}
           />
           {score && (
-            <span className="flex items-center gap-1.5">
-              <span className="h-[3px] w-12 overflow-hidden rounded-full bg-border" aria-hidden>
-                <span
-                  className={cn(
-                    "block h-full rounded-full",
-                    score.band === "quente" && "bg-accent",
-                    score.band === "morno" && "bg-warning",
-                    score.band === "frio" && "bg-text-muted",
-                  )}
-                  style={{ width: `${score.probability}%` }}
-                />
-              </span>
-              <span className="tabular-nums text-text-muted">
-                {score.probability}% · {bandLabel(score.band)}
-              </span>
-            </span>
+            // O MESMO componente do card, não uma cópia do medidor.
+            // "Superfície nova herda as decisões da antiga" só vale como
+            // mecanismo: herdar por cópia é como as duas listas do evidence —
+            // funciona hoje e diverge no mês em que alguém mudar um dos dois.
+            // De brinde, o rótulo honesto da âncora ("registro que sustenta",
+            // nunca "momento da conversa") vem junto, sem eu reescrever nada.
+            <ScoreSlot
+              probability={score.probability}
+              band={score.band}
+              reason={score.reason}
+              factors={score.factors.slice(0, 3)}
+            />
           )}
+
           <button
             type="button"
             onClick={() => campos.current?.scrollIntoView({ behavior: "smooth", block: "start" })}

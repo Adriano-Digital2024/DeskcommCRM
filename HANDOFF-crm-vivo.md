@@ -3511,3 +3511,46 @@ segunda metade, "expus o status" seria afirmação sobre código.
 > porque a tela continua parecendo certa enquanto o board já não escuta mais nada. **Religar não
 > foi feito de propósito**: religação é desenho e merece bloco próprio. Isto aqui é só parar de
 > descartar o que já era calculado.
+
+---
+
+## Wave 6 — o dossiê
+
+### Os dois blocos: o que não existia
+
+`updateLeadHandler` não emitia atividade nenhuma (a IA deixava rastro e o humano não — meia
+continuidade vendida como continuidade), e **não havia um único assinante** de
+`crm_lead_activities` no front: a tabela está na publicação desde a 0071, então o dado chegava ao
+Postgres e ninguém escutava. Dois cenários de prova que eram, na verdade, implementação ausente.
+
+O `reason` de `lead_edited` nomeia **os campos, nunca os valores** — neste produto o título É o
+nome do cliente ("Carlos — Clínica Vida Odonto"), e o §9 proíbe PII nova em reason. Conferido no
+banco: `Alterou o título`, payload `{"fields":["title"]}`.
+
+> A regra não é "reason nunca mostra antes e depois": a atividade de autorização vencida mostra de
+> propósito, porque lá o texto é **do próprio agente**, escrito por máquina. **A origem do texto é
+> que decide, não a forma da frase.**
+
+### A regra antes da tela
+
+`agrupaTimeline` é função pura e testada: colapsa por ator **e por natureza** (decisão humana nunca
+colapsa — seria contada como "ação qualquer" dentro de um bloco), o que chegou ao vivo nesta sessão
+fica **fora** do agrupamento, e a janela é de um minuto.
+
+`evidence/wave6-19-colapso-e-score.png` mostra as duas metades funcionando na mesma tela: as duas
+edições do mesmo minuto viraram **"E2E Manager · 2 ações"**, enquanto os vários "Mudou de estágio"
+do mesmo ator **não** colapsaram entre si — estão em minutos diferentes, e a pausa é informação.
+O popover do score aparece com as evidências e o rótulo **"(registro que sustenta)"**, herdado do
+card por reuso do componente, não por cópia.
+
+### O dossiê
+
+`evidence/wave6-18-dossie.png`: cabeçalho → timeline → campos, com o Sheet aberto pelo clique no
+card. As decisões humanas aparecem como itens separados mesmo sendo do mesmo ator no mesmo minuto.
+
+Decisões que moram no código, não no contrato: **salvar não fecha** (quem edita precisa ver a
+atividade que gerou — fechar esconderia o registro de quem o produziu); **o título é o elemento
+ativável** e o card segue `role="group"`, porque voltá-lo a `button` reintroduziria o
+nested-interactive da Wave 2 e só `onKeyDown` daria uma ação que existe e não é descoberta por
+leitor de tela; e a timeline tem **três** estados, porque "não consegui ler" não pode virar "não há
+nada".
