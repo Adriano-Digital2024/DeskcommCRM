@@ -70,6 +70,8 @@ async function avaliarSuperficie(
   temMotivoHumano: boolean;
   uuidsVisiveis: string[];
   temRotuloCru: boolean;
+  /** Blocos colapsados na superfície — ver `escondeConteudo`. */
+  blocosColapsados: number;
   atorDistinguivel: boolean;
 }> {
   const dados = await page.evaluate((sel: string) => {
@@ -91,6 +93,17 @@ async function avaliarSuperficie(
     texto: dados.texto.replace(/\s+/g, " "),
     temMotivoHumano: /Movido de .+ para .+/i.test(dados.texto),
     uuidsVisiveis: [...new Set(dados.texto.match(uuid) ?? [])],
+    // QUANTO A SUPERFÍCIE ESCONDE. Toda asserção de AUSÊNCIA sobre uma tela que
+    // colapsa, trunca ou pagina é inválida por construção: a ausência observada
+    // é indistinguível da ocultação. Um uuid dentro de um bloco fechado passaria
+    // no "nenhum uuid visível" — e o verde encerraria a pergunta, que é o que
+    // torna o falso VERDE pior que o falso vermelho.
+    //
+    // Hoje esta superfície (a timeline do CONTATO) não agrupa — quem agrupa é a
+    // do dossiê. Então a contagem é zero e as asserções valem. No dia em que o
+    // agrupamento chegar aqui, ela deixa de ser zero e o critério se recusa a
+    // afirmar ausência, em vez de virar verde falso em silêncio.
+    blocosColapsados: (dados.texto.match(/·\s*\d+\s+(ações|eventos|atividades)/gi) ?? []).length,
     temRotuloCru: /\b(stage_changed|ai_turn|note|lead_created)\b/.test(dados.texto),
     atorDistinguivel: dados.preenchidos > 0 || dados.comAnel > 0,
   };
@@ -865,8 +878,11 @@ async function main(): Promise<void> {
     record(
       "10.b-uuid",
       "TimelineView: NENHUM uuid visível para o usuário",
-      superficieTemConteudo && sup.uuidsVisiveis.length === 0,
-      sup.uuidsVisiveis.length === 0
+      superficieTemConteudo && sup.blocosColapsados === 0 && sup.uuidsVisiveis.length === 0,
+      sup.blocosColapsados > 0
+        ? `INVÁLIDO: a superfície tem ${sup.blocosColapsados} bloco(s) colapsado(s) — ausência ` +
+          `observada é indistinguível de ocultação. Expanda antes de afirmar que não há uuid.`
+        : sup.uuidsVisiveis.length === 0
         ? "nenhum identificador cru na tela"
         : `${sup.uuidsVisiveis.length} uuid(s) no rosto do usuário, ex.: ${sup.uuidsVisiveis[0]}`,
     );
@@ -879,8 +895,13 @@ async function main(): Promise<void> {
     record(
       "10.d-rotulo",
       "TimelineView: rótulo em pt-BR, não o identificador cru",
-      superficieTemConteudo && !sup.temRotuloCru,
-      sup.temRotuloCru ? "tipo cru visível (ex.: stage_changed) em vez de rótulo humano" : "rótulos humanos",
+      superficieTemConteudo && sup.blocosColapsados === 0 && !sup.temRotuloCru,
+      sup.blocosColapsados > 0
+        ? `INVÁLIDO: ${sup.blocosColapsados} bloco(s) colapsado(s) — um rótulo cru dentro de um ` +
+          `bloco fechado passaria nesta asserção`
+        : sup.temRotuloCru
+          ? "tipo cru visível (ex.: stage_changed) em vez de rótulo humano"
+          : "rótulos humanos",
     );
     await shotPage(abaA, `wave-3-c10-timeline-contato${sufixoCarimbo}.png`, false);
   }
@@ -937,7 +958,7 @@ async function main(): Promise<void> {
     record(
       "10-inbox.rotulo",
       "painel do inbox: rótulo em pt-BR",
-      temConteudo && !painel.temRotuloCru,
+      temConteudo && painel.blocosColapsados === 0 && !painel.temRotuloCru,
       painel.temRotuloCru ? "tipo cru visível" : "rótulos humanos",
     );
     await shotPage(abaA, `wave-3-c10-painel-inbox${sufixoCarimbo}.png`, false);
