@@ -1,7 +1,7 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { consumirEcoLocal } from "@/lib/kanban/local-echo";
+import { ehEcoLocal } from "@/lib/kanban/local-echo";
 import { useRealtimeChannel } from "@/hooks/realtime/useRealtimeChannel";
 import { apiClient } from "@/lib/api/client";
 import type { BoardData } from "@/lib/kanban/types";
@@ -75,7 +75,9 @@ export function useBoard(pipelineId: string | null) {
       qc.invalidateQueries({ queryKey });
 
       const leadId = idDoEvento(payload);
-      if (!leadId || consumirEcoLocal(leadId)) return;
+      // Janela, não marca gasta por evento: uma ação minha chega aqui em DUAS
+      // parcelas (o movimento e o carimbo de `last_activity_at` da atividade).
+      if (!leadId || ehEcoLocal(leadId)) return;
 
       // CONTADOR, não booleano. Com um Set, o segundo evento remoto no mesmo
       // card dentro da janela não mudava nada: o id já estava lá, a classe
