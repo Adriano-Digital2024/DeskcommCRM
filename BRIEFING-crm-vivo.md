@@ -1107,3 +1107,53 @@ E a mesma família apareceu no instrumento do `@DevVivo`: a sonda sorteava o alv
 `order`, e quando calhava a coluna à direita o card nascia **fora da viewport** — o arrasto por
 teclado não acontecia e ela morria no `waitForResponse`. Duas execuções perdidas. É o `position`
 empatado que derrubou a sonda do regente, em outra roupa: **alvo sorteado é premissa escondida.**
+
+## §7.18 — Carimbo na MENSAGEM, não só na sonda
+
+Observação do `@Arquiteto` ao fechar a wave, e o número dela é o argumento:
+
+> **Cinco das seis confusões do dia foram afirmação em MENSAGEM sobre estado que já tinha mudado —
+> não sonda mal rodada.**
+
+O carimbo entrou nas sondas e resolveu o lado da medição. O lado do **relato** ficou descoberto: o
+regente disse *"não fez contador"* (verdade num commit, mentira dois commits depois), o `@QAVivo`
+assinou verdes contra um desenho superado, e duas leituras do mesmo arquivo produziram valores
+opostos — todas afirmações em mensagem, nenhuma sonda com defeito.
+
+> **Todo relato de estado abre com `HEAD` e sujeira dos arquivos citados.** Assim a divergência
+> aparece **na hora de ler**, não três mensagens depois — quando já custou o trabalho de alguém.
+
+Custa uma linha. É a mesma troca de estimativa por fato observado que o `carimbar()` fez na
+medição, aplicada à conversa.
+
+### E duas coisas AFIRMADAS, para ninguém "consertar" depois
+
+Registradas a pedido do `@Arquiteto`, porque parecem defeito a quem lê rápido:
+
+1. **O `delete` de marca vencida é CORRETO.** Removê-lo numa sobrecorreção troca um bug por um
+   vazamento — marca vencida é lixo.
+2. **`aberta` ser atualizada a cada nova marca empurra o fallback para frente, e isso é o
+   desejado**: enquanto eu ajo, a ação continua sendo minha.
+
+## §7.19 — Desacordo entre gente competente vira TESTE, não argumento
+
+O regente simulou e dispensou o contador; o `@Arquiteto` insistiu que era necessário. O `@DevVivo`
+não escolheu um lado: **rodou as duas versões lado a lado** e transformou a discordância em dois
+testes.
+
+| teste | passa sem contador? | o que prova |
+|---|---|---|
+| *"a linha do tempo comum (B assenta logo após A)"* | **sim** | a simulação do regente estava certa **para os números que ele escolheu** |
+| *"A assenta e B PENDURA"* | **não** | é onde a sobrescrita deixa de bastar — o caso do handler lento |
+
+> **O teste útil é o que reprova de UM lado só.** O que passa nos dois registra o acordo; o que
+> discrimina é o que encerra a discussão.
+
+E o ganho é de prazo longo: daqui a seis meses ninguém precisa reconstituir a conversa — basta ver
+**qual fica vermelho**. Argumento envelhece e some do histórico; teste discriminante fica no
+repositório e reprova sozinho.
+
+> Corolário: quando duas pessoas competentes discordam sobre comportamento, a pergunta certa não é
+> *"quem tem razão?"* — é ***"que medição separaria as duas hipóteses?"***. Se nenhuma separa, a
+> discordância é sobre gosto, e aí decide quem tem a palavra final. Se alguma separa, argumentar
+> mais é desperdício.

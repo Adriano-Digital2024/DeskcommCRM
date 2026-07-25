@@ -2883,3 +2883,54 @@ Então o segundo `UPDATE` **nasce de trigger**, como o `@Assistente` disse. O qu
 banco para o `INSERT`. Os 112 ms são da rota, não do trigger (esse é instantâneo dentro do
 `INSERT`). É por isso que a janela precisa cobrir a duração do handler, não a latência de um
 evento — e por isso ela é o `onSettled`, não um número.
+
+### Cenário 11 — a distinção que fecha, e a dívida que fica nomeada
+
+O `@QAVivo` achou o que o regente procurou no lugar errado: as decisões de veto **sempre
+existiram**, em `before_send_traces` (`vetoed_gate is not null`) — **21 vetos entre 141 decisões**
+na org de teste, sendo 16 `semantic_promise`, 4 de `pacing` e 1 de `stop`. **Todos com
+`contact_id`.**
+
+> **Por que a busca do regente falhou:** procurou **nomes de tabela** por conceito (`%veto%`,
+> `%gate%`, `%guard%`) e **nomes de coluna** por igualdade exata (`'gate'`, `'verdict'`). As
+> colunas são `vetoed_gate`/`vetoed_code` e a tabela é `before_send_traces` — **busca exata onde
+> precisava ser aproximada, e aproximada na dimensão errada.** E o veredito tirado dali
+> (*"não existe"*) é o mesmo erro de *"eliminada" vs "não-medida"*, agora na busca: **"não achei"
+> com busca exata não é "não existe".**
+
+#### As duas provas não se contradizem — afirmam coisas diferentes
+
+| | afirma | verdadeiro? |
+|---|---|---|
+| prova do regente (`01ee4b6`) | o **caminho** funciona: veto emitido pelo emissor de produção chega à tela, legível | ✅ |
+| medição do `@QAVivo` | as **21 já registradas** nunca viraram atividade e seguem invisíveis | ✅ |
+
+> *"O silêncio passa a ser visível daqui para frente"* é **verdade**.
+> *"O silêncio já registrado está visível"* é **falso**.
+
+**E o `@QAVivo` recusou pintar o cenário de verde com a prova do regente**, devolvendo a decisão:
+*"afrouxar asserção para conseguir verde é exatamente o que a gente passou o dia caçando."* Recusa
+correta — o critério não se ajusta ao resultado.
+
+#### DECISÃO: dívida histórica declarada, e o critério passa a exigir veto NOVO
+
+O argumento que decide não é escopo, é **natureza da trilha**: escrever 21 linhas **datadas no
+passado** em `crm_lead_activities` — que é append-only e auditada — para deixar um critério verde é
+a mesma coisa que esta entrega já recusou uma vez (*"timeline append-only que alguém edita para
+ficar bonita deixa de ser timeline"*). As decisões aconteceram de verdade, mas **publicar histórico
+retroativo numa trilha de auditoria é decisão de produto, não conveniência de fechamento de onda.**
+
+O épico prometeu **a ponte**, e a ponte está provada. O cenário `11` passa a exigir que um veto
+**novo** apareça — honesto, e é o que o CORE 2 promete.
+
+**DÍVIDA NOMEADA (para o Rafael decidir, não esquecer):** publicar os vetos históricos na timeline.
+
+```sql
+select organization_id, contact_id, vetoed_gate, vetoed_code, created_at
+  from before_send_traces
+ where vetoed_gate is not null;
+```
+
+Viável — os 21 têm `contact_id`, e `resolveActiveLeadForContact` faz o roteamento (recusando
+quando ambíguo, que é o comportamento certo). Riscos a tratar se for aprovado: `performed_at` no
+passado com `created_at` agora, e vetos que não roteiam viram `agent.activity_unrouted`.
