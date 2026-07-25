@@ -4085,3 +4085,49 @@ com os mesmos argumentos — **duas assinaturas `postgres_changes` sobre as mesm
 conserto dimensionado**: içar a assinatura para o layout e deixar a lista consumir só o cache da query.
 E ele a trouxe **como pergunta, não como acusação** — que é a forma certa para algo que **pode ser
 deliberado**.
+
+---
+
+## §7.106 — Instrumento só vale depois que reprovou alguém, e o autor é o primeiro candidato
+
+Corolário do @Arquiteto à §7.97, e ele é o **critério de aceitação** de tudo o que foi construído hoje:
+
+| instrumento | quem ele reprovou primeiro |
+|---|---|
+| validador de grafo | **o próprio autor** — a ilha dentro do mapa que existe para provar que não há ilhas |
+| sonda do veto | inverteu o veredito **depois da cura**, provando que media o produto e não a si mesma |
+| `carimbo` | **pegou o autor na primeira execução**, recusando chamar de veredito uma árvore suja |
+| `assert` da mutação (§7.44) | **me pegou**, transformando um verde vazio em aborto ruidoso |
+| tabela-verdade da constraint | **pegou o QA**, recusando o seed dele por falta de lastro |
+
+> **Nenhum desses foi "testado" abrindo e vendo passar.**
+
+**Regra:** o padrão de aceitação de instrumento novo não é *"rodou sem erro"* — é **"reprovou algo que
+deveria reprovar"**, e o caminho mais barato para isso é **submetê-lo ao próprio autor**. Instrumento
+que nunca disse "não" é **promessa**; instrumento que disse "não" a quem o escreveu é **instrumento**.
+
+## §7.107 — O formato mais fácil de editar é o que envelhece mentindo
+
+Nota dele sobre o render do mapa, aplicada antes de existir o render — e virou
+`docs/architecture/README.md` (versionado, `HEAD` atual):
+
+> **O JSON é a FONTE; o HTML é DERIVADO. Se divergirem, o HTML é que está errado.**
+
+O motivo mora **no README daquele diretório** e não num handoff, porque **é ali que a decisão errada
+seria tomada** (§7.56). E a razão é fina:
+
+> **O HTML é o formato mais fácil de abrir e editar** — uma correção feita nele **parece funcionar**,
+> **some na próxima geração**, e nesse intervalo **a fonte deixou de ser fonte sem ninguém decidir
+> isso**.
+
+É a mesma família de *"lastro inventado passa na constraint"*: o caminho de menor atrito produz um
+resultado **plausível e errado**, e nada no momento acusa. **Onde há fonte e derivado, a facilidade de
+edição está no lado errado** — e é por isso que a regra precisa estar escrita, não deduzida.
+
+### E a extensão dele ao invariante da Wave 7
+
+> *"Se inverter a ordem entre produtor e validador **não** produzir escrita recusada, o validador não
+> está validando nada — **e nesse caso o problema deixa de ser a ordem e passa a ser o validador**."*
+
+O teste não checa só a **ordem**: checa a **existência** do validador. Um invariante que passa nas duas
+ordens não provou que a ordem importa — provou que **nada está sendo validado**.
