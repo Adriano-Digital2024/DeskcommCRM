@@ -3520,3 +3520,63 @@ Nota dele, e ela é melhor que a minha formulação:
 Isso **reclassifica um incidente já arquivado** (§7.71) sem reabri-lo: ele continua fechado, e o
 fechamento carrega uma ressalva escrita. **Fechar com ressalva é diferente de fechar** — e a diferença
 só existe se estiver registrada.
+
+---
+
+## §7.87 — O buraco com recibo é pior que o buraco
+
+Eu tinha ligado o `console.error` ao script que falha calado (§7.82): mesma forma — a intenção existe,
+o código existe, o efeito não acontece. O @DevVivo acrescentou a diferença, e ela inverte a gravidade:
+
+| falha | o que acontece |
+|---|---|
+| script que falha calado | **aborta** — deixa a terceira parte ausente, e o guard pega |
+| `console.error` | **completa com sucesso** — a rota devolve `200`, o usuário vê o card mover |
+
+> **Script que falha calado deixa um buraco. `console.error` deixa um buraco E UM RECIBO DE QUE DEU
+> TUDO CERTO.**
+
+O recibo é o que torna a segunda pior: não há sintoma para investigar, e **o único prejudicado é o
+registro que ninguém vai procurar hoje** — só daqui a três meses, quando alguém perguntar por que a
+timeline tem um vão.
+
+## §7.88 — O que segurou a decisão certa foi PROXIMIDADE, não caráter
+
+Correção que ele fez **sobre si mesmo**, para a §7.81 não ficar com o crédito errado:
+
+> *"Eu não 'não cedi' por disciplina. Tentei a subconsulta, o Postgres recusou, e a primeira coisa que
+> me passou pela cabeça foi **'então volto para os arrays de ids'**. Só não voltei porque tinha acabado
+> de escrever, no commit anterior, **por que** as duas listas eram ruins — o texto estava **a dois
+> minutos de distância**. Se a 0076 tivesse sido semana passada, **eu teria cedido e chamado de
+> pragmatismo**."*
+
+> **O que o segurou foi proximidade, não caráter.**
+
+E isso **reforça** a §7.56 em vez de enfraquecê-la, acrescentando a dimensão que faltava: o aviso não
+precisa só estar **onde** a pessoa vai olhar — precisa estar **recente o bastante para ainda estar ao
+alcance**. Motivo escrito **junto do desenho** é o que impede alguém de desfazê-lo quando a ferramenta
+empurra; motivo escrito **em outro lugar, semanas antes**, perde para o cansaço da tarde.
+
+> **Registrar o porquê junto do desenho não é documentação — é a única forma de o argumento ainda estar
+> presente no instante da tentação.**
+
+## §7.89 — O verde declara o que mediu, não o que você queria medir
+
+O erro que mais o incomoda, e a análise dele é a mais precisa da entrega:
+
+> *"Suíte inteira verde medindo o artefato errado. **O verde não mentiu sobre o que mediu** — mediu
+> certo o baseline antigo. **Mentiu sobre o que eu achava que estava medindo**, e essa distância não
+> aparece em lugar nenhum do output."*
+
+O instrumento foi **honesto**. A lacuna está entre **o artefato medido** e **o artefato pretendido** —
+e **nada no resultado carrega essa distância**. Nenhum grau de rigor no teste corrige isso, porque o
+teste está certo.
+
+**E a cura já existe no nosso próprio aparato, aplicada no lugar errado:** o `carimbo` das sondas
+declara **contra qual commit** e **com quais dependências sujas** aquela medição vale. É exatamente
+esta lei, aplicada a sondas — e **não aplicada à suíte**.
+
+> **Proposta dimensionada:** `test:db` declara o **hash do `baseline.sql` que aplicou**. Uma linha no
+> começo do output. Com ela, *"338 passed"* deixa de ser um número solto e passa a ser **um número com
+> sujeito** — e o dia em que o script de reescrita falhar calado, o verde vai vir **com o hash
+> antigo** e a distância aparece **sem ninguém precisar suspeitar**.
