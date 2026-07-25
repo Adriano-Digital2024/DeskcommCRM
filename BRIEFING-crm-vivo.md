@@ -1314,3 +1314,24 @@ da cobertura e viraram **peso morto invisível**.
 | **reverso** | o item ainda é alcançado? | saiu da cobertura e ficou na lista |
 
 **Toda lista de exceção precisa dos dois.** Com um só, ela apodrece pelo lado que ninguém olha.
+
+## §7.26 — "Mencionar não é usar" atravessou TRÊS camadas no mesmo dia
+
+| camada | o que aconteceu |
+|---|---|
+| **guard de comandos** | leu o verbo proibido **dentro do texto** de uma mensagem e travou o terminal — *"quanto mais preciso o relatório, maior a chance de ele se auto-bloquear"* |
+| **extrator, 1ª versão** | leu o caminho **dentro do exemplo de código** e contou como dívida |
+| **extrator, 2ª versão** | leu o caminho **dentro da tabela que EXPLICA os caminhos ruins** — documentar o falso positivo criou falso positivo |
+| **o próprio transporte** | o `zsh` do `@MaestroConexoes` interpretou a crase do exemplo como substituição de comando, e o exemplo chegou **vazio** na mensagem que reportava o problema |
+
+> **Nenhum casador de texto sabe a diferença entre usar e mencionar.** E a quarta linha é a mais
+> engraçada e a mais instrutiva: **o meio comeu o exemplo do problema que a mensagem descrevia**.
+
+Duas coisas que se tiram disso, e a segunda é a que economiza tempo:
+
+1. **Quem explica um defeito de casamento de texto vai ser mordido por ele.** Escrever sobre a
+   armadilha exercita a armadilha — é o único tipo de documentação que dispara o que documenta.
+2. **O sinal tem que ser inequívoco na ORIGEM.** Ajustar o casador não resolve enquanto os dois
+   usos forem escritos igual: aqui, crase significa *"literal"*, não *"citação"*. A saída foi
+   trocar o sinal ambíguo pela **presença de caminho** — nome puro é arquivo, caminho escrito é
+   exemplo.
