@@ -317,6 +317,19 @@ export function criarPlacar(nome: string, esperados: string[]) {
   const vistos = new Map<string, EstadoCriterio>();
   const linhas: { n: string; titulo: string; estado: EstadoCriterio; detalhe: string }[] = [];
 
+  // A PROMESSA É IMPRESSA ANTES DE QUALQUER TRABALHO.
+  //
+  // O fechamento vive no `finally`, e `finally` não roda quando o PROCESSO morre
+  // — cano fechado, sinal, máquina desligada. Um guarda que vive no mesmo fluxo
+  // que vigia herda as falhas desse fluxo, e o meu herdava duas: o `return` (já
+  // resolvido movendo para o `finally`) e a morte do processo, que o `finally`
+  // não cobre.
+  //
+  // Declarar no INÍCIO não impede a morte — mas deixa a lista prometida no log
+  // antes de qualquer coisa poder interrompê-la. Quem ler uma saída truncada
+  // consegue dizer o que faltou, em vez de só ver onde parou.
+  console.info(`[placar ${nome}] ${esperados.length} critérios prometidos: ${esperados.join(", ")}`);
+
   function record(
     n: string,
     titulo: string,
