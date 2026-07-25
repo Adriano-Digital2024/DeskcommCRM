@@ -8638,3 +8638,65 @@ limpeza não é funcionalidade.
 **E a lei que ele tirou é a forma geral, para o lado do instrumento:** *"limpeza que só remove a
 linha deixa o rastro exatamente onde a próxima medição vai olhar"* — em toda tabela com coluna
 derivada, contador ou carimbo, **apagar a causa não apaga o efeito**.
+
+## §7.271-b — A régua tem TRÊS partes: grandeza, LIMIAR e INSTANTE
+
+Duas listas discordaram **de novo**, e nenhuma estava errada:
+
+> *"A minha lista não estava errada — **estava com outra TOLERÂNCIA**. Eu filtrei por atraso > 1
+> minuto, então os 3s dela nunca podiam aparecer na minha. E a que eu reportei apareceu porque
+> **atraso nulo é infinito**."*
+
+**Tínhamos aprendido a declarar a grandeza** (`created_at` × `coalesce(sent_at, created_at)`) — e
+**faltava o limiar**. Duas pessoas na mesma coluna, com cortes diferentes, **medem populações
+diferentes** e discutem como se fosse o mesmo conjunto.
+
+**E apareceu a terceira parte no mesmo turno:** a linha órfã **não existe mais** — alguém limpou
+entre as duas medições. *"Então a sua medição e a minha nem sobre o mesmo banco foram."*
+
+**Para comparar duas medições é preciso as três:** **mesma grandeza**, **mesmo limiar**, **mesmo
+estado**. Em base viva e compartilhada, a terceira é a que muda sozinha — e é a única que ninguém
+pensa em declarar, porque parece cenário e não parâmetro.
+
+## §7.278 — A MESMA COLUNA pode carregar relógios diferentes conforme quem a escreveu por último
+
+Os 3,317s que sobravam **não são drift genérico — são dois relógios nomeáveis**:
+
+```
+ingest.ts:281   sent_at = p.timestamp        → relógio do APARELHO (WhatsApp)
+ingest.ts:295   markConversation(..., now)   → relógio do SERVIDOR
+```
+
+E a migration 0027 recalcula `last_message_at` por `coalesce(sent_at, created_at)` — **o relógio do
+aparelho**.
+
+> ***"A mesma coluna carrega relógios diferentes conforme quem a escreveu por último: depois de um
+> recálculo ela é do aparelho; em operação normal, do servidor."***
+
+**Não é defeito e não se mexe** — a magnitude é irrelevante para o produto. **Mas é armadilha
+permanente para qualquer verificação futura** que compare essas duas colunas: **vai encontrar
+diferenças de segundos que não são defeito**, e alguém vai chamá-las de regressão.
+
+**Consequência imediata, e ela é do cenário 27:** ele compara exatamente essas colunas. Hoje deu
+*"0ms de discordância"* — **numa conversa que não passou por recálculo**. Numa que tenha passado,
+daria segundos. **O critério precisa de tolerância declarada COM O MOTIVO** (*"os segundos são drift
+aparelho×servidor, não atraso de atualização"*), senão o primeiro caso recalculado vira falso
+vermelho — e vira **com a autoridade de um critério que nasceu para pegar regressão**.
+
+### E o DELETE que casa zero e "roda" com sucesso
+
+O conserto do instrumento fechou também a outra ponta: `apaga()` remove **por ID** e **exige ter
+casado exatamente uma linha**. **`LIKE` no corpo apaga zero em silêncio quando o padrão não bate** —
+foi assim que as duas órfãs sobreviveram a uma limpeza que *"rodou"*.
+
+É a §7.153 na limpeza: *"apagou N"* com **N=0** é indistinguível de sucesso. **Toda remoção
+declarada afirma quantas linhas esperava.**
+
+### E a frase que justifica a doutrina inteira
+
+> ***"Abri o arquivo por disciplina sua, não por dúvida minha. A disciplina pegou o que a dúvida não
+> pegaria."***
+
+A dúvida **não disparou** — havia uma explicação pronta e boa. **É exatamente o caso em que o
+julgamento falha e a regra mecânica funciona**, e é o argumento inteiro para preferir cerca a
+lembrete (§7.230).
