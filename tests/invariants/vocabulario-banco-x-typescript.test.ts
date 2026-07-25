@@ -47,6 +47,18 @@ const PARES: Array<{ tabela: string; coluna: string; ts: string[]; origem: strin
     origem: "OwnerKind (lib/types/leads.ts)",
   },
   {
+    tabela: "crm_leads",
+    coluna: "status",
+    // lib/types/leads.ts → LeadStatus.
+    //
+    // Este par entra como PROVA do conserto do extrator, não por acaso: é a
+    // coluna com DUAS constraints casando por substring (a que define o enum e a
+    // que amarra `closed_at`). Com o extrator antigo, o `limit 1` sem `order by`
+    // podia devolver [lost, won] — e o par reprovaria por motivo falso.
+    ts: ["open", "won", "lost"],
+    origem: "LeadStatus (lib/types/leads.ts)",
+  },
+  {
     tabela: "agent_inbox_items",
     coluna: "kind",
     // lib/agent-engine/db/repository.ts → InboxKind.
@@ -78,9 +90,73 @@ const PARES: Array<{ tabela: string; coluna: string; ts: string[]; origem: strin
   },
 ];
 
-/** Extrai os literais de um `CHECK (x = ANY (ARRAY['a'::text, 'b'::text]))`. */
+/** Tira um nível de parênteses externos, se ele envolver a expressão inteira. */
+function desembrulha(expr: string): string {
+  let e = expr.trim();
+  while (e.startsWith("(") && e.endsWith(")")) {
+    let nivel = 0;
+    let fechaNoFim = true;
+    for (let i = 0; i < e.length; i++) {
+      if (e[i] === "(") nivel++;
+      else if (e[i] === ")") {
+        nivel--;
+        if (nivel === 0 && i < e.length - 1) {
+          fechaNoFim = false;
+          break;
+        }
+      }
+    }
+    if (!fechaNoFim) break;
+    e = e.slice(1, -1).trim();
+  }
+  return e;
+}
+
+/**
+ * Os literais de uma constraint — **só se ela DEFINIR o vocabulário**.
+ *
+ * A versão anterior casava por substring (`like '%= ANY (ARRAY[%'`), e isso
+ * seleciona qualquer constraint que MENCIONE valores da coluna. Medido no banco:
+ * `crm_leads.status` tem duas, e a diferença entre elas é a diferença entre
+ * medir o vocabulário e medir uma regra de negócio —
+ *
+ *   crm_leads_status_enum ............ CHECK (status = ANY (ARRAY[open, won, lost]))   ← DEFINE
+ *   crm_leads_closed_at_consistency .. CHECK (... status = ANY (ARRAY[won, lost]) AND closed_at IS NOT NULL)  ← só menciona
+ *
+ * Hoje passaria por SORTE, porque `limit 1` sem `order by` escolhe uma das duas
+ * e as duas têm literais parecidos. No dia em que uma regra composta injetar um
+ * valor que não é vocabulário, o invariante aprova ou reprova por motivo FALSO —
+ * e invariante que erra por motivo falso é pior que invariante nenhum, porque é
+ * obedecido.
+ *
+ * Aceita as duas formas que DEFINEM: `col = ANY (ARRAY[...])` e a variante com
+ * `col IS NULL OR ...`, que é como se escreve "opcional, mas se vier tem de ser
+ * um destes".
+ */
+function literaisSeDefine(def: string, coluna: string): string[] | null {
+  const semCheck = desembrulha(def.trim().replace(/^CHECK\s*/i, ""));
+  const col = coluna.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // "col IS NULL OR <resto>" — a permissão de nulo não descaracteriza a definição.
+  const semNulo = desembrulha(
+    desembrulha(semCheck).replace(new RegExp(`^\\(?${col}\\)?\\s+IS NULL\\)?\\s+OR\\s+`, "i"), ""),
+  );
+
+  const m = new RegExp(`^\\(?${col}\\)?\\s*=\\s*ANY\\s*\\(ARRAY\\[(.+)\\]\\)$`, "is").exec(semNulo);
+  if (!m) return null;
+  return [...m[1]!.matchAll(/'([^']+)'::text/g)].map((x) => x[1]!).sort();
+}
+
+/**
+ * O vocabulário que o banco aceita para a coluna.
+ *
+ * Se DUAS constraints definirem o conjunto, isto RECUSA em vez de escolher —
+ * mesmo princípio do `resolveActiveLeadForContact`. Adivinhar num instrumento de
+ * medição é pior que num roteador: o roteador erra um card, o instrumento erra o
+ * veredito sobre todos.
+ */
 function valoresDoCheck(tabela: string, coluna: string): string[] {
-  const def = sql(
+  const bruto = sql(
     `select pg_get_constraintdef(k.oid)
        from pg_constraint k
        join pg_class c on c.oid = k.conrelid
@@ -88,10 +164,25 @@ function valoresDoCheck(tabela: string, coluna: string): string[] {
       where k.contype = 'c'
         and c.relname = '${tabela}'
         and a.attname = '${coluna}'
-        and pg_get_constraintdef(k.oid) like '%= ANY (ARRAY[%'
-      limit 1`,
-  ).trim();
-  return [...def.matchAll(/'([^']+)'::text/g)].map((m) => m[1]!).sort();
+      order by k.conname`,
+  );
+
+  const definidoras = bruto
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((def) => ({ def, valores: literaisSeDefine(def, coluna) }))
+    .filter((x): x is { def: string; valores: string[] } => x.valores !== null);
+
+  if (definidoras.length > 1) {
+    throw new Error(
+      `${tabela}.${coluna}: ${definidoras.length} constraints DEFINEM o vocabulário — ` +
+        `me recuso a escolher uma, porque escolher errado dá veredito falso sobre ` +
+        `todos os pares. Constraints:\n` +
+        definidoras.map((d) => `  ${d.def}`).join("\n"),
+    );
+  }
+  return definidoras[0]?.valores ?? [];
 }
 
 describe("vocabulário: banco × TypeScript", () => {
