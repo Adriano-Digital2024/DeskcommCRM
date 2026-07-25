@@ -121,6 +121,12 @@ async function main(): Promise<void> {
   const doente = (d ?? [])[0] as { id: string };
   console.info(`[vigia] ${CICLOS} ciclos a cada ${INTERVALO / 60000}min · log em ${LOG}`);
 
+  // O NÚMERO QUE SOBE QUANDO EU ESTOU ERRADO. "Ciclos verdes" é contagem de
+  // progresso: só cresce quando parece que está tudo bem, e por isso PARECE
+  // rigor sem proteger de nada. `indecidiveis` cresce exatamente quando o
+  // aparato deixa de medir — e um vigia que perdeu a capacidade de medir mostra
+  // um número subindo em vez de ficar quieto, verde e inútil.
+  let indecidiveis = 0;
   for (let i = 1; i <= CICLOS; i++) {
     const { canario: okBom, doente: okDoente } = await ciclo(bom.id, doente.id);
     const hora = new Date().toTimeString().slice(0, 8);
@@ -132,11 +138,24 @@ async function main(): Promise<void> {
       : okDoente
         ? "os dois entregam"
         : "*** O DEFEITO VOLTOU: controle entrega, doente não ***";
-    const linha = `${hora} ciclo ${String(i).padStart(2)} · canário=${okBom ? "ok" : "FALHOU"} · doente=${okDoente ? "ok" : "FALHOU"} · ${leitura}`;
+    if (!okBom) indecidiveis++;
+    const linha =
+      `${hora} ciclo ${String(i).padStart(2)} · canário=${okBom ? "ok" : "FALHOU"} · ` +
+      `doente=${okDoente ? "ok" : "FALHOU"} · indecidíveis acumulados=${indecidiveis}/${i} · ${leitura}`;
     console.info(`  ${linha}`);
     fs.appendFileSync(LOG, `${new Date().toISOString()} ${linha}\n`);
     if (i < CICLOS) await new Promise((r) => setTimeout(r, INTERVALO));
   }
+  // O FECHO REPORTA A FRAGILIDADE, não o placar. Um vigia que terminou com
+  // metade dos ciclos indecidíveis não vigiou nada — e essa linha é a única
+  // chance de alguém perceber isso sem reler o log inteiro.
+  const fecho =
+    indecidiveis === 0
+      ? `vigia encerrado: ${CICLOS} ciclos, NENHUM indecidível — a série é legível inteira`
+      : `vigia encerrado: ${indecidiveis} de ${CICLOS} ciclos INDECIDÍVEIS — o aparato deixou de ` +
+        `medir em ${Math.round((indecidiveis / CICLOS) * 100)}% da série, e ela não sustenta veredito`;
+  console.info(`\n${fecho}`);
+  fs.appendFileSync(LOG, `${new Date().toISOString()} ${fecho}\n`);
   process.exit(0);
 }
 
