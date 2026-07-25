@@ -3322,3 +3322,75 @@ chega ao **modelo**, não só ao objeto. Sonda dele: **PASS 3/3**, exit 0.
    runtime esteve descartando turnos e ninguém agiu — sintoma, não ruído. Sob apuração do @QAVivo.
 3. **Jargão cru no corpo do aviso**: `kind=case_reply_turn; attempts=5` renderizado para usuário
    leigo. Mesma doença do rótulo, outro lugar, pré-existente ao épico.
+
+### Incidente de doutrina: um guard correto empurrando para o conserto errado
+
+O 4.5 entrou em `ce74e70` com `last_human_decision?:` — **opcional** —, e a justificativa estava
+escrita no próprio código: *"OPCIONAL no tipo, e não por preferência: `tests/invariants/**` é
+congelado por hook de governança, e um campo obrigatório obrigaria a editar o `fakeLeadContext` de
+um invariante existente."*
+
+O raciocínio a seguir era plausível e é o que o torna perigoso: *"a garantia que interessa não é
+fixture declarar o campo — é o PRODUTOR sempre preenchê-lo, e isso está coberto por
+`get-lead-context-decisao.test.ts`"*. Trocava uma garantia de **compilação, sobre todo mundo que
+constrói um contexto**, por um teste de runtime sobre **um** produtor.
+
+**Medição que resolveu a discussão** (não opinião): com `?:`, `fakeLeadContext(): LeadContext`
+omitia o campo e `tsc --noEmit` saía **0**. Um `LeadContext` nascia cego e o compilador ficava
+calado — a cegueira silenciosa que esta wave inteira existe para matar. E o épico já tinha essa
+lição escrita, na linha 2150 deste documento, de uma wave anterior: **"a interrogação do opcional é
+que calava o compilador."**
+
+Corrigido pelo @DevVivo com um argumento melhor que o meu pedido: *"`get-lead-context-decisao.test.ts`
+cobre o PRODUTOR; o tipo cobre todo mundo que constrói um contexto. **São camadas diferentes, não
+alternativas.**"*
+
+**Prova por mutação, com o campo já obrigatório:** remover a linha do fixture →
+`TS2741: Property 'last_human_decision' is missing ... but required in type 'LeadContext'`,
+exit 2; restaurar → exit 0.
+
+**A lição, que vale além deste campo:** um guard pode estar certo e ainda assim empurrar para o
+conserto errado, porque o caminho de menor atrito é ceder na *outra* ponta — a que ele não vigia.
+`freeze-invariants.sh` existe para impedir que um invariante incômodo seja **apagado**, não para
+impedir que ele continue **compilando**; acrescentar uma linha a um fixture é adição. Quando o guard
+bloquear, a pergunta não é *"como faço isto passar?"*, é *"o que este bloqueio está tentando me
+dizer, e o meu contorno paga o preço em qual outro lugar?"*. A exceção documentada existe e pede
+prova: `DESKCOMM_GOV_INVARIANTS_EDIT=1` com o `+N −0` **medido** no corpo do commit — se o `−0` não
+aparecer, o bloqueio estava certo.
+
+### O ataque à minha sonda — e ele achou (`cfedaf7`)
+
+Pedi ao @QAVivo que atacasse `sonda-ambiguo-na-caixa.ts` como ataca as dele. Sobre o **escopo** da
+asserção, que era a minha dúvida, ele confirmou que está certo: acha a linha pelo *título* e verifica
+o *rótulo do kind* — strings diferentes, de lugares diferentes; se `KIND_LABEL` regredir, a sonda
+fica vermelha.
+
+**O furo era outro, e era de procedência.** A contagem de itens era lida só **depois** de abrir o
+board, sem leitura "antes" e sem filtro de tempo. A consulta respondia *"existe um aviso para este
+contato?"* enquanto a sonda afirmava provar *"o board acabou de criar um aviso"*. Ele transformou a
+suspeita em fato do jeito mais direto: **plantou um aviso à mão, sem empate nenhum e sem rodar uma
+linha de código de produção**, e as quatro asserções fecharam **4/4**.
+
+O agravante é que a frase que condena isso está escrita, em português, no topo de
+`sonda-veto-na-tela.ts` — **por mim**: *"escrever a linha com INSERT à mão provaria a tela e mentiria
+sobre a origem"*. Ter a lição registrada não impediu de repeti-la num arquivo novo; documentar não
+é o mesmo que aplicar.
+
+**Conserto:** o veredito passou a ser uma **diferença**, não uma existência — lê os ids antes e
+afirma o que nasceu (`0 antes → 1 depois`). `antes.size === 0` entra na decisão: com um aviso
+pré-existente, a dedup do board impediria o nascimento e a sonda mediria um item que não é dela.
+A limpeza também ganhou procedência: apaga **por id**, só os desta execução (antes apagava todos os
+do contato — destruiria de brinde um item alheio, o mesmo erro que já contaminou uma timeline real).
+
+**Segundo furo, meu, achado ao escrever a prova:** o alvo saía de `limit 1` **sem `order by`** —
+alvo sorteado. Sonda que mede um alvo diferente a cada execução não produz veredito comparável.
+
+| cenário | antes → delta | veredito |
+|---|---|---|
+| empate genuíno, board detecta | 0 → 1 | ✅ 4/4, exit 0, duas execuções seguidas |
+| **ataque**: aviso plantado à mão | 1 → 0 | 🔴 exit 1 — o ataque morreu |
+
+**Wave 4 fecha em `d0a6734`: 17 verdes · 0 vermelhos · 0 bloqueados.** O último vermelho (13.e) era
+do próprio QA: o SQL dele trocava `next_action` direto no banco e deixava `next_action_seq` parada —
+**estado impossível pelo caminho real**, fabricado à mão e depois cobrado do produto. Corrigido
+roteando as duas escritas por `applyLeadStateUpdate`.
