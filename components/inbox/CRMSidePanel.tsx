@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Tag, Receipt, Users, ArrowRight } from "@/lib/ui/icons";
-import { createClient } from "@/lib/supabase/browser";
+import { apiClient } from "@/lib/api/client";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { activityLabel, actorLabel, actorShape } from "@/lib/leads/activity-vocabulary";
 import { ConversationTagsEditor } from "./ConversationTagsEditor";
@@ -64,6 +64,38 @@ function shortDate(iso: string): string {
   return format(new Date(iso), "dd/MM/yy HH:mm", { locale: ptBR });
 }
 
+/**
+ * O que cada seção mostra quando não tem lista para mostrar.
+ *
+ * Peça única porque são TRÊS seções tomando a MESMA decisão — e foi por essa
+ * decisão viver repetida em três lugares que as três mentiam juntas.
+ *
+ * Fora do componente de propósito: declarada dentro do corpo, ela vira um tipo
+ * novo a cada render e o React remonta a peça inteira. O linter reprovou, com
+ * razão — e eu tinha notado o cheiro e seguido em frente.
+ *
+ * Erro sem saída também é beco, por isso o botão.
+ */
+function SemLista({
+  vazio,
+  erro,
+  onTentarDeNovo,
+}: {
+  vazio: string;
+  erro: boolean;
+  onTentarDeNovo: () => void;
+}) {
+  if (!erro) return <p className="mt-2 text-xs text-muted-foreground">{vazio}</p>;
+  return (
+    <div className="mt-2 space-y-1">
+      <p className="text-xs text-error-fg">Não consegui ler estes dados.</p>
+      <Button size="sm" variant="outline" onClick={onTentarDeNovo}>
+        Tentar de novo
+      </Button>
+    </div>
+  );
+}
+
 export function CRMSidePanel({ conversation }: Props) {
   const contact = conversation?.contacts ?? null;
   const contactId = contact?.id ?? null;
@@ -72,6 +104,14 @@ export function CRMSidePanel({ conversation }: Props) {
   const [orders, setOrders] = useState<OrderRow[] | null>(null);
   const [activities, setActivities] = useState<ActivityRow[] | null>(null);
   const [loading, setLoading] = useState(false);
+  /**
+   * O TERCEIRO ESTADO. Antes existiam dois — carregando e "tem N itens" — e a
+   * falha era traduzida para lista vazia, virando "Sem leads.": uma afirmação
+   * sobre o NEGÓCIO feita em cima de um erro de leitura. Distinguir "não tem"
+   * de "não consegui ler" é a diferença entre informar e mentir.
+   */
+  const [erro, setErro] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     if (!contactId) {
@@ -80,46 +120,40 @@ export function CRMSidePanel({ conversation }: Props) {
       setActivities(null);
       return;
     }
-    const supabase = createClient();
     let cancelled = false;
     setLoading(true);
+    setErro(false);
 
+    // Pela ROTA, não pelo cliente de navegador: o cookie de sessão é httpOnly,
+    // então o supabase-js do browser não vê a sessão e consultava como `anon`
+    // (medido: role=anon com gerente logado). Ver o cabeçalho da rota.
     async function load() {
-      const leadsP = supabase
-        .from("crm_leads")
-        .select("id, title, status, value_cents, currency, updated_at")
-        .eq("contact_id", contactId)
-        .order("updated_at", { ascending: false })
-        .limit(3);
-
-      const ordersP = supabase
-        .from("orders")
-        .select("id, external_id, status, total_cents, currency, created_at")
-        .eq("contact_id", contactId)
-        .order("created_at", { ascending: false })
-        .limit(3);
-
-      const actsP = supabase
-        .from("crm_lead_activities")
-        .select("id, type, source_module, performed_at, payload, reason, actor_kind")
-        .eq("contact_id", contactId)
-        .order("performed_at", { ascending: false })
-        .limit(5);
-
-      const [lr, or, ar] = await Promise.all([leadsP, ordersP, actsP]);
-
-      if (cancelled) return;
-      setLeads(lr.error ? [] : ((lr.data ?? []) as LeadRow[]));
-      setOrders(or.error ? [] : ((or.data ?? []) as OrderRow[]));
-      setActivities(ar.error ? [] : ((ar.data ?? []) as ActivityRow[]));
-      setLoading(false);
+      try {
+        const r = await apiClient.get<{
+          data: { leads: LeadRow[]; orders: OrderRow[]; activities: ActivityRow[] };
+        }>(`/api/v1/contacts/${contactId}/crm-summary`);
+        if (cancelled) return;
+        setLeads(r.data.leads);
+        setOrders(r.data.orders);
+        setActivities(r.data.activities);
+      } catch {
+        if (cancelled) return;
+        // Falha NÃO vira lista vazia. Os dados ficam `null` e o painel diz que
+        // não conseguiu ler — nunca que não há.
+        setErro(true);
+        setLeads(null);
+        setOrders(null);
+        setActivities(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
     void load();
     return () => {
       cancelled = true;
     };
-  }, [contactId]);
+  }, [contactId, tentativa]);
 
   const tags = contact?.tags ?? [];
   const displayName =
@@ -128,9 +162,14 @@ export function CRMSidePanel({ conversation }: Props) {
     contact?.phone_number ||
     "—";
 
+  // `erro` PRIMEIRO, e não é detalhe: as três listas voltam a `null` quando a
+  // leitura falha, e este derivado lê `null` como "ainda não chegou". Sem esta
+  // guarda o painel mostraria esqueleto para sempre e o estado de falha nunca
+  // apareceria — o mesmo colapso de significados que criou o defeito original,
+  // só que trocando "erro→vazio" por "erro→carregando".
   const sectionsLoading = useMemo(
-    () => loading || (leads === null && orders === null && activities === null),
-    [loading, leads, orders, activities],
+    () => !erro && (loading || (leads === null && orders === null && activities === null)),
+    [erro, loading, leads, orders, activities],
   );
 
   if (!conversation) {
@@ -213,7 +252,7 @@ export function CRMSidePanel({ conversation }: Props) {
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-xs text-muted-foreground">Sem leads.</p>
+          <SemLista vazio="Sem leads." erro={erro} onTentarDeNovo={() => setTentativa((n) => n + 1)} />
         )}
       </section>
 
@@ -245,7 +284,7 @@ export function CRMSidePanel({ conversation }: Props) {
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-xs text-muted-foreground">Sem pedidos.</p>
+          <SemLista vazio="Sem pedidos." erro={erro} onTentarDeNovo={() => setTentativa((n) => n + 1)} />
         )}
       </section>
 
@@ -286,7 +325,7 @@ export function CRMSidePanel({ conversation }: Props) {
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-xs text-muted-foreground">Sem atividade.</p>
+          <SemLista vazio="Sem atividade." erro={erro} onTentarDeNovo={() => setTentativa((n) => n + 1)} />
         )}
       </section>
     </aside>
