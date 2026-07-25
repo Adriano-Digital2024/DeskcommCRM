@@ -400,6 +400,20 @@ export async function updateLeadHandler(
     sourceModule: "crm",
     sourceId: leadId,
     actor: ctx.actor,
+    // ⚠️ O REASON NOMEIA OS CAMPOS, NUNCA OS VALORES. Se você veio aqui para
+    // deixar a timeline "mais informativa" pondo o antes-e-depois — pare: neste
+    // produto o TÍTULO É O NOME DO CLIENTE ("Carlos — Clínica Vida Odonto"), e
+    // `custom_fields` é dado arbitrário do tenant, sem limite conhecido. O
+    // reason é RENDERIZADO NA TELA e vai junto em captura, exportação e ticket
+    // de suporte; o §9 proíbe PII nova em log, reason ou evidence.
+    //
+    // Quem precisa do valor anterior tem `api_audit_log`, que já registra a
+    // mutação SOB CONTROLE DE ACESSO. Duplicar aqui criaria um segundo lugar
+    // com o mesmo dado e menos proteção.
+    //
+    // NÃO confunda com a atividade de autorização vencida (wave 4), que mostra
+    // antes-e-depois DE PROPÓSITO: lá o texto é a proposta do PRÓPRIO AGENTE,
+    // escrita por máquina. A origem do texto é que decide, não a forma da frase.
     reason: `Alterou ${listaLegivel(fields)}`,
     payload: { fields },
   });

@@ -137,6 +137,12 @@ const NOME_DO_CAMPO: Record<string, string> = {
 /**
  * "o título e o valor" — a lista de campos alterados, legível.
  *
+ * ⚠️ NOMES, NUNCA VALORES. Esta função existe para dizer O QUE mudou sem dizer
+ * PARA QUÊ. Acrescentar o conteúdo aqui vazaria PII para uma linha que aparece
+ * na tela, em captura e em exportação — e a tentação é real, porque "mostrar o
+ * valor" parece só deixar a timeline mais informativa. Quem precisa do valor
+ * tem o `api_audit_log`, sob controle de acesso.
+ *
  * Campo desconhecido cai no próprio nome em vez de sumir: uma coluna nova
  * apareceria na timeline como `expected_close_date`, feio mas honesto — some
  * seria pior, porque a frase diria menos do que aconteceu.
