@@ -5058,6 +5058,14 @@ explicados por obrigação.
 
 ### §7.136-b — A previsão registrada ANTES do conserto é cerca, e custa uma linha
 
+> **NOTA POSTERIOR (§7.230-refinada).** O exemplo citado nesta seção — *"consertado o eixo, a
+> contagem TEM de virar 5"* — é **contagem de PROGRESSO usada como critério**, exatamente o que a
+> §7.230 refinada proíbe. A previsão foi retratada horas depois porque previa o APARATO, não o
+> produto (§7.147). **A lei da seção continua válida** (previsão registrada antes do conserto é
+> cerca barata); **o exemplo é o contraexemplo**, e fica aqui declarado como tal em vez de removido —
+> apagá-lo esconderia que a própria doutrina produziu um caso do que ela veio a proibir.
+
+
 Ficou escrito no próprio critério, antes de o eixo ser consertado: hoje são **4 entradas para 5
 aberturas** porque um dos leads não tem contato e o canal é indexado por contato. **Consertado o
 eixo, a contagem TEM de virar 5; se continuar 4, o conserto está incompleto.**
@@ -7559,3 +7567,48 @@ inocente, como o texto do vermelho já dizia — mas *"o texto dizia"* não é *
 critério agora decide sozinho: controle recebeu e a tela não aplicou ⇒ **FALHA** (acusação da tela);
 nem o controle recebeu ⇒ **BLOQUEADO**. A diferença muda **quem é chamado para consertar**, que é a
 única coisa que um vermelho realmente faz.
+
+## §7.245 — Denominador honesto: cobertura se reporta sobre a população a que o filtro se APLICA
+
+*"Varri 259 seções"* seria mentira. São 259 no total, e o filtro fragilidade×progresso só se aplica a
+quem **manda contar** algo: **34**. As outras 225 não prescrevem contagem e estão **fora do escopo** —
+dizer que passaram **infla cobertura**.
+
+**A inflação é sutil porque não há afirmação falsa:** nenhuma das 225 reprovou. O erro é o
+denominador — e um denominador grande demais converte *"não achei problema onde procurei"* em *"não
+há problema"*.
+
+**Regra:** ao reportar varredura, declare **três números**: população total, **população a que o
+critério se aplica**, e achados. O segundo é o que quase ninguém escreve, e é o único que torna o
+terceiro interpretável.
+
+## §7.246 — Lei e FORMATO DE RELATÓRIO são lidos como categorias distintas — então a doutrina pode proibir o que o relatório faz
+
+O achado da varredura não foi na doutrina: **das 34 que mandam contar, NENHUMA prescreve contagem de
+progresso.** Várias existem justamente para atacá-la — a que diz que *"número fixo de evidência vira
+COTA, e cota se preenche"*, a que usa *"10 critérios, 6 verdes"* **como exemplo do problema**, a que
+manda contar a trava **sombreada** (o que o placar não conta).
+
+**A contagem de progresso estava na SUPERFÍCIE DE RELATO** — o placar `17/0/0`, maquinaria de quem
+mede, não lei de quem rege.
+
+> ***"A doutrina proibia o que o meu relatório fazia todo dia, e ninguém viu porque lei e formato de
+> relatório são lidos como coisas diferentes."***
+
+**É um ponto cego estrutural:** a doutrina governa *o que se faz*; o formato de relatório governa *o
+que se vê*. São arquivos diferentes, autores diferentes, momentos de leitura diferentes — e **ninguém
+aplica a doutrina ao formato**, porque o formato não parece uma decisão. Uma regra pode contradizer o
+relatório **indefinidamente** sem que a contradição seja notada por nenhum dos dois lados.
+
+**Regra:** toda varredura de doutrina inclui, como população, **os formatos de saída** — placares,
+logs, cabeçalhos, mensagens de erro, dashboards. É onde a doutrina é praticada sem ser lida.
+
+### §7.230-c — Terceira etiqueta: MEDIÇÃO
+
+Nem toda contagem é fragilidade ou progresso. *"Conte eventos do fenômeno, não amostras do
+instrumento"* e *"só a contagem é evidência"* são regras de **MEDIÇÃO**: ali o número **é o próprio
+observável**, não um indicador de qualidade do trabalho.
+
+**A dicotomia fragilidade×progresso vale para contagens usadas como EVIDÊNCIA DE QUALIDADE.** Forçar
+uma regra de medição numa das duas produziria classificação errada e enfraqueceria o filtro — que é
+justamente o que o filtro existe para evitar.
