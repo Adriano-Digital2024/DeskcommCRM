@@ -7259,6 +7259,20 @@ alter table public.crm_leads
 alter table public.crm_lead_scores
   drop constraint if exists crm_lead_scores_needs_reason;
 
+-- Limpeza ANTES da constraint (migration 0076): um clone pode ter score sem
+-- `factors`, porque o CHECK nunca exigiu. Apaga o SCORE, não inventa fatores —
+-- fabricar a explicação que falta produz o dado plausível, que é pior que o
+-- buraco.
+update public.crm_lead_scores
+   set ai_probability = null, ai_probability_reason = null, ai_probability_at = null,
+       ai_probability_band = null, ai_probability_band_since = null, updated_at = now()
+ where ai_probability is not null
+   and coalesce(jsonb_array_length(ai_probability_evidence -> 'factors'), 0) = 0;
+
+-- As duas partes cobrem promessas DIFERENTES do cenário 15: âncora = "clique
+-- leva ao registro"; factors = "hover revela o porquê". Uma sem a outra dá
+-- evidência irrastreável ou ilegível — e elas JÁ divergiram uma vez, com o
+-- banco cobrando uma e a tela lendo a outra (ver migration 0076).
 alter table public.crm_lead_scores
   add constraint crm_lead_scores_needs_reason check (
     ai_probability is null
@@ -7268,6 +7282,7 @@ alter table public.crm_lead_scores
       and coalesce(jsonb_array_length(ai_probability_evidence -> 'activity_ids'), 0)
         + coalesce(jsonb_array_length(ai_probability_evidence -> 'message_ids'), 0)
         + coalesce(jsonb_array_length(ai_probability_evidence -> 'checkpoint_ids'), 0) > 0
+      and coalesce(jsonb_array_length(ai_probability_evidence -> 'factors'), 0) > 0
     )
   );
 

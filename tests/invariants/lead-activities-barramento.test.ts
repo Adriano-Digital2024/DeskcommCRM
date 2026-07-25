@@ -91,6 +91,16 @@ beforeAll(() => {
   // Re-aplica a migration (ela é idempotente) — é o que um clone faz ao
   // atualizar. É aqui que o backfill roda sobre as linhas legadas acima.
   psql(readFileSync("supabase/migrations/20260725010000_0071_crm_lead_activities_barramento.sql", "utf8"));
+  // A 0072 vem JUNTO, e não é detalhe: reaplicar só a 0071 DESFAZ a 0072 para
+  // todo mundo que rodar depois — ela redefine
+  // `crm_lead_activities_ai_needs_evidence` sem `llm_call_ids`, e o banco fica
+  // numa versão que o repositório já não tem.
+  //
+  // Este arquivo prova o backfill da 0071, então precisa mesmo reaplicá-la; o
+  // que não pode é deixar o banco num estado do passado. Migration reaplicada
+  // isoladamente é uma viagem no tempo que não volta sozinha — e o teste
+  // seguinte mede o passado sem saber.
+  psql(readFileSync("supabase/migrations/20260725020000_0072_activity_evidence_llm_call_ids.sql", "utf8"));
 });
 
 describe("0071 — o backfill não apaga o que já se sabia", () => {
