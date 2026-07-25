@@ -2430,3 +2430,50 @@ erro"* e passa a ser *"o valor está lá"*.
 valor voltou na leitura"* — e ali **não há o que reler**. **Texto que afirma uma verificação que não
 aconteceu** é a §7.48 em escala de uma linha: o relatório mente sobre o próprio rigor, e quem lê passa
 a confiar num rigor que não existe.
+
+---
+
+## §7.58 — A formulação apagava a distinção que o próprio autor defendia
+
+O @Arquiteto foi **procurar um caso em que o modelo dele vencesse** e achou um que o **demole** —
+e é o tipo de honestidade que decide desenho.
+
+**O caso:** um lead com **dois** sinais presentes e ambos perfeitos (BANT 4/4 e estágio *negociando*)
+dá **100** na renormalização. *Cem por cento de probabilidade de fechar, a partir de dois sinais.* No
+modelo de base + parcelas, os mesmos dois sinais empilham sobre a base 30 e param perto de 60 — que é
+o que um lead com pouca evidência boa merece.
+
+**E o golpe é que isso contradiz o argumento dele.** Ele defendeu a renormalização escrevendo que
+*"ausência reduz a CONFIANÇA, não a probabilidade"*. Mas a renormalização **iguala** *"poucos sinais,
+todos bons"* a *"muitos sinais, todos bons"* — **apaga exatamente a distinção que ele disse que
+importava**. Quem implementa o princípio enunciado é o **outro** modelo: sem evidência o score fica
+perto do *prior*, e a evidência **afasta**.
+
+> **Forma geral, e é reconhecível:** enuncia-se um princípio, escolhe-se um mecanismo que o **viola**,
+> e não se percebe — porque a atenção estava no **mecanismo**, não na relação dele com o princípio.
+> **Teste:** depois de escolher o mecanismo, releia a própria justificativa e pergunte se o mecanismo a
+> **implementa**. Não é raro descobrir que ele faz o contrário.
+
+**Ruling: o desenho fecha no modelo de parcelas**, com os quatro deltas.
+
+### Emenda à §7.49 — é uma lei com duas álgebras, não duas leis
+
+Correção dele à minha generalização, e ela é melhor:
+
+> **O invariante é ORDENAR POR AFASTAMENTO DO NEUTRO**, e cada formulação tem a sua álgebra para
+> "neutro".
+
+| formulação | neutro | medida |
+|---|---|---|
+| média ponderada | `0,5` | `peso × \|valor − 0,5\|` |
+| base + parcelas | **zero ponto** | `\|pontos\|` |
+
+Isso corrige **onde** a §7.49 se aplica: o perigo **não está no "top 3"** — está em ordenar por
+**magnitude do que somou** quando o **zero é informativo**. O modelo de parcelas é imune **por
+construção**, porque nele "três objeções" é `−16`, e não `0`.
+
+### E o formato do `reason` endurece o gate da C1
+
+Com os **pontos dentro da string**, o teste da C1 continua sendo montagem mecânica a partir dos mesmos
+objetos — e agora o **número** também está preso à frase. Uma frase de modelo teria de acertar **texto
+E pontuação de cada parcela** para passar. **Ficou mais difícil de burlar, não menos.**
