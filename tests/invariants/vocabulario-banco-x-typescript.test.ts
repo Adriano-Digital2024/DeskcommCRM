@@ -46,6 +46,36 @@ const PARES: Array<{ tabela: string; coluna: string; ts: string[]; origem: strin
     ts: ["user", "ai"],
     origem: "OwnerKind (lib/types/leads.ts)",
   },
+  {
+    tabela: "agent_inbox_items",
+    coluna: "kind",
+    // lib/agent-engine/db/repository.ts → InboxKind.
+    //
+    // Este par nasceu de um defeito REAL, não de zelo: a lista do TS ficou 3
+    // valores atrás do banco e ninguém soube. Pior, o dev checkou a lista
+    // contra o BANCO DE DEV, que estava numa versão ANTERIOR da constraint e
+    // não aceitava `followup_dead` — enquanto lib/followup/engine.ts o insere.
+    // O aviso que existe para salvar um follow-up travado era rejeitado pelo
+    // banco, em silêncio, num caminho fire-and-forget.
+    //
+    // Por isso este invariante lê do Postgres DESCARTÁVEL que nasce do
+    // `baseline.sql` versionado (TEST_DB_CONTAINER), nunca do banco de dev: o
+    // banco de dev conta o que aconteceu com ele, não o que o sistema promete.
+    ts: [
+      "qr_rescan",
+      "job_dead",
+      "event_dead",
+      "budget_exceeded",
+      "handoff",
+      "promotion_review",
+      "judge_unaligned",
+      "followup_dead",
+      "snooze_expired",
+      "next_action_ambiguous",
+      "other",
+    ],
+    origem: "InboxKind (lib/agent-engine/db/repository.ts)",
+  },
 ];
 
 /** Extrai os literais de um `CHECK (x = ANY (ARRAY['a'::text, 'b'::text]))`. */
