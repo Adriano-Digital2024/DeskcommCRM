@@ -8920,3 +8920,45 @@ que estava certo** — e essa lembrança é o que impede a investigação seguin
 **Regra:** ao enumerar desfechos, ordene por **quanto cada um resiste a ser notado**, não por quanto
 estraga. O estado que engana ganha prioridade sobre o estado que quebra — porque o que quebra tem
 quem reclame.
+
+## §7.281-a — A cerca herda o ENQUADRAMENTO do defeito que ela combate: a doença vem pelo assunto
+
+Quinta ocorrência no mesmo dia, e desta vez com o **mecanismo** explicado — o que faltava na §7.281.
+
+O carimbo lia `git status` **uma vez, no início**. Numa execução de três minutos, em árvore que **duas
+sessões dividem**, o código pode ser trocado no meio — e **o veredito sairia LIMPO sobre um código
+que não é mais o medido**. É o alvo em movimento **dentro** da janela em vez de entre janelas, **e é o
+pior dos três estados porque não deixa rastro: começou limpo, terminou limpo.**
+
+E ao consertar, a cerca nova nasceu doente: as duas condições dividiam **uma mensagem só**, e o caso
+*"mudou durante"* imprimia *"a árvore estava suja (…)"* **com a lista vazia** — **afirmação falsa
+produzida pela cerca recém-escrita para impedir afirmação falsa.**
+
+**A explicação, e ela é o avanço:**
+
+> ***"Não é só que o autor não muda ao escrever a cerca. É que a cerca HERDA O ENQUADRAMENTO DO
+> DEFEITO QUE ELA COMBATE — eu estava pensando 'árvore suja', então escrevi UMA mensagem sobre árvore
+> suja, e o segundo estado entrou como VARIANTE do primeiro em vez de como estado próprio. A doença
+> não chega por acaso; ela vem PELO ASSUNTO."***
+
+Pensar sobre X faz escrever coisas com **a forma de X**. Um segundo estado, genuinamente distinto, é
+**absorvido como variante** — não por descuido, mas porque o enquadramento do problema **é o molde do
+que se escreve para resolvê-lo**.
+
+**A checklist da §7.281 ganha a quinta pergunta, e é a que faltou nas cinco ocorrências:**
+
+1. exige **forma** ou **efeito**?
+2. mede **nascimento** ou **vida**?
+3. conta **fragilidade** ou **progresso**?
+4. distingue **quantos desfechos**?
+5. **esta cerca tem UM estado ou DOIS que estou tratando como um?**
+
+### Auditoria completa das cercas do QA — resultado
+
+| cerca | veredito |
+|---|---|
+| carimbo | **reprovou** em nascimento×vida — consertado (3 desfechos, o terceiro exercitado sujando o arquivo aos 9s de uma execução em curso) |
+| catraca do 27 · detector de dívida · bloqueado do D21 | já haviam reprovado hoje — **consertados** |
+| `guardaEvidencia` · `criarPlacar` | **passaram** nas quatro perguntas |
+
+**Nenhuma cerca do aparato está sem auditoria.**
