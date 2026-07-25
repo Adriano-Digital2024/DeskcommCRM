@@ -6569,3 +6569,26 @@ devolve a diferença como se fosse do sujeito. Resultado: **Pedidos 2/2 e 2/2; C
 **Veredito: dois defeitos independentes.** O conserto da memoização e a remoção da assinatura anônima
 resolvem o board mudo **e deixam este vivo** — o pior desfecho para quem olhasse só o board, porque
 ele fica **com aparência de resolvido**.
+
+## §7.203 — Guarda SOMBREADA: a trava que dispara primeiro esconde as demais, e o placar não conta
+
+Seis casos verdes, prontos para reportar. Ao imprimir o **nome da constraint** que rejeitou, apareceu
+que *"status inválido"* foi barrado por `decisao_datada` — **e não** por `status_check`. O caso
+passava status não-pendente sem `decided_at`, então a trava vizinha disparava antes. **O
+`status_check` seguia sem prova nenhuma, e o placar dizia seis de seis.**
+
+É a §7.48 (*"recusou" não é a pergunta; "recusou pelo motivo certo" é*) com um mecanismo novo e mais
+traiçoeiro: **não é o teste que está errado — é uma segunda guarda, correta, interceptando o caso
+antes da guarda sob teste.** A contagem de testes verdes deixa de ser a contagem de travas provadas,
+e nada no relatório revela a diferença.
+
+**E a sombra não é estável.** A ordem de avaliação de constraints não é garantida: uma mudança de
+schema pode inverter quem dispara primeiro, e o mesmo teste passa a provar outra coisa **em
+silêncio**. Só o isolamento torna o significado do teste estável no tempo.
+
+**Regra, em duas partes:**
+1. **Imprima sempre o nome da trava que rejeitou.** Sem ele, "rejeitou pela trava certa" e "rejeitou
+   por uma vizinha" são indistinguíveis — e o segundo caso é invisível por construção.
+2. **Monte cada caso VÁLIDO em tudo menos no que está sob teste** (status inválido **com**
+   `decided_at` preenchido), para que só a trava alvo possa reprovar. Caso "inválido em duas coisas"
+   prova a primeira e não diz nada sobre a segunda.
