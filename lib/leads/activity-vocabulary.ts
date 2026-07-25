@@ -24,7 +24,8 @@ export type ActivityType =
   | "send_vetoed"
   | "handoff_triggered"
   | "next_action_approved"
-  | "next_action_dismissed";
+  | "next_action_dismissed"
+  | "lead_edited";
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   stage_changed: "Mudou de estágio",
@@ -37,6 +38,10 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   // no que já foi negado — por isso os dois lados geram atividade.
   next_action_approved: "Próxima ação aprovada",
   next_action_dismissed: "Próxima ação descartada",
+  // Editar campo era INVISÍVEL na timeline: a IA deixava rastro e o humano não.
+  // Não era "falta um emissor" — era meia continuidade vendida como
+  // continuidade, e o dossiê teria mostrado só metade da vida do lead.
+  lead_edited: "Dados do negócio alterados",
 };
 
 /** Quando o tipo é legado/desconhecido, a linha ainda é honesta — sem jargão. */
@@ -113,4 +118,32 @@ export function actorLabel(actorKind: string | null): string {
     default:
       return "Autor não registrado";
   }
+}
+
+/** Como os campos do lead se chamam para quem lê — nunca o nome da coluna. */
+const NOME_DO_CAMPO: Record<string, string> = {
+  title: "o título",
+  description: "a descrição",
+  value_cents: "o valor",
+  currency: "a moeda",
+  owner_user_id: "o responsável",
+  owner_agent_id: "o agente responsável",
+  expected_close_date: "a data prevista de fechamento",
+  tags: "as tags",
+  custom_fields: "os campos personalizados",
+  lost_reason: "o motivo da perda",
+};
+
+/**
+ * "o título e o valor" — a lista de campos alterados, legível.
+ *
+ * Campo desconhecido cai no próprio nome em vez de sumir: uma coluna nova
+ * apareceria na timeline como `expected_close_date`, feio mas honesto — some
+ * seria pior, porque a frase diria menos do que aconteceu.
+ */
+export function listaLegivel(campos: string[]): string {
+  const nomes = campos.map((c) => NOME_DO_CAMPO[c] ?? c);
+  if (nomes.length === 0) return "nada";
+  if (nomes.length === 1) return nomes[0]!;
+  return `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]!}`;
 }

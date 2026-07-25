@@ -11,6 +11,7 @@ import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
 import { audit } from "@/lib/audit";
 import { resolveOwnerPatch, type OwnerPatch, type OwnerPatchInput } from "@/lib/leads/owner-patch";
 import { emitLeadActivity, stageChangeReason } from "@/lib/leads/activity-emitter";
+import { listaLegivel } from "@/lib/leads/activity-vocabulary";
 import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 import type { CreateLeadInput, UpdateLeadInput } from "@/lib/schemas";
 
@@ -382,6 +383,38 @@ export async function updateLeadHandler(
 
   const a = actorAuditPayload(ctx.actor);
   const fields = Object.keys(input);
+
+  // A EDIÇÃO HUMANA ENTRA NA TIMELINE (wave 6). Antes disto, mexer num campo
+  // era invisível: a IA deixava rastro e o humano não — meia continuidade
+  // vendida como continuidade, e o dossiê mostraria só metade da vida do lead.
+  //
+  // O `reason` carrega QUAIS campos mudaram porque "dados alterados" sozinho
+  // não muda o que ninguém faz a seguir; saber que mudou o VALOR é diferente de
+  // saber que mudou a descrição. Os nomes vão em português — o que a pessoa lê
+  // não pode ser o vocabulário da coluna.
+  const atividadeEdicao = await emitLeadActivity(supabase, {
+    organizationId: existing.organization_id,
+    leadId,
+    contactId: (updated as { contact_id?: string | null }).contact_id ?? null,
+    type: "lead_edited",
+    sourceModule: "crm",
+    sourceId: leadId,
+    actor: ctx.actor,
+    reason: `Alterou ${listaLegivel(fields)}`,
+    payload: { fields },
+  });
+  if (!atividadeEdicao.ok) {
+    // Rastro de mutação já ocorrida: falha BAIXO, mas contada (ver
+    // lib/leads/activity-write-failure.ts).
+    await registraFalhaDeAtividade(supabase, {
+      organizationId: existing.organization_id,
+      leadId,
+      tipo: "lead_edited",
+      origem: "leads/_handler.updateLeadHandler",
+      erro: atividadeEdicao.error,
+      requestId: ctx.requestId,
+    });
+  }
 
   await supabase
     .rpc("emit_event", {
