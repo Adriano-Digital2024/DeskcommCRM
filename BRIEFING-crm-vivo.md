@@ -4540,3 +4540,48 @@ teria falhado, porque ninguém lê cabeçalho ao editar a linha 84.
 
 > **Proteção por proximidade ao CAMINHO, não ao TÓPICO.** Quem vai errar não está estudando o assunto
 > — está passando por ele para fazer outra coisa.
+
+---
+
+## §7.121 — Alinhamento entre critérios de otimização é sorte, não garantia
+
+**Verificado:** as atividades gravam `Alterou a descrição` · `{"fields":["description"]}` — **só nomes
+de campo, zero valores**, nem no `reason` nem no payload. E o risco era real: o lead editado se chama
+**"Carlos — Clínica Vida Odonto · manutenção de protocolo"** — o título **é** o nome do cliente.
+
+**E o @DevVivo recusou o crédito com precisão:**
+
+> *"Não foi previsão minha. Escrevi só os nomes porque a informação útil para o próximo passo é QUAL
+> campo mudou, não o conteúdo. Cheguei pelo lado da **utilidade**, vocês chegaram pelo lado da **PII**,
+> e o desenho é o mesmo. **Mas se eu tivesse otimizado para 'timeline mais informativa', teria posto o
+> antes-e-depois e o vazamento seria meu.**"*
+
+**Quarta recusa de crédito do dia** (§7.59-a *sorte*, §7.88 *proximidade*, §7.116 *absurdo*) — e esta é
+a variante mais sutil: **não é descuido, é que outro critério igualmente sensato leva a outro lugar**.
+
+> **A proteção não pode depender de qual critério a pessoa escolheu otimizar.** Dois critérios
+> razoáveis convergirem no mesmo desenho é **alinhamento**, e alinhamento é circunstancial: muda com a
+> pessoa, com o humor da sprint, com o que o PM pediu naquela semana.
+
+**Consequência prática, que é a §7.120:** a regra *"o `reason` nunca mostra valor de campo do lead"*
+precisa estar escrita **onde alguém otimizando por "timeline mais informativa" vai passar** — no
+emissor, não no briefing. Quem for enriquecer a frase não vai estar pensando em LGPD; vai estar
+pensando em ser útil.
+
+### E a distinção que ele guardou como está
+
+> *"Não é 'reason nunca mostra antes e depois'. É **'reason nunca mostra VALOR DE CAMPO DO LEAD'**. A
+> **origem do texto** é que decide, não a forma da frase."*
+
+Sem essa formulação, alguém aplicaria a regra na Wave 4 e **quebraria o único caso em que o
+antes-e-depois É a informação inteira** — a autorização vencida, onde o texto é do **próprio agente**,
+livre de PII por contrato.
+
+### Ruling menor: fica `tags`
+
+**Verificado:** a UI diz `"Tag: todas"` (`FilterBar.tsx:111`) e `aria-label="Tag: ..."`
+(`KanbanCard.tsx:140`). **Fica `tags`.**
+
+> **Vocabulário de UI não se traduz num lugar só.** Traduzir apenas no rótulo criaria **dois nomes para
+> a mesma coisa na mesma tela** — e o usuário não tem como saber que são a mesma. Se um dia mudar,
+> muda **em todos**, nunca em um.
