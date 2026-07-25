@@ -7984,3 +7984,51 @@ contato" seria a doença do dia inteiro, criada de propósito.
 **Regra:** ao desenhar peça que cruze contato e negócio, **a primeira pergunta é "qual negócio?", e a
 resposta é o resolvedor existente**. E o mapa vivo (`docs/architecture/`) precisa mostrar esse
 pedágio explicitamente — três pedágios pagos e nenhum registrado é o que faz o quarto custar igual.
+
+## §7.260 — ONDE a recusa acontece decide se ela ENSINA: configuração vence uso
+
+Eu havia aprovado *"recuse mover e registre"* para o caso de dois estágios com o mesmo `hint`
+(§7.258). **O schema respondeu melhor: a ambiguidade virou IMPOSSÍVEL.**
+
+Ao atacar os invariantes, um caso válido foi reprovado por `uniq_crm_stages_pipeline_won` — **que já
+existia**, com exatamente o desenho necessário: unique parcial, excluindo arquivados. **O produto já
+havia decidido que dois lugares de ganho no mesmo funil é impossível, não improvável.** Estender a
+mesma garantia aos outros cinco passos **dissolveu a decisão que eu tinha tomado**.
+
+**E a diferença prática é onde a recusa acontece:**
+
+| momento da recusa | quem recebe | o que aprende |
+|---|---|---|
+| **configuração** (banco recusa na hora) | quem **configurou** | vê o erro com a intenção fresca e conserta |
+| **uso** (resolvedor recusa mover) | quem **usa**, meses depois | um negócio não se move e ninguém sabe explicar |
+
+**Recusa no uso pune um terceiro que não causou o problema, e chega sem o contexto que a tornaria
+corrigível.** A §7.258 continua valendo — mas a **primeira** pergunta passa a ser: *dá para mover
+esta recusa para o momento da configuração?* Só quando não dá é que se recusa no uso.
+
+**E o argumento de consistência é o que baratear tudo:** *"não havia razão para os outros cinco
+passos terem menos rigor que os dois"*. Quando parte de um domínio **já tem** uma garantia, estendê-la
+é mais barato e mais defensável que inventar tratamento para o resto — e **rigor desigual dentro do
+mesmo conceito já é, por si, um defeito**.
+
+## §7.261 — Teste mais RIGOROSO que o schema é decisão de produto tomada por acidente
+
+Um teste próprio cobrava que **todo `is_won` tivesse `hint` preenchido** — e reprovou com 144 linhas
+num banco limpo. **O CHECK permite `is_won` sem `hint` DE PROPÓSITO**, e é assim que todo clone
+começa.
+
+> *"Backfill é migração de DADOS: cobre o que existia, não o que nascer depois."*
+
+**E a direção do desvio decide a gravidade:**
+- Teste **mais frouxo** que o schema é inofensivo — o banco pega o que ele deixa passar.
+- Teste **mais rigoroso** que o schema **cria uma regra que não existe**, e a impõe num lugar onde
+  ninguém procura por regras. O próximo a criar um estágio leva vermelho **sem entender**, e a única
+  explicação está num arquivo de teste que ele não escreveu.
+
+**É uma decisão de produto — "este campo é obrigatório" — tomada por acidente, sem discussão, e
+aplicada com a autoridade de um invariante.**
+
+**Regra:** todo teste que exige mais que a constraint correspondente **declara por que**, ou é
+afrouxado até coincidir. E o gate que pegou este pegou **o próprio autor sendo mais rigoroso que a
+própria decisão** — que é exatamente o caso que nenhuma revisão humana encontraria, porque parece
+zelo.
