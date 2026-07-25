@@ -3081,3 +3081,36 @@ estruturalmente são idênticos.
 > parágrafo, o exemplo virou citação e o guarda reprovou o handoff — **quarta vez que documentar o
 > problema cria o problema**. A saída foi usar a regra do próprio guarda, que descarta template por
 > não nomear arquivo nenhum.
+
+---
+
+## PENDÊNCIA 1 RESOLVIDA — os quatro canais mortos passam pelo hook curado
+
+A correção do realtime (`24b9ec2`) mora em `useRealtimeChannel` e curava os **5** hooks que a
+usavam. **Quatro** lugares abriam `.channel()` direto no cliente de navegador e ficaram de fora —
+assinavam como **anônimos**, recebiam `ok`, logavam *subscribed* e **nunca entregavam evento**.
+
+Migrados: `useAlertsRealtime`, `useTenantHealth` (broadcast), `useAgentRuns` e a tela de fontes de
+conhecimento (`postgres_changes` com filtro). Depois disto, o **único** `.channel()` do repositório
+é o de dentro do próprio hook, e os consumidores foram de **5 para 9** — a correção deixou de
+depender de alguém lembrar que existe um caminho curado.
+
+### A prova é a mais limpa da entrega: o mesmo instrumento, veredito invertido
+
+Rodada a sonda que o `@QAVivo` escreveu **para provar o canal morto**
+(`tests/prova-canal-agent-runs.ts`):
+
+| medida | antes | depois |
+|---|---|---|
+| token no canal `ai-agent-runs` | **sem** (o do board ia com) | **com** |
+| quadros novos após o gatilho | **0** | **1** |
+| tela mudou sem recarregar | **não** | **SIM** |
+
+E a sonda **não inverteu a conclusão sozinha**: diz *"NÃO confirmado como morto — ver os números"*,
+porque foi escrita para detectar morte e continua honesta sobre o que sabe. **Instrumento que não
+se apressa a afirmar o oposto é instrumento bem feito.**
+
+**O que o usuário ganha:** a tela de execuções de agente promete acompanhamento ao vivo e dispara
+*"nova execução iniciada"* / *"execução concluída"*. Esses avisos **nunca apareceram**. Quem abria
+para acompanhar um agente trabalhando via lista parada e concluía que nada estava acontecendo —
+enquanto o agente rodava.
