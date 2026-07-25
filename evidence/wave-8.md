@@ -133,3 +133,49 @@ As evidências da rede de segurança foram tiradas **antes** de `9d5b1f5`. O det
 elas mostram funcionando é o que tinha a leitura congelada. A lógica do comparador não
 mudou — só a frescura do dado que entra nele —, mas isso é **raciocínio, não
 observação**, e a diferença é justamente a que não se deve borrar.
+
+## Epílogo: o desencontro continuou DEPOIS de acertarmos a coluna
+
+O orquestrador corrigiu a minha retratação: a única que sobra na régua certa não é a
+minha sonda (`external_id` nulo) — é uma do WAHA, com **3,317s** de atraso. Ele está
+certo, e o motivo do desencontro é o próprio tema:
+
+**Eu filtrei atraso `> 1 minuto`; ele mediu com tolerância zero.** Os 3s dela nunca
+podiam aparecer na minha lista, e a minha (carimbo nulo, atraso infinito) aparecia na
+minha por construção. Acertamos a *grandeza* e continuamos com *limiares* diferentes —
+**a régua tem duas partes, e a gente só tinha aprendido a declarar a primeira.**
+
+E as duas medições nem sobre o mesmo banco foram: quando fui reconferir, as órfãs de
+sonda **não existiam mais** — alguém as limpou no intervalo.
+
+### Os 3 segundos são dois relógios, literalmente
+
+| origem | relógio |
+|---|---|
+| `ingest.ts:281` — `sent_at = p.timestamp` | aparelho / WhatsApp |
+| `ingest.ts:295` — `markConversation(..., now)` | servidor |
+| migration 0027 — recalcula `last_message_at` por `coalesce(sent_at, created_at)` | aparelho |
+
+A **mesma coluna** carrega relógios diferentes conforme quem escreveu por último:
+depois de um recálculo é do aparelho, em operação normal é do servidor. Não é defeito e
+não proponho mexer — a magnitude é irrelevante para o produto. Fica registrado porque
+qualquer verificação que compare essas duas colunas vai achar segundos de diferença que
+**não são defeito**, e reprovar por isso é falso vermelho.
+
+### O conserto do instrumento — `98d2222`
+
+`mensagemDeSonda` (em `tests/qa-helpers.ts`, junto do `escolherAlvo`) insere **e** chama
+`fn_mark_conversation_message`, estourando se a RPC falhar. Devolve `apaga()`, que
+remove pelo ID e exige ter casado exatamente uma linha.
+
+Enquanto a sonda inseria direto, **cada rodada plantava um achado falso de produto** —
+inclusive o "Sem mensagens" que o QA viu numa conversa que tinha mensagens.
+
+### A segunda retratação veio da disciplina, não da dúvida
+
+Investigando por que a limpeza da outra sonda falhara, eu já tinha a explicação pronta e
+convincente — "o `LIKE` exige que o corpo *comece* pela marca". Estava errada: o código
+no HEAD já põe a marca no começo, eu mesmo a movi durante a wave. As órfãs eram de uma
+versão antiga. Abri o arquivo por disciplina da lei do alvo em movimento, **não porque
+duvidasse** — e era o mesmo erro que eu tinha acabado de me retratar, sendo reconstruído
+do zero. A disciplina pegou o que a dúvida não pegaria.
