@@ -36,7 +36,30 @@ export type BlocoDaTimeline =
       /** Quem agiu — o rótulo do bloco sai daqui. */
       actorKind: string;
       itens: TimelineItemView[];
+    }
+  | {
+      /** Bloco GROSSO: um dia inteiro. Só existe em timeline longa (ver `agrupaTimeline`). */
+      tipo: "dia";
+      /** Chave estável do dia, para React e para testes. */
+      dia: string;
+      rotulo: string;
+      itens: TimelineItemView[];
     };
+
+/**
+ * Acima de quantos blocos a lista deixa de informar e passa a ser parede.
+ *
+ * O GATILHO É O TAMANHO DA LISTA, NUNCA O TEMPO — e isso não é detalhe de
+ * implementação. Calibrar por tempo exigiria escolher uma janela olhando os
+ * dados disponíveis, e os dados disponíveis aqui são artefato das próprias
+ * sondas: medido, o intervalo mediano entre atividades é de 99s contra uma
+ * janela de 60s, ou seja, eu estaria ajustando o produto à cadência dos meus
+ * testes e produzindo um número sobre nós mesmos com cara de resultado.
+ *
+ * Tamanho de lista não tem esse problema: "vinte e seis linhas não cabem na
+ * cabeça de ninguém" vale igual em qualquer banco.
+ */
+const LIMITE_DE_BLOCOS = 12;
 
 function chaveDoAtor(item: TimelineItemView): string {
   return `${item.actor_kind ?? "desconhecido"}:${item.actor_agent_id ?? item.performed_by_user_id ?? ""}`;
@@ -55,6 +78,86 @@ function instante(item: TimelineItemView): number {
 export function agrupaTimeline(
   itens: TimelineItemView[],
   chegouAoVivo: Set<string> = new Set(),
+): BlocoDaTimeline[] {
+  const fino = agrupaFino(itens, chegouAoVivo);
+  return fino.length <= LIMITE_DE_BLOCOS ? fino : agrupaPorDia(itens, chegouAoVivo);
+}
+
+/** O dia do item no fuso de quem lê — "24 de jul." é o que a pessoa reconhece. */
+function diaDe(item: TimelineItemView): { chave: string; rotulo: string } {
+  const d = new Date(item.performed_at);
+  const chave = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  let rotulo: string;
+  try {
+    rotulo = new Intl.DateTimeFormat("pt-BR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "short",
+    }).format(d);
+  } catch {
+    rotulo = chave;
+  }
+  return { chave, rotulo };
+}
+
+/**
+ * O agrupamento GROSSO — um bloco por dia.
+ *
+ * As DUAS EXCEÇÕES continuam valendo, e valem aqui por mais razão ainda: quanto
+ * mais grosso o agrupamento, mais fácil sumir com a linha que importa.
+ *
+ *  - decisão humana (`next_action_*`) NUNCA entra num bloco: é o único conteúdo
+ *    da timeline que registra alguém DECIDINDO, e esconder decisão dentro de
+ *    "quinta-feira · 40 ações" é o oposto do que a wave 4 pagou para construir;
+ *  - o que chegou AO VIVO nesta sessão fica fora: senão o evento novo cairia
+ *    dentro de um bloco fechado e a timeline iria de "40 ações" para "41 ações"
+ *    — o requisito de agrupar escondendo o que o de tempo real promete mostrar.
+ *
+ * ⚠️ E ELE TRATA O CASO QUE NÃO É "MURO DE BLOCOS": o defeito medido tinha um
+ * lead com 26 itens e 26 blocos, ZERO colapsáveis — todos isolados por ator ou
+ * por janela. Não era parede de blocos de 2, era AUSÊNCIA DE ESTRUTURA acima da
+ * linha. Por isso o agrupamento por dia parte dos ITENS, não dos blocos finos:
+ * partir dos blocos deixaria os 26 isolados exatamente como estavam.
+ */
+function agrupaPorDia(
+  itens: TimelineItemView[],
+  chegouAoVivo: Set<string>,
+): BlocoDaTimeline[] {
+  // ⚠️ POR CHAVE, NÃO POR VIZINHANÇA. A primeira versão só juntava dias
+  // CONSECUTIVOS, o que funciona enquanto a lista chega ordenada — e ela chega,
+  // a rota ordena por `performed_at`. Mas a dependência era invisível: bastava
+  // alguém reordenar em memória (por relevância, por ator, por qualquer coisa)
+  // para o agrupamento voltar a 26 blocos SEM ERRO NENHUM, só deixando de
+  // funcionar. Guardar por chave custa um Map e remove a armadilha.
+  //
+  // A ORDEM DE APARIÇÃO é preservada: o bloco de um dia nasce onde o primeiro
+  // item daquele dia estava, então numa lista ordenada o resultado é idêntico ao
+  // da versão por vizinhança.
+  const blocos: BlocoDaTimeline[] = [];
+  const porDia = new Map<string, BlocoDaTimeline & { tipo: "dia" }>();
+  for (const item of itens) {
+    const aoVivo = chegouAoVivo.has(item.id);
+    if (aoVivo || NUNCA_COLAPSA.has(item.type)) {
+      blocos.push({ tipo: "item", item, aoVivo });
+      continue;
+    }
+    const { chave, rotulo } = diaDe(item);
+    const existente = porDia.get(chave);
+    if (existente) {
+      existente.itens.push(item);
+      continue;
+    }
+    const novo = { tipo: "dia" as const, dia: chave, rotulo, itens: [item] };
+    porDia.set(chave, novo);
+    blocos.push(novo);
+  }
+  return blocos;
+}
+
+/** O agrupamento fino: por ator, dentro da mesma janela. */
+function agrupaFino(
+  itens: TimelineItemView[],
+  chegouAoVivo: Set<string>,
 ): BlocoDaTimeline[] {
   const blocos: BlocoDaTimeline[] = [];
 
@@ -91,4 +194,9 @@ export function agrupaTimeline(
 /** Um grupo só é apresentado como bloco quando tem mais de um item. */
 export function ehBlocoColapsavel(b: BlocoDaTimeline): boolean {
   return b.tipo === "grupo" && b.itens.length > 1;
+}
+
+/** Bloco de dia com um item só não vira bloco: vira a própria linha. */
+export function ehBlocoDeDia(b: BlocoDaTimeline): boolean {
+  return b.tipo === "dia" && b.itens.length > 1;
 }

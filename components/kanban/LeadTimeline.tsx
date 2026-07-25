@@ -8,7 +8,7 @@ import {
   actorName,
   actorShape,
 } from "@/lib/leads/activity-vocabulary";
-import { agrupaTimeline, ehBlocoColapsavel } from "@/lib/leads/timeline-grouping";
+import { agrupaTimeline, ehBlocoColapsavel, ehBlocoDeDia } from "@/lib/leads/timeline-grouping";
 import type { TimelineItemView } from "@/lib/types/contacts";
 
 interface Props {
@@ -110,6 +110,46 @@ export function LeadTimeline({ itens, chegouAoVivo, isLoading, isError }: Props)
       {blocos.map((b, i) => {
         if (b.tipo === "item") {
           return <Linha key={b.item.id} item={b.item} aoVivo={b.aoVivo} />;
+        }
+        if (b.tipo === "dia") {
+          // Bloco de dia com UM item só não vira bloco: "terça · 1 ação" custa
+          // um clique e não informa nada que a própria linha não informe.
+          if (!ehBlocoDeDia(b)) return <Linha key={b.itens[0]!.id} item={b.itens[0]!} />;
+          const aberto = abertos.has(i);
+          return (
+            <li key={b.dia} className="py-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  setAbertos((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(i)) next.delete(i);
+                    else next.add(i);
+                    return next;
+                  })
+                }
+                aria-expanded={aberto}
+                className="flex w-full items-center gap-2 text-left text-xs text-text-muted hover:text-text"
+              >
+                {/* O marcador do dia é uma BARRA, não um ponto: ele não
+                    representa um ator, e reusar a forma de ator diria que
+                    alguém fez aquilo. */}
+                <span aria-hidden className="mt-1 h-2 w-0.5 shrink-0 bg-border" />
+                <span className="first-letter:uppercase">{b.rotulo}</span>
+                <span className="text-text-muted">· {b.itens.length} ações</span>
+                <span aria-hidden className="ml-auto text-[10px]">
+                  {aberto ? "−" : "+"}
+                </span>
+              </button>
+              {aberto && (
+                <ul className="ml-2 border-l border-border pl-3">
+                  {b.itens.map((it) => (
+                    <Linha key={it.id} item={it} />
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
         }
         if (!ehBlocoColapsavel(b)) {
           return <Linha key={b.itens[0]!.id} item={b.itens[0]!} />;

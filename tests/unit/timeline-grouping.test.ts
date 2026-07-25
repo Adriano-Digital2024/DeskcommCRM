@@ -110,3 +110,72 @@ describe("agrupamento da timeline", () => {
     expect(agrupaTimeline([])).toEqual([]);
   });
 });
+
+/**
+ * O AGRUPAMENTO GROSSO — a timeline longa.
+ *
+ * O caso que decidiu o desenho não é o "muro de blocos de 2": é o lead com 26
+ * itens e 26 blocos, ZERO colapsáveis. Não é parede de blocos, é AUSÊNCIA DE
+ * ESTRUTURA acima da linha — e quem tratar só o primeiro deixa o segundo
+ * intacto, que é o mais comum dos dois.
+ */
+describe("agrupaTimeline · lista longa", () => {
+  const item = (i: number, dia: number, ator: string, tipo = "stage_changed"): TimelineItemView =>
+    ({
+      id: `i${i}`,
+      type: tipo,
+      // Atores DIFERENTES e horas distantes: é assim que os 26 ficavam isolados.
+      actor_kind: ator,
+      actor_agent_id: null,
+      performed_by_user_id: ator,
+      performed_at: new Date(2026, 6, dia, 9 + (i % 8), 0, 0).toISOString(),
+    }) as unknown as TimelineItemView;
+
+  it("o caso que decide: 26 itens que NÃO colapsavam viram blocos por dia", () => {
+    // Cada um com ator próprio e hora própria — zero colapsáveis no fino.
+    const itens = Array.from({ length: 26 }, (_, i) => item(i, 20 + (i % 3), `u${i}`));
+    const blocos = agrupaTimeline(itens);
+    expect(blocos.length).toBeLessThan(26);
+    expect(blocos.every((b) => b.tipo === "dia")).toBe(true);
+    // Nenhum item se perde no caminho.
+    const dentro = blocos.reduce((n, b) => n + (b.tipo === "dia" ? b.itens.length : 1), 0);
+    expect(dentro).toBe(26);
+  });
+
+  it("lista curta NÃO muda de comportamento — o gatilho é o tamanho", () => {
+    const itens = Array.from({ length: 5 }, (_, i) => item(i, 20, `u${i}`));
+    const blocos = agrupaTimeline(itens);
+    expect(blocos.some((b) => b.tipo === "dia")).toBe(false);
+  });
+
+  it("decisão humana NUNCA entra no bloco de dia", () => {
+    // Quanto mais grosso o agrupamento, mais fácil sumir com a linha que importa.
+    const itens = [
+      ...Array.from({ length: 20 }, (_, i) => item(i, 20, `u${i}`)),
+      item(99, 20, "u99", "next_action_approved"),
+      ...Array.from({ length: 10 }, (_, i) => item(30 + i, 21, `v${i}`)),
+    ];
+    const blocos = agrupaTimeline(itens);
+    const decisao = blocos.find((b) => b.tipo === "item" && b.item.type === "next_action_approved");
+    expect(decisao).toBeDefined();
+    // E não pode estar DENTRO de nenhum bloco de dia.
+    const escondida = blocos.some(
+      (b) => b.tipo === "dia" && b.itens.some((i) => i.type === "next_action_approved"),
+    );
+    expect(escondida).toBe(false);
+  });
+
+  it("o que chegou AO VIVO fica fora do bloco de dia", () => {
+    const itens = Array.from({ length: 20 }, (_, i) => item(i, 20, `u${i}`));
+    const blocos = agrupaTimeline(itens, new Set(["i7"]));
+    const solto = blocos.find((b) => b.tipo === "item" && b.item.id === "i7");
+    expect(solto).toBeDefined();
+    expect(solto && solto.tipo === "item" && solto.aoVivo).toBe(true);
+  });
+
+  it("o rótulo do dia é legível para quem lê, não uma chave", () => {
+    const itens = Array.from({ length: 20 }, (_, i) => item(i, 20, `u${i}`));
+    const dia = agrupaTimeline(itens).find((b) => b.tipo === "dia");
+    expect(dia && dia.tipo === "dia" && dia.rotulo).toMatch(/jul/i);
+  });
+});
