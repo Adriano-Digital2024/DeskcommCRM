@@ -2886,3 +2886,56 @@ semelhança acidental, não coerência.**
 > **E a diferença tem de ser legível onde alguém tentaria "unificar"** (§7.56): comentário na coluna
 > dizendo por que o formato difere e que unificar reintroduz o problema das duas listas. Sem isso, a
 > unificação vai parecer limpeza — de novo.
+
+---
+
+## §7.69 — Lei preditiva se paga: a varredura da §7.64 achou duas, e a segunda contradiz o nosso DoD
+
+O @Arquiteto usou a §7.64 como **ferramenta**, não como registro: *procurar o valor que o código calcula
+e descarta*. Dois acertos, os dois verificados por mim.
+
+**ACERTO 1 — a cegueira não é do board, é da casa.** Nove consumidores chamam `useRealtimeChannel`;
+**sete descartam** o status. Cegos hoje: conversas, mensagens, notas, agent runs, alertas, saúde de
+tenant e o buscador de conhecimento. **A caixa de entrada é mais usada que o board.**
+
+> As duas linhas no `useBoard` consertam **a superfície onde a gente por acaso olhou**. E capturar no
+> ponto de chamada são **sete chances de esquecer**, mais uma a cada hook novo.
+
+**Ruling:** o sinal de canal morto sai **do HOOK**, não do chamador — um único lugar que, ao entrar em
+`channel_error`/`timed_out`, registre. Cobre os nove **e os que ainda não existem**. Mesma escolha do
+carimbo, do `assert` e do bloco literal: **instrumento no lugar de promessa**.
+
+*(Nota de método: minha primeira contagem discordou da dele em um ponto. Fui conferir **o meu
+instrumento** antes de reportar divergência — meu `grep` não pegava `return useRealtimeChannel(...)`,
+que **propaga** o status. Ele estava certo; o meu padrão é que era estreito. §7.35 aplicada a mim.)*
+
+**ACERTO 2 — três dos quatro caminhos engolem a falha de gravar atividade.** Verificado:
+`_handler` (edição) e `move/route` (arrastar) fazem **`console.error`**; `bulk/route` não trata; só
+`next-action` devolve **500**.
+
+> **O DoD deste épico afirma *"100% das mutações de lead geram `crm_lead_activities`, zero escrita
+> anônima"*. Com três caminhos engolindo, isso pode ser silenciosamente MENOS que 100% e ninguém fica
+> sabendo** — a linha some da timeline e **nada distingue *"não houve atividade"* de *"não consegui
+> gravar"***.
+
+É a §7.64 na letra, **no barramento de que a entrega inteira depende**. E `console.error` em rota de
+servidor é o **anti-pattern nº 14 do próprio `CLAUDE.md`** — segunda regra escrita da casa violada hoje,
+pelo mesmo motivo da §7.67: o caso não se apresentou como o caso.
+
+### E a inconsistência aponta a regra certa, não a uniformização
+
+Dos quatro caminhos, um falha **alto** e três falham **baixo**. Qual está certo? **Os dois** — e o
+discriminador é o **papel** da atividade:
+
+| papel da atividade | falha | por quê |
+|---|---|---|
+| **é o registro da decisão** (aprovar, ignorar) | **alto (500)** | é a **evidência do consentimento humano**; perdê-la em silêncio é pior que recusar a operação |
+| **é o rastro de mutação já ocorrida** (o card já moveu) | **baixo** | bloquear deixaria **o negócio refém da timeline** |
+
+**Mas "falhar baixo" não pode ser `console.error`.** A casa já tem doutrina para exatamente isto, no
+audit log (`CLAUDE.md`:66): *"falha de write em audit gera alerta, não bloqueia a mutação principal"*.
+O rastro perdido vai para `event_log` + alerta, **pelo mesmo caminho**.
+
+> `console.error` em rota de servidor é a **definição de log morto**: existe, ninguém lê, e o item 4 do
+> checklist do sistema vivo reprova. **Falhar baixo é escolher não bloquear — não é escolher não
+> contar.**
