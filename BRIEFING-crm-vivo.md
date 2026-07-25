@@ -3136,3 +3136,36 @@ aprendido a conviver com o estado que os outros deixam.
 **Discriminador barato, e é sempre o mesmo:** meça o estado **antes e depois** de rodar o suspeito. É a
 §7.30 (*sem o antes, todo depois é compatível com o acaso*) aplicada a **testes que compartilham
 ambiente** em vez de a sondas.
+
+---
+
+## §7.76 — Canal de telemetria entupido faz ausência de erro parecer ausência de problema
+
+Conexão do @DevVivo sobre o achado lateral dos `429`, e ela **reabre uma conclusão** que eu tinha dado
+por fechada.
+
+O incidente do realtime fechou **sem causa** (§7.71). Mas o túnel do Sentry estava respondendo **429**.
+Se o caminho de reporte está barrado por volume, **erro do board pode não ter chegado lá** — e o
+sintoma investigado tinha exatamente a assinatura de um **erro silencioso no cliente**:
+`CHANNEL_ERROR` capturado e reportado, ou uma exceção no `onChange` morrendo no handler.
+
+> ***"Não apareceu nada no Sentry"* precisa sair da lista de argumentos até o 429 ser entendido.**
+> Ausência de sinal por **canal entupido** tem exatamente a mesma cara de ausência de problema.
+
+**É a §7.64 aplicada à telemetria** — e é a aplicação mais cara dela, porque a telemetria é **a camada
+que existe para distinguir os dois estados**. Quando ela cai, todas as outras investigações herdam a
+ambiguidade sem saber.
+
+**Isto não explica a falha.** Explica **por que não temos rastro dela** — e reclassifica o *"sem
+causa"* de *"nada aconteceu"* para *"podemos ter perdido a evidência"*. As duas frases levam a ações
+diferentes: a primeira encerra, a segunda manda consertar o canal antes do próximo incidente.
+
+**Regra:** antes de tratar ausência de erro como evidência, **prove que o canal de erro estava
+aberto**. Telemetria não medida é telemetria suposta — e o único jeito de ter fé nela é ela **se
+reportar viva**, como qualquer outra peça (item 4 do checklist do sistema vivo).
+
+### E a contaminação de schema pode ter atravessado a investigação
+
+Ele conectou o próprio achado da §7.74 à caça: **se alguma sonda roda depois de um teste que reaplica
+migration, ela pode estar medindo um schema do passado.** Vale conferir a ordem de execução antes de
+confiar em qualquer vermelho que dependa de schema — inclusive os já arquivados.
