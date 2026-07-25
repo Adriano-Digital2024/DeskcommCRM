@@ -30,7 +30,32 @@ import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 
-import { BASE, CREDS, carimbar, login } from "./qa-helpers";
+import { BASE, CREDS, carimbar, criarPlacar, login } from "./qa-helpers";
+
+/**
+ * LINHA DE BASE DECLARADA, medida em 25/07 no commit e65eb5f, ANTES da wave 8.
+ *
+ * Sem ela este critério reprovaria a wave 8 por um defeito que ela não causou —
+ * o suspeito mais recente levando a culpa. Com ela, o critério distingue três
+ * coisas que um passa/falha funde: REGRESSÃO (piorou), DEFEITO PREEXISTENTE
+ * (igual) e CONSERTO (melhorou, e aí alguém tem de subir a linha de base).
+ *
+ * A raiz já está nomeada pelo regente: `last_message_preview` e
+ * `last_message_at` são colunas desnormalizadas em `conversations` mantidas por
+ * CAMINHO DE APLICAÇÃO, sem trigger em `messages`. A mediana de defasagem é
+ * 0,0h — o fluxo comum funciona; o defeito está na CAUDA (uma conversa com
+ * preview nulo tendo mensagens, outra defasada em 69 dias). Então a pergunta
+ * não é "está quebrado?", é "qual caminho de escrita não atualiza?".
+ */
+const LINHA_DE_BASE = {
+  quando: "25/07, commit e65eb5f, antes da wave 8",
+  desfecho: "nem recarregando" as Desfecho,
+};
+
+/** Os três desfechos, em ordem de gravidade crescente. O contrato do 27 pedia
+ *  "sem regressão", e passa/falha não distingue regressão de defeito herdado. */
+type Desfecho = "acompanha ao vivo" | "só recarregando" | "nem recarregando" | "indecidível";
+const GRAVIDADE: Desfecho[] = ["acompanha ao vivo", "só recarregando", "nem recarregando", "indecidível"];
 
 const env: Record<string, string> = {};
 for (const line of fs.readFileSync(".env.local", "utf8").split("\n")) {
@@ -47,6 +72,8 @@ interface Rodada {
   conversa: number | null;
   lista: number | null;
   entregue: boolean;
+  /** `true` se a lista só passou a refletir DEPOIS de um recarregamento. */
+  recarregouCorrigiu: boolean | null;
 }
 
 async function rodada(page: Page, conversaId: string, contactId: string, sessionId: string, i: number): Promise<Rodada> {
@@ -135,7 +162,12 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
   await admin.from("messages").delete().like("body", `${marca}%`);
   if (naLista === null)
     console.info(`      (a linha dizia: "${textoDaLinha}") · corrige ao recarregar: ${apoRecarga}`);
-  return { conversa: naConversa, lista: naLista, entregue: naConversa !== null };
+  return {
+    conversa: naConversa,
+    lista: naLista,
+    entregue: naConversa !== null,
+    recarregouCorrigiu: apoRecarga === "(não medido)" ? null : apoRecarga.startsWith("SIM"),
+  };
 }
 
 async function main(): Promise<void> {
@@ -177,6 +209,62 @@ async function main(): Promise<void> {
 
   const recebeu = rs.filter((r) => r.conversa !== null).length;
   const listaOk = rs.filter((r) => r.lista !== null).length;
+
+  // ---- o critério do cenário 27 --------------------------------------------
+  const { record, fechar } = criarPlacar("CENÁRIO 27 · a lista acompanha a conversa", ["C27.costura"]);
+  const recarregou = rs.some((r) => r.recarregouCorrigiu === true);
+  const desfechoMedido: Desfecho =
+    recebeu === 0
+      ? "indecidível"
+      : listaOk === recebeu
+        ? "acompanha ao vivo"
+        : recarregou
+          ? "só recarregando"
+          : "nem recarregando";
+  // C27_SIMULA força o desfecho para exercitar os ramos. Os três só rodam
+  // naturalmente em dias diferentes — "melhorou" só no dia do conserto, e é
+  // justamente o dia em que ninguém repara que a cerca não avisou. E a
+  // sabotagem tem de atingir a CONJUNÇÃO inteira: aqui o desfecho é a única
+  // condição, mas eu já fui pego sabotando metade de um `&&`.
+  const desfecho: Desfecho = (process.env.C27_SIMULA as Desfecho) ?? desfechoMedido;
+  const piorou = GRAVIDADE.indexOf(desfecho) > GRAVIDADE.indexOf(LINHA_DE_BASE.desfecho);
+  const melhorou = GRAVIDADE.indexOf(desfecho) < GRAVIDADE.indexOf(LINHA_DE_BASE.desfecho);
+  record(
+    "C27.costura",
+    "a linha da conversa aberta reflete a mensagem que a thread já mostra",
+    desfecho === "acompanha ao vivo",
+    desfecho === "indecidível"
+      ? "INDECIDÍVEL: nem a conversa recebeu a mensagem — sem isso não há costura a julgar"
+      : melhorou
+        ? `MELHOROU: desfecho "${desfecho}" contra a linha de base "${LINHA_DE_BASE.desfecho}" ` +
+          `(${LINHA_DE_BASE.quando}). Se o conserto entrou, SUBA A LINHA DE BASE — senão este ` +
+          `critério para de detectar a próxima regressão.`
+        : piorou
+          ? `REGRESSÃO: desfecho "${desfecho}" contra a linha de base "${LINHA_DE_BASE.desfecho}" ` +
+            `(${LINHA_DE_BASE.quando}) — piorou nesta wave`
+          : `DEFEITO PREEXISTENTE, não regressão desta wave: desfecho "${desfecho}", igual à linha ` +
+            `de base de ${LINHA_DE_BASE.quando}. A lista segue dizendo "Sem mensagens" com a ` +
+            `mensagem aberta ao lado. Raiz nomeada: colunas desnormalizadas em conversations ` +
+            `mantidas por caminho de aplicação, sem trigger — a mediana de defasagem é 0,0h e o ` +
+            `defeito está na cauda, então a pergunta é QUAL escritor não atualiza.`,
+    // MELHOROU É VERMELHO, de propósito. Se o conserto entrou e a linha de base
+    // não sobe, este critério passa a aprovar um estado que ele deveria vigiar —
+    // e a próxima regressão volta ao patamar antigo sem disparar nada. É a
+    // catraca: alguém tem de subir a base conscientemente. BLOQUEADO fica só
+    // para o defeito herdado, que não é desta wave e não tem o que reprovar.
+    // E MELHOROU É VERMELHO MESMO QUANDO O DESFECHO É O IDEAL. O autoteste me
+    // pegou aqui: com "acompanha ao vivo" o critério dava PASS enquanto a
+    // mensagem pedia para subir a linha de base — passa/falha e a instrução se
+    // contradiziam, e PASS ganha, porque ninguém age sobre verde. A catraca
+    // falhava exatamente no caso para o qual ela existe: o dia do conserto.
+    desfecho === "indecidível"
+      ? "INCONCLUSIVO"
+      : melhorou
+        ? "FALHA"
+        : !piorou
+          ? "BLOQUEADO"
+          : undefined,
+  );
   console.info(
     `\n=== ${RODADAS} rodadas ===\n` +
       `  a CONVERSA aberta mostrou a mensagem: ${recebeu}/${RODADAS}\n` +
@@ -192,7 +280,8 @@ async function main(): Promise<void> {
           `    lista acompanhou em ${listaOk}. Quem atende pela lista vê "sem mensagens" enquanto a\n` +
           `    mensagem já está aberta ao lado — e nada na tela avisa qual dos dois está velho.`,
   );
-  process.exit(0);
+  if (fechar() > 0) process.exitCode = 1;
+  process.exit(process.exitCode ?? 0);
 }
 
 main().catch((err) => {
