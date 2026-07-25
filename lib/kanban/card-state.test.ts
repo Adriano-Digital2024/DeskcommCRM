@@ -31,10 +31,10 @@ describe("resolveCardState — precedência estrita", () => {
   });
 
   it("com score: medidor, ainda neutro — número não é alarme", () => {
-    expect(resolveCardState({ ...base, probability: 72 })).toEqual({
+    expect(resolveCardState({ ...base, probability: 72, band: "quente" as const })).toEqual({
       kind: "normal",
       border: "neutral",
-      slot: { type: "meter", probability: 72 },
+      slot: { type: "meter", probability: 72, band: "quente", reason: "", factors: [] },
       showStageAge: true,
     });
   });
@@ -47,7 +47,7 @@ describe("resolveCardState — precedência estrita", () => {
 
   it("aguardando e normal: o rodapé mantém o relógio", () => {
     expect(resolveCardState({ ...base, nextAction: { label: "Ligar" } }).showStageAge).toBe(true);
-    expect(resolveCardState({ ...base, probability: 10 }).showStageAge).toBe(true);
+    expect(resolveCardState({ ...base, probability: 10, band: "frio" as const }).showStageAge).toBe(true);
     expect(resolveCardState(base).showStageAge).toBe(true);
   });
 
@@ -60,7 +60,7 @@ describe("resolveCardState — precedência estrita", () => {
   });
 
   it("esfriando vence o score", () => {
-    const r = resolveCardState({ ...base, probability: 72, isCooling: true, hoursInStage: 144 });
+    const r = resolveCardState({ ...base, probability: 72, band: "quente" as const, isCooling: true, hoursInStage: 144 });
     expect(r.kind).toBe("cooling");
     expect(r.border).toBe("warning");
     expect(r.slot).toEqual({ type: "cooling", label: "Sem resposta há 6 dias" });
@@ -70,6 +70,7 @@ describe("resolveCardState — precedência estrita", () => {
     const r = resolveCardState({
       ...base,
       probability: 72,
+      band: "quente" as const,
       isCooling: true,
       hoursInStage: 144,
       nextAction: { label: "Enviar proposta" },
@@ -83,6 +84,7 @@ describe("resolveCardState — precedência estrita", () => {
     const cheio = resolveCardState({
       ...base,
       probability: 72,
+      band: "quente" as const,
       isCooling: true,
       nextAction: { label: "Ligar" },
     });
@@ -96,16 +98,19 @@ describe("resolveCardState — precedência estrita", () => {
   });
 
   it("probabilidade é limitada a 0-100 e arredondada", () => {
-    const acima = resolveCardState({ ...base, probability: 120.6 }).slot;
-    const abaixo = resolveCardState({ ...base, probability: -5 }).slot;
-    expect(acima).toEqual({ type: "meter", probability: 100 });
-    expect(abaixo).toEqual({ type: "meter", probability: 0 });
+    const acima = resolveCardState({ ...base, probability: 120.6, band: "quente" as const }).slot;
+    const abaixo = resolveCardState({ ...base, probability: -5, band: "frio" as const }).slot;
+    expect(acima).toEqual({ type: "meter", probability: 100, band: "quente", reason: "", factors: [] });
+    expect(abaixo).toEqual({ type: "meter", probability: 0, band: "frio", reason: "", factors: [] });
   });
 
   it("probabilidade 0 é um valor, não ausência de valor", () => {
-    expect(resolveCardState({ ...base, probability: 0 }).slot).toEqual({
+    expect(resolveCardState({ ...base, probability: 0, band: "frio" as const }).slot).toEqual({
       type: "meter",
       probability: 0,
+      band: "frio",
+      reason: "",
+      factors: [],
     });
   });
 });

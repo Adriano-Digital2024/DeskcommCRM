@@ -1,3 +1,5 @@
+import type { ScoreBand } from "@/lib/kanban/score-band";
+
 /**
  * Canonical Lead shape returned by the `/api/v1/leads/*` endpoints.
  * Mirrors `crm_leads` columns (Spec 04 §schema). Status transitions go through
@@ -55,6 +57,21 @@ export interface Lead {
    * aparece quando o roteamento é inequívoco.
    */
   next_action?: { label: string; seq: number; proposed_at: string } | null;
+  /**
+   * Derivado (não é coluna): o score vem de `crm_lead_scores` por LEFT JOIN.
+   *
+   * Ausente é estado LEGÍTIMO (sinal insuficiente, cenário 17) — por isso LEFT
+   * e não INNER: um INNER apagaria do board justamente os leads sem sinal, que
+   * são os que mais precisam de atenção humana.
+   */
+  score?: {
+    probability: number;
+    reason: string;
+    /** A faixa PERSISTIDA. A UI não a recalcula — ver lib/kanban/score-band.ts. */
+    band: ScoreBand;
+    factors: Array<{ pontos: number; frase: string; ancora?: { kind: string; id: string } }>;
+    at: string | null;
+  } | null;
   assigned_at: string | null;
   last_activity_at: string | null;
   expected_close_date: string | null;

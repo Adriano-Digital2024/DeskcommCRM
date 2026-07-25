@@ -1,3 +1,4 @@
+import type { ScoreBand } from "@/lib/kanban/score-band";
 import { resolveLeadOwner, type OwnerDisplay } from "@/lib/kanban/owner";
 import type { Lead } from "@/lib/types/leads";
 
@@ -27,8 +28,25 @@ export interface CardInput {
   isCooling: boolean;
   /** Wave 4 — próxima ação proposta pelo agente, aguardando decisão humana. */
   nextAction?: { label: string } | null;
-  /** Wave 5 — probabilidade 0-100 com evidência. */
+  /**
+   * Wave 5 — probabilidade 0-100 com evidência.
+   *
+   * `null` e `0` são COISAS DIFERENTES: null é "sinal insuficiente" (cenário
+   * 17) e 0 é "calculei e deu zero". Quem trocar isto por `probability || …`
+   * some com o zero legítimo; quem usar `?? 0` inventa score onde não há.
+   */
   probability?: number | null;
+  /**
+   * A faixa PERSISTIDA, nunca derivada aqui.
+   *
+   * Recalcular a faixa a partir do número ignoraria a histerese e devolveria o
+   * card piscando na fronteira — no único lugar onde o CHECK de coerência do
+   * banco não alcança.
+   */
+  band?: ScoreBand | null;
+  /** Até três, e só as que existem: cota se preenche, e lastro inventado passa na constraint. */
+  scoreFactors?: Array<{ pontos: number; frase: string; ancora?: { kind: string; id: string } }>;
+  scoreReason?: string | null;
   /** Uma tag canônica do pipeline vira ponto ao lado do título; o resto sai do card. */
   canonicalTag?: string | null;
   /** Todas as tags — fora do card, acessíveis no hover. */
@@ -55,6 +73,7 @@ export function buildCardInput(
     | "owner_agent_id"
     | "owner_agent"
     | "next_action"
+    | "score"
   >,
   opts: {
     stageName: string;
@@ -84,6 +103,12 @@ export function buildCardInput(
     stageName: opts.stageName,
     hoursInStage,
     isCooling: opts.coolingIds?.has(lead.id) ?? false,
+    // Score ausente vira `null` explícito, não `undefined` por omissão: a
+    // diferença entre "não tem" e "esqueci de passar" é a que o cenário 17 mede.
+    probability: lead.score ? lead.score.probability : null,
+    band: lead.score ? lead.score.band : null,
+    scoreReason: lead.score?.reason ?? null,
+    scoreFactors: lead.score?.factors ?? [],
     // Sem proposta o campo fica NULO, não vazio: `resolveCardState` já trata
     // "não tem" como estado normal, e um label em branco produziria o slot vazio
     // que o §5 proíbe (dado sem propósito ocupando linha).
@@ -97,7 +122,14 @@ export function buildCardInput(
 export type CardSlot =
   | { type: "awaiting"; label: string }
   | { type: "cooling"; label: string }
-  | { type: "meter"; probability: number }
+  | {
+      type: "meter";
+      probability: number;
+      band: ScoreBand;
+      reason: string;
+      /** ATÉ três — as que existem, nunca preenchidas para fechar conta. */
+      factors: Array<{ pontos: number; frase: string; ancora?: { kind: string; id: string } }>;
+    }
   | { type: "idle" };
 
 export interface CardState {
@@ -146,11 +178,19 @@ export function resolveCardState(input: CardInput): CardState {
     };
   }
 
-  if (typeof input.probability === "number") {
+  // `typeof === "number"` e NÃO truthiness: score 0 é um resultado, não a
+  // ausência dele. `if (input.probability)` esconderia o zero legítimo.
+  if (typeof input.probability === "number" && input.band) {
     return {
       kind: "normal",
       border: "neutral",
-      slot: { type: "meter", probability: clampPercent(input.probability) },
+      slot: {
+        type: "meter",
+        probability: clampPercent(input.probability),
+        band: input.band,
+        reason: input.scoreReason ?? "",
+        factors: (input.scoreFactors ?? []).slice(0, MAX_EVIDENCIAS),
+      },
       showStageAge: true,
     };
   }
@@ -159,6 +199,9 @@ export function resolveCardState(input: CardInput): CardState {
   // ocupando a mesma altura — o card não pode crescer quando o dado chegar.
   return { kind: "normal", border: "neutral", slot: { type: "idle" }, showStageAge: true };
 }
+
+/** Teto de evidências na tela. TETO, não cota — ver §7.55. */
+const MAX_EVIDENCIAS = 3;
 
 function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));

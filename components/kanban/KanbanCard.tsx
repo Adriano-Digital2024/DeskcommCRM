@@ -6,6 +6,7 @@ import type { Lead } from "@/lib/types/leads";
 import { resolveCardState, stageAgeLabel, type CardInput } from "@/lib/kanban/card-state";
 import { KanbanCardActions } from "./KanbanCardActions";
 import { NextActionSlot } from "./NextActionSlot";
+import { ScoreSlot } from "./ScoreSlot";
 import { OwnerBadge } from "./OwnerBadge";
 
 interface KanbanCardProps {
@@ -167,20 +168,12 @@ export function KanbanCard({
               <span className="truncate text-warning-fg">{state.slot.label}</span>
             )}
             {state.slot.type === "meter" && (
-              <>
-                <span
-                  className="h-[3px] w-16 shrink-0 overflow-hidden rounded-full bg-border"
-                  aria-hidden
-                >
-                  <span
-                    className="block h-full rounded-full bg-accent"
-                    style={{ width: `${state.slot.probability}%` }}
-                  />
-                </span>
-                <span className="tabular-nums text-text-muted">
-                  {state.slot.probability}%
-                </span>
-              </>
+              <ScoreSlot
+                probability={state.slot.probability}
+                band={state.slot.band}
+                reason={state.slot.reason}
+                factors={state.slot.factors}
+              />
             )}
           </div>
 
