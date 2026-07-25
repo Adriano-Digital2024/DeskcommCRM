@@ -78,6 +78,7 @@ const CRITERIOS = [
   "E24",
   "E25.prazo",
   "E26.ciclo",
+  "E27.naosei",
 ];
 const { record, fechar } = criarPlacar("WAVE 7", CRITERIOS);
 
@@ -141,11 +142,20 @@ async function limpar(): Promise<number> {
   return ids.length;
 }
 
-/** A cor computada da borda de estado — escopada ao card, invariante à apresentação. */
+/**
+ * A cor do MARCADOR DE ESTADO — e o seletor é o ponto.
+ *
+ * `span[aria-hidden]` casa DOIS elementos no card: o marcador e o overlay do
+ * pulso. E o overlay renderiza ANTES quando houve evento recente — então o
+ * primeiro match MUDA conforme tenha havido pulso, e o instrumento lê elementos
+ * diferentes em momentos diferentes sem avisar. Escopo pelo que só o marcador
+ * tem: a barra fina colada à esquerda.
+ */
 async function corDaBorda(card: Locator): Promise<string> {
   return card.evaluate((el) => {
-    const barra = el.querySelector("span[aria-hidden]");
-    return barra ? getComputedStyle(barra).backgroundColor : "(sem barra)";
+    const barra = el.querySelector('span[class*="w-0.5"][class*="left-0"]');
+    if (!barra) return "(marcador não encontrado)";
+    return getComputedStyle(barra).backgroundColor;
   });
 }
 
@@ -278,6 +288,27 @@ async function main(): Promise<void> {
               "não chega, o card AFIRMA que o negócio está saudável em vez de dizer que não sabe. " +
               "Desconhecido virando normal, que é a afirmação que este épico existe para impedir"
             : " — é PERMANENTE nesta janela de observação: a faixa não apareceu nem depois de 18s"),
+    );
+
+    // ---- 27: o TERCEIRO estado — frio, quente e NÃO SEI ---------------------
+    //
+    // Todo critério sobre estado derivado precisa dos TRÊS casos, porque é o
+    // terceiro que hoje se disfarça de saudável: enquanto a consulta de risco não
+    // chega, o card não diz "não sei" — ele afirma que está tudo bem.
+    //
+    // E a janela não é piscada: 18s dá para alguém abrir o quadro, varrer com o
+    // olho, concluir que não há nada esfriando e sair. Pior, a consulta classifica
+    // TODOS os leads, então ela CRESCE com o tamanho do tenant — fica mais longa
+    // exatamente onde há mais negócio morrendo.
+    record(
+      "E27.naosei",
+      "enquanto o risco é DESCONHECIDO, o card não afirma que está saudável",
+      faixaRecarregada !== "" || !estadoObservavel,
+      faixaRecarregada === "" && estadoObservavel
+        ? `logo após recarregar a faixa está vazia e a borda "${corRecarregada}" — o mesmo que um ` +
+          `negócio em dia. O estado era ESFRIANDO (apareceu ${faixaConvergiu ? "depois" : "nunca"}), ` +
+          `e no intervalo a tela afirmou saúde em vez de representar o desconhecido`
+        : "o card distingue desconhecido de saudável",
     );
 
     // ---- 24: precedência, com a perna positiva ANTES ------------------------
