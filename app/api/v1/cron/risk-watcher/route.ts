@@ -30,6 +30,7 @@ import type { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api/wrappers";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { venceReativacoes } from "@/lib/leads/reactivation";
 import { observaTravessias } from "@/lib/leads/risk-worker";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -67,6 +68,8 @@ async function handle(req: NextRequest): Promise<Response> {
   let esfriaram = 0;
   let reativaram = 0;
   let falhas = 0;
+  let propostas = 0;
+  let vencidas = 0;
   const comErro: string[] = [];
 
   for (const org of orgs) {
@@ -76,6 +79,14 @@ async function handle(req: NextRequest): Promise<Response> {
       esfriaram += r.esfriaram;
       reativaram += r.reativaram;
       falhas += r.falhasDeAtividade;
+      propostas += r.propostas;
+
+      // O VENCIMENTO RODA NO MESMO TICK, depois da travessia. Se morasse num
+      // cron separado, a proposta poderia vencer em silêncio até o outro rodar
+      // — e o buraco entre os dois seria exatamente onde a demanda morre.
+      const v = await venceReativacoes(admin, org, new Date());
+      vencidas += v.vencidas;
+      falhas += v.falhasDeAtividade;
     } catch (e) {
       // Uma org que falha NÃO derruba as outras. Sem isto, um tenant com dado
       // estranho congelaria o radar de todos os demais — e o sintoma seria
@@ -99,6 +110,8 @@ async function handle(req: NextRequest): Promise<Response> {
       travessias,
       esfriaram,
       reativaram,
+      propostas_criadas: propostas,
+      propostas_vencidas: vencidas,
       atividades_falhas: falhas,
       organizations_com_erro: comErro.length,
     },

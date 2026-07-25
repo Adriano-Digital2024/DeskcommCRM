@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 import { calculaBucketsAtuais, type EstadoCalculado } from "@/lib/leads/risk-seed";
+import { propoeReativacao } from "@/lib/leads/reactivation";
 import type { RiskBucket } from "@/lib/leads/risk-radar";
 import type { ActivityType } from "@/lib/leads/activity-vocabulary";
 
@@ -35,6 +36,8 @@ export interface ResultadoDaObservacao {
   /** Mudanças de bucket que não merecem linha na timeline (ver `narra`). */
   silenciosas: number;
   falhasDeAtividade: number;
+  /** Propostas de reativação criadas nesta passada. */
+  propostas: number;
 }
 
 /**
@@ -92,6 +95,7 @@ export async function observaTravessias(
     reativaram: 0,
     silenciosas: 0,
     falhasDeAtividade: 0,
+    propostas: 0,
   };
 
   for (const e of atuais) {
@@ -121,8 +125,24 @@ export async function observaTravessias(
       r.silenciosas += 1;
       continue;
     }
-    if (linha.tipo === "lead_cooled") r.esfriaram += 1;
-    else r.reativaram += 1;
+    if (linha.tipo === "lead_cooled") {
+      r.esfriaram += 1;
+      // A PROPOSTA NASCE COM O ESFRIAMENTO, no mesmo tick. Deixar para um
+      // segundo worker criaria uma janela em que o negócio está frio e não tem
+      // o que fazer a respeito — e é justamente a janela em que alguém olharia.
+      //
+      // Nasce SEM RASCUNHO de propósito: se ela só existisse com texto de LLM,
+      // uma indisponibilidade do provedor viraria silêncio, que é a doença que
+      // esta wave cura. "Sem rascunho ainda" é estado honesto; "proposta que não
+      // nasceu" não é estado, é ausência.
+      const proposta = await propoeReativacao(admin, {
+        organizationId,
+        leadId: e.leadId,
+        coldHours: e.coldHours,
+        now,
+      });
+      if (proposta) r.propostas += 1;
+    } else r.reativaram += 1;
 
     const atividade = await emitLeadActivity(admin, {
       organizationId,

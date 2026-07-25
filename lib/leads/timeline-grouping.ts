@@ -24,7 +24,17 @@ import type { TimelineItemView } from "@/lib/types/contacts";
  */
 
 /** Tipos que NUNCA colapsam: contêm decisão humana, não relato. */
-const NUNCA_COLAPSA = new Set(["next_action_approved", "next_action_dismissed"]);
+const NUNCA_COLAPSA = new Set([
+  "next_action_approved",
+  "next_action_dismissed",
+  // A reativação segue a mesma regra: são as linhas que registram alguém
+  // DECIDINDO. `expired` entra junto porque a AUSÊNCIA de decisão é a
+  // informação — escondê-la num bloco de dia apagaria exatamente o que o
+  // vencimento existe para tornar visível.
+  "reactivation_accepted",
+  "reactivation_dismissed",
+  "reactivation_expired",
+]);
 
 /** Janela do agrupamento. O contrato fala em "mesmo minuto". */
 const JANELA_MS = 60_000;

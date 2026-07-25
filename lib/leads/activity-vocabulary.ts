@@ -27,7 +27,10 @@ export type ActivityType =
   | "next_action_dismissed"
   | "lead_edited"
   | "lead_cooled"
-  | "lead_reactivated";
+  | "lead_reactivated"
+  | "reactivation_accepted"
+  | "reactivation_dismissed"
+  | "reactivation_expired";
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   stage_changed: "Mudou de estágio",
@@ -50,6 +53,13 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   // usuário concluiria que a timeline está incompleta, não que o negócio esfriou.
   lead_cooled: "Negócio esfriou",
   lead_reactivated: "Negócio voltou a andar",
+  // As três decisões sobre a proposta de reativação. VENCER é uma delas: a
+  // ausência de decisão humana é informação sobre o negócio, e a proposta some
+  // do card justamente para não simular atenção — a timeline é onde isso fica
+  // dito, senão o botão sumiria sem explicação.
+  reactivation_accepted: "Retomada de contato aprovada",
+  reactivation_dismissed: "Retomada de contato descartada",
+  reactivation_expired: "Sugestão de retomada venceu sem decisão",
 };
 
 /** Quando o tipo é legado/desconhecido, a linha ainda é honesta — sem jargão. */
