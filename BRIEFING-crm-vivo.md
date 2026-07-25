@@ -8408,3 +8408,69 @@ dos dois caminhos reais, ou chama a RPC depois de inserir.
 
 **E é a §7.248 outra vez:** o instrumento alterou o estado que ele mesmo mediria — só que aqui a
 alteração não invalidou a medição, **inventou um defeito**.
+
+## §7.272 — Determinismo e reprodutibilidade NÃO protegem contra premissa errada: artefato de construção reproduz PERFEITAMENTE
+
+O achado do inbox foi retratado inteiro. A sonda inseria em `messages` **direto**, e o caminho de
+produção insere **e depois** chama a RPC que mantém as colunas que a lista lê. **O escritor foi
+pulado e o resultado dele foi cobrado.** Remedido chamando a RPC junto: **0ms de discordância, 2/2. A
+tela sempre esteve certa.**
+
+**E o que enganou foi o FORMATO do resultado — que é o oposto do que viemos usando como sinal de
+qualidade:**
+
+| sinal | valor observado | o que ele realmente provava |
+|---|---|---|
+| determinístico | 2/2 idênticos | **a minha mão é estável** |
+| reprodutível | três rodadas | **a construção é a mesma toda vez** |
+| texto citável da tela | *"Sem mensagens"* | que a tela renderiza o estado que eu plantei |
+| agravante de produto | *"o operador atende pela lista"* | nada sobre a existência do defeito |
+
+> ***"Artefato de construção reproduz perfeitamente, porque a construção é a mesma toda vez.
+> Determinismo prova que a MINHA MÃO é estável, não que o produto está quebrado."***
+
+**E a frase que corrige a metodologia do dia inteiro:**
+
+> ***"Repetição protege contra INTERMITÊNCIA; não protege contra PREMISSA ERRADA — e eu tratei uma
+> como se cobrisse a outra."***
+
+**Isto é uma emenda séria à nossa principal defesa.** Passamos o dia usando `n=1` como pecado e
+repetição como cura — e a repetição tem um ponto cego exato: **ela é ortogonal à correção da
+premissa**. Um caso mal construído repete lindamente, e cada repetição **aumenta a confiança sem
+aumentar a validade**.
+
+**A defesa que falta não é mais repetição — é a pergunta de cinco palavras:** ***"quem escreve esta
+coluna?"***, respondida com um `grep`, **antes** de cobrar o valor dela. E vale para toda medição
+sobre estado derivado: *quem mantém isto, e o meu caso passou por lá?*
+
+### §7.272-a — Terceira vez no dia: a lei não transfere de contexto sozinha
+
+O agravante declarado pelo próprio autor: ele **tinha a lei**. Passou o dia cobrando *"prova pelo
+caminho de produção"* dos outros, e há memória de projeto com essa lição **e o nome dele nela**.
+
+> *"Não foi ignorância da regra — foi não ter perguntado 'quem escreve esta coluna?' antes de cobrar
+> o valor dela."*
+
+**Terceira ocorrência hoje** (a varredura por tabela que perde o portão; a lei do portão não aplicada
+a si três horas depois; e agora esta). **Conhecer a lei e reconhecer o terreno onde ela se aplica são
+atos diferentes** — e o segundo falha sob pressa, mesmo em quem escreveu o primeiro.
+
+### E a catraca foi a única peça que não precisou de correção
+
+Ao remediar, o critério ficou **VERMELHO em "melhorou"** e exigiu que a linha de base subisse
+**conscientemente** — obrigando a declarar **por quê**. E a razão **não é** *"entrou conserto"*, é
+***"a base anterior era inválida"***. Deixado escrito, *"senão daqui a seis meses alguém procura um
+commit de conserto que não existe"*.
+
+**E um último defeito, do tipo já nomeado hoje:** com a base corrigida, o critério passou a dizer
+*"DEFEITO PREEXISTENTE"* sobre o resultado **bom** — **veredito herdando a redação de uma hipótese
+morta**, dentro de um critério que nasceu **depois** da lei que proíbe isso (§7.182). Corrigida a
+LÓGICA e não só o texto: *"igual à base"* só é bloqueado **se a base for um defeito**.
+
+**Cenário 27: VERDE**, 0ms de discordância, medido pelo caminho de produção. E *"só recarregando"* /
+*"nem recarregando"* passam a ser **regressão** contra uma base saudável — que é exatamente o que ele
+existe para pegar.
+
+**E a simetria fecha o dia:** dois erros no mesmo dia, na mesma tabela, sobre a mesma pergunta — um
+pela **RÉGUA** (`created_at` × `coalesce(sent_at, created_at)`), outro pelo **ESCRITOR** (pular a RPC
+e cobrar o resultado dela). **Os dois achados pelos próprios autores.**
