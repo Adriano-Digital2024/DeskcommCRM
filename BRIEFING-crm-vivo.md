@@ -2236,3 +2236,57 @@ Isso é impossível de satisfazer com uma janela própria, porque a janela próp
 
 > **Ausência de um padrão prova que uma forma não está lá. Só o acoplamento observável prova que a
 > fonte certa está sendo usada.**
+
+---
+
+## §7.51 — Placar que lista só o que passou se lê como cobertura completa
+
+O @QAVivo corrigiu a colisão de numeração e **não parou no rótulo**: o problema não era o nome dos
+testes, era o placar **listar apenas o que passou**. Quem lê conclui que o resto passou junto.
+
+Agora o que falta é **medido e aparece**:
+
+```
+BLOQUEADO [S15]        gravei score 72 num lead, abri o board, olhei o card:
+                       nenhum número, nenhum medidor. Linha removida no fim.
+BLOQUEADO [S15.hover]  sem medidor não há o que revelar — preso ao S15.
+BLOQUEADO [S17]        preso ao S15 pelo motivo do §7.52.
+```
+
+> **15 verdes, 0 vermelhos, 3 bloqueados.** O número de verdes **não mudou**; o que mudou é que ficou
+> **impossível ler o placar e achar que a wave está pronta**.
+
+**E a escolha da palavra é técnica, não diplomática:** ele usou **BLOQUEADO**, não **FALHA**. *"Recurso
+que ninguém escreveu acusa quem **planejou**. Chamar de reprovado mandaria o @DevVivo caçar defeito em
+código que não existe."* **A atribuição decide qual é a próxima ação** — e um rótulo errado manda a
+pessoa certa para o lugar errado.
+
+## §7.52 — Cenário sobre ausência passa vazio quando a funcionalidade inteira está ausente
+
+O achado mais fino do turno, e ele está **no meu próprio contrato**.
+
+O cenário 17 diz: *"lead sem sinal suficiente **não** mostra score inventado"*. Medido hoje, ele
+**PASSARIA** — e passaria pelo motivo errado: **num produto que não mostra score nenhum, "não mostra
+score inventado" é trivialmente verdadeiro**.
+
+> É o **verde vazio perfeito**: a asserção é sobre uma **ausência**, e a ausência está garantida por um
+> motivo que não tem nada a ver com o que se quer provar.
+
+**Regra:** todo cenário que afirma *"não faz X"* precisa de uma **pré-condição explícita de que o
+sistema é capaz de fazer X**. Sem isso, ele é aprovado por um produto vazio — e o dia em que a
+funcionalidade nascer é justamente o dia em que ele **para** de proteger, porque já vinha verde.
+
+**Consequência prática:** S17 fica **bloqueado por S15**, não verde. Um cenário de ausência só pode ser
+avaliado depois que a presença existe.
+
+## §7.53 — Numeração interna que sai do arquivo vira numeração pública
+
+Ele recusou parte da culpa que eu assumi, e a formulação é dele:
+
+> *"A sub-numeração era minha e eu a usei em mensagem, documento e commit sem nunca cruzar com a
+> numeração do briefing."*
+
+**Regra:** rótulo criado para uso interno passa a ser contrato no instante em que aparece num
+relatório, num commit ou numa conversa — e a partir daí ele **compete** com os nomes que já existem.
+Rótulos nascem com prefixo (`C16.a`, `H.b`, `S15`), e o prefixo diz **de qual fonte externa** aquele
+teste é procuração. *Teste cita o cenário do briefing que prova, nunca a própria sequência* (@Arquiteto).
