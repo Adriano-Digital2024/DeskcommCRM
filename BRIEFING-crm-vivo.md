@@ -9665,3 +9665,49 @@ muito, mas porque essa é a classe que não dá sintoma nenhum e chega no leitor
 
 > *Encerramento real da série. A última seção não foi escrita a partir de um defeito do produto: foi
 > escrita a partir de alguém conferindo um resultado que já estava verde.*
+
+## §7.303 — Os 15 silenciosos, a retratação em excesso, e a cerca que ocupa o lugar da cerca que falta
+
+### 1. Os números, medidos à mão, no lugar da cerca removida
+
+**63 arquivos em `tests/` · 42 abrem navegador · 27 criam dado · 12 fazem as duas coisas.**
+Sem bloco que rode em caso de erro: **28 penduram o processo** (aparecem como timeout) · **22 sujam o
+banco calado** · **15 SÓ sujam, sem pendurar**.
+
+**Os 15 são o achado, e a definição está na frase de quem os contou:**
+
+> ***"Eles não produzem NENHUM sinal no momento do erro. O rastro só aparece na medição de OUTRA
+> pessoa — e já vestido de defeito de produto."***
+
+**E aconteceu DUAS VEZES HOJE, com os dois:** um reportou um defeito de preview que era resíduo de
+sonda dele; o outro reportou um defeito de lista que era resíduo de sonda dele. **Nenhum desconfiou do
+instrumento primeiro porque NADA TINHA FALHADO** — e *"não havia motivo para desconfiar, e essa é a
+definição desse defeito"*. É a §7.280 (existir no instante zero não é existir) com o sinal trocado:
+aqui o resíduo **persiste** onde ninguém o procura, e chega ao próximo já com fantasia de produto.
+
+### 2. A retratação em EXCESSO também é afirmar sem medir — e custa a capacidade de formar hipótese
+
+Uma retratação foi **desfeita**: ele havia registrado que atribuir as notas por vocabulário estava
+errado; o `git` mediu e **a atribuição estava certa**. Ele havia aceitado uma negativa **sem medir** —
+*"concordar sem medir passa mais fácil ainda, porque parece humildade"*.
+
+> ***"SEMELHANÇA FOI BOA HIPÓTESE E MÁ PROVA. O erro não foi suspeitar por vocabulário, foi CONCLUIR
+> por vocabulário — e entre as duas há um grep de dez segundos."***
+
+**E o custo de registrar errado é assimétrico:** gravar *"errei"* faria desconfiar da próxima
+inferência **certa**, e trabalho que depende de formar hipótese rápido paga caro por isso. **A
+disciplina do dia não é "retratar-se mais" — é medir antes de se retratar também.** Retratação é
+afirmação sobre o próprio raciocínio passado, e precisa de evidência como qualquer outra; sem isso a
+cultura de retratação vira inflação, e **inflação de retratação destrói a calibragem do método que
+produz as boas hipóteses**. Isto é o contrapeso da §7.291, e sem ele as 302 seções anteriores puxariam
+para a paralisia com vocabulário de rigor.
+
+### 3. O dano da cerca não provada, melhor formulado
+
+Não é que ela *ocupa o lugar da vigilância*. É que **ela ocupa o lugar da cerca que faltava**:
+
+> ***"O dano não é a cerca não funcionar — é alguém não escrever a que funcionaria, porque vê uma no
+> repo e para de procurar."***
+
+O prejuízo não está no episódio, está **no leitor futuro** — e por isso remover é estritamente melhor
+que deixar quebrada: o vazio convida a escrever, a cerca falsa encerra a busca.
