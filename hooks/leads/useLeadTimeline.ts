@@ -40,9 +40,9 @@ export interface TimelineAoVivo {
   realtimeStatus: string;
 }
 
-async function fetchTimeline(contactId: string): Promise<TimelineItemView[]> {
+async function fetchTimeline(leadId: string): Promise<TimelineItemView[]> {
   const res = await apiClient.get<{ data: TimelineItemView[] }>(
-    `/api/v1/contacts/${contactId}/timeline`,
+    `/api/v1/leads/${leadId}/timeline`,
   );
   if (res && typeof res === "object" && "data" in res) {
     return (res as { data: TimelineItemView[] }).data;
@@ -57,9 +57,12 @@ function idDoEvento(payload: unknown): string | null {
   return typeof p.new?.id === "string" ? p.new.id : null;
 }
 
-export function useLeadTimeline(contactId: string | null): TimelineAoVivo {
+export function useLeadTimeline(
+  leadId: string | null,
+  contactId: string | null,
+): TimelineAoVivo {
   const qc = useQueryClient();
-  const queryKey = ["timeline", contactId] as const;
+  const queryKey = ["timeline", leadId] as const;
   const [chegouAoVivo, setChegouAoVivo] = useState<Set<string>>(new Set());
   // `useRef` para o Set não virar dependência do callback e o canal não
   // re-assinar a cada evento — re-assinar perderia eventos na janela.
@@ -67,8 +70,8 @@ export function useLeadTimeline(contactId: string | null): TimelineAoVivo {
 
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchTimeline(contactId as string),
-    enabled: !!contactId,
+    queryFn: () => fetchTimeline(leadId as string),
+    enabled: !!leadId,
   });
 
   const onChange = useCallback(
@@ -82,22 +85,33 @@ export function useLeadTimeline(contactId: string | null): TimelineAoVivo {
     [qc, queryKey],
   );
 
-  // Filtra por `contact_id` porque a timeline é do contato — o mesmo eixo que a
-  // rota usa. Filtrar por lead_id deixaria de fora a atividade que nasce da
-  // conversa e não de um negócio específico.
+  // O EIXO É O LEAD, e o comentário anterior aqui dizia o contrário com um
+  // argumento bom — o que é pior que não ter comentário, porque faz o próximo
+  // leitor parar de procurar. Ele dizia que filtrar por lead_id "deixaria de
+  // fora a atividade que nasce da conversa": isso é VERDADE sobre a timeline do
+  // CONTATO e MUDO sobre o negócio SEM contato, que não tinha porta nenhuma —
+  // 25% dos leads, com 64% das atividades.
+  //
+  // A rota (`leads/[id]/timeline`) resolve isso com a cláusula que une o lead
+  // com `contact_id = <contato> and lead_id is null`. Aqui no realtime o filtro
+  // é simples por limitação do supabase-js, então assina por `lead_id`: cobre
+  // 100% do que existe hoje, e a atividade órfã de lead (se um dia nascer)
+  // chega pelo refetch da invalidação, não ao vivo. Limitação conhecida e
+  // escrita, não descoberta depois.
   const { status } = useRealtimeChannel({
-    name: contactId ? `timeline-${contactId}` : "timeline-disabled",
-    postgresChanges: contactId
+    name: leadId ? `timeline-${leadId}` : "timeline-disabled",
+    postgresChanges: leadId
       ? {
           event: "INSERT",
           schema: "public",
           table: "crm_lead_activities",
-          filter: `contact_id=eq.${contactId}`,
+          filter: `lead_id=eq.${leadId}`,
         }
       : undefined,
     onChange,
-    enabled: !!contactId,
+    enabled: !!leadId,
   });
+  void contactId; // a rota usa; o canal não consegue (filtro simples).
 
   return {
     itens: query.data ?? [],

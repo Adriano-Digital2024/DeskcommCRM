@@ -4903,3 +4903,43 @@ for inevitável, **marque-a como palpite no próprio critério**, para que o ver
 "confira se o produto fez diferente" e não como "o produto errou".
 
 Pergunta padrão antes de reportar: **"estou exigindo a coisa, ou a forma dela que eu imaginei?"**
+
+## §7.132 — Numa superfície que AGRUPA, ausência de texto não é evidência; só a contagem é
+
+Um critério ia procurar o TEXTO da atividade do irmão para provar que ela não vazou. Ela é do mesmo
+ator que as demais — então, se vazasse, colapsaria DENTRO do bloco. **"Não vejo a frase" é também
+exatamente o que se vê quando ela está agrupada.** O critério teria dado VERDE sobre um vazamento
+invisível por agrupamento.
+
+Este é o oitavo critério errado do dia e o PRIMEIRO na direção perigosa: os sete anteriores eram
+falsos VERMELHOS, que custam uma ida à tela. Falso VERDE **encerra a pergunta** — ninguém volta a
+olhar o que já passou.
+
+**O que distingue é a CONTAGEM.** O bloco que anuncia "3 ações" é o único elemento que separa
+*agrupar o que é meu* de *somar o que não é*. Texto tem duas causas para faltar; número tem uma.
+
+**Regra geral:** toda asserção de AUSÊNCIA feita sobre superfície que colapsa, trunca, pagina ou
+esconde atrás de clique é inválida por construção — a ausência que ela observa é indistinguível da
+ocultação. Asserção de ausência precisa de um observável **que sobreviva ao agrupamento**: uma
+contagem, um total, um id.
+
+**Ação imediata:** varrer a suíte atrás de todo critério que afirma "X não aparece" sobre a
+timeline. Cada um é um falso verde esperando o caso que o exercite.
+
+## §7.123-b — Defeito de JUNÇÃO morre quando a junção muda, sem ninguém consertar a peça
+
+Eu havia registrado uma segunda metade no eixo: a rota por contato soma no dossiê de A as
+atividades do irmão B. Medido depois, com caso construído: **não vaza.** E o motivo não é que
+alguém consertou a rota — é que o dossiê **deixou de usá-la**, ganhou rota própria ancorada no lead.
+
+A rota por contato continua fazendo exatamente o que eu descrevi, e **está certa fazendo** — na
+página do contato, somar as atividades de todos os negócios dele é o comportamento correto. O
+"vazamento" nunca foi defeito daquela peça; era defeito de ela estar respondendo por outro
+substantivo (§7.123).
+
+**Corolário prático, e ele quase me custou um conserto errado:** ao reportar defeito de junção,
+**diga QUAL junção** — "a rota X consumida por Y". Reportado como defeito da peça, alguém vai
+"consertar" código correto, e o conserto piora a peça no lugar onde ela estava certa.
+
+E o inverso serve de teste: **se o defeito some quando você troca o consumidor, sem tocar na peça,
+então ele sempre foi de junção.**

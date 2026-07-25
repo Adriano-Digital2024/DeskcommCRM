@@ -54,7 +54,7 @@ export function LeadDossier({
   ownerNames,
 }: Props) {
   const campos = useRef<HTMLDivElement | null>(null);
-  const timeline = useLeadTimeline(open && lead.contact_id ? lead.contact_id : null);
+  const timeline = useLeadTimeline(open ? lead.id : null, lead.contact_id);
   const owner = resolveLeadOwner(lead, ownerNames);
   const score = lead.score ?? null;
 
