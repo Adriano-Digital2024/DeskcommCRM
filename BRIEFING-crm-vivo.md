@@ -6969,3 +6969,37 @@ injetado (com conserto → `authenticated`; sem → `anon`).
 condição adversa conhecida está coberta, e a corrida rara fica **escrita no comentário** como limite
 conhecido. Se `supabase-js` expuser um sinal de conexão estabelecida, esperá-lo antes do `subscribe`
 **remove a possibilidade** e custa uma linha — isso sim vale, porque é cerca e não medição.
+
+## §7.220 — Campo AUSENTE força pergunta; campo com valor força crença
+
+A instrução era *"o campo diz `false` ou não existe"*. A escolha feita foi **remover**, e a razão é
+melhor que a instrução: **um campo que sempre diz `false` ainda ocupa o contrato e convida alguém a
+lê-lo; ausente, o cliente PERGUNTA em vez de acreditar.**
+
+E o diagnóstico que veio junto fecha a §7.128 com uma segunda população: *"eu declarei no CÓDIGO e
+achei que bastava. **Comentário protege quem edita; contrato protege quem consome, e são pessoas
+diferentes.**"* A mesma verdade precisa estar escrita **em cada superfície que tem leitor próprio** —
+e o comentário nunca alcança quem só vê o JSON.
+
+## §7.221 — O detector não pode ser o sinal que já se mediu como mentiroso
+
+Proposta em curso: fazer a tela **olhar `data-realtime-status`** quando ele não for `subscribed`.
+**Isso não detecta o defeito que motivou a proposta** — está medido: o status diz `subscribed` **com
+a entrega morta**, porque descreve a ASSINATURA e não a ENTREGA (§7.199).
+
+**Construir esse detector produziria uma tela que afirma estar saudável com confiança nova.** Pior que
+não ter detector: transforma silêncio em asseveração.
+
+**O detector correto precisa de um observável que só a ENTREGA BEM-SUCEDIDA produza.** E a melhor
+forma disponível é a que já falta por outro motivo: **o refetch de segurança**.
+
+**Uma peça resolve os dois problemas, e é isso que a torna a escolha certa:**
+- **Como cura:** refetch periódico devolve à tela o que o realtime perdeu — hoje não existe em
+  nenhuma superfície (medido: board e dossiê nunca recuperam, nem ao voltar à aba).
+- **Como detector:** se o refetch traz dado que o realtime nunca entregou, **a divergência É a
+  prova** de que a entrega está morta — e nesse instante a tela pode, finalmente, dizer a verdade ao
+  usuário.
+
+**Regra:** antes de escolher um sinal para detectar uma falha, verifique se ele **muda de valor**
+quando a falha ocorre. Sinal que permanece igual nos dois estados não é detector — é decoração com
+aparência de instrumento.
