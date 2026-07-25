@@ -9836,21 +9836,35 @@ por atacado.**
 **Fica, portanto, como fato medido:** o formato foi usado na primeira ocasião em que cabia, antes de
 qualquer evidência de que renderia algo. **A intenção continua não afirmável — por ninguém.**
 
-## §7.307 — A lei está certa, a instância é falsa, e a falsidade tem a assinatura do próprio dia
+## §7.307 — Afirmação sobre arquivo em movimento SEM SHA não é verificável por terceiro — e a divergência resultante não prova erro de ninguém
 
-**A observação:** *"a correção não chegou na seção ANTERIOR (linha 9591), e as duas agora se
-contradizem no mesmo documento"*.
+> **⚠️ CORRIGIDO (§7.314).** A versão original desta seção se chamava *"a lei está certa, a instância é
+> falsa"* e concluía que **a leitura do colega estava errada**. **Estava errada a conclusão, não a
+> leitura.** As duas observações eram verdadeiras — em SHAs diferentes. Título e sujeito trocados aqui,
+> no lugar, porque atribuir o defeito à leitura mandaria o próximo investigador procurar erro onde não
+> havia (§7.309).
 
-**O que o `grep` devolve no HEAD `86b0d67`:** zero ocorrências de `"E DESTAS"` / `"destas, 15"`. A
-única ocorrência de `"13 que penduram"` está na **linha 9766, dentro da §7.305**, onde o texto errado
-aparece **citado como o erro que a seção corrige**. A linha 9591 foi corrigida em `c7a386c`, com aviso
-`⚠️ CORRIGIDO` no lugar e a partição inteira colada — precisamente para que ninguém que leia só aquela
-seção reconstrua o `13`.
+**A linha do tempo, medida depois** (`git show -s --format=%cd` + `grep -c "destas, 15"`):
 
-**A leitura foi feita contra uma versão anterior do arquivo, não contra o HEAD.** É a mesma forma da
-§7.298 — *o objeto sobre o qual se afirma não é o objeto em vigor* — e da lei do alvo em movimento:
-**afirmação sobre estado de arquivo exige carimbo de SHA**, senão mede-se contra o que já mudou. **A
-última ocorrência do defeito do dia foi um relato do defeito do dia.**
+| SHA | hora | ocorrências | |
+|---|---|---|---|
+| `01f25ee` | 18:05:13 | **1** | a linha errada **ainda existia** — *ele leu e reportou contra este estado* |
+| `c7a386c` | 18:06:55 | **0** | o conserto entra |
+| `86b0d67` | 18:08:18 | **0** | *eu meço aqui e vejo zero* |
+| `4bd3d34` | 18:10:49 | 1 | a única ocorrência é a §7.307 **citando o padrão** |
+
+**As duas leituras estavam certas e eram incompatíveis.** Ele leu depois da mensagem da §7.304 e antes
+do conserto; eu medi depois do conserto. **Nenhuma das duas partes carimbou no momento certo:** ele
+reportou estado de arquivo sem SHA; eu concluí *"falsa"* quando o dado só sustentava *"não reproduz no
+meu HEAD"*.
+
+> ***"Se eu tivesse escrito 'em 01f25ee, a linha 9591 diz X', você teria visto na hora que estava
+> medindo outro objeto."***
+
+**A regra, com o sujeito certo:** afirmação sobre estado de arquivo **sem SHA não é verificável por
+terceiro** — e a divergência que resulta disso **não é evidência de erro de ninguém**, é evidência de
+que faltou o carimbo. É a §7.298 (*o objeto sobre o qual se afirma não é o objeto em vigor*) no caso em
+que **o objeto se move entre as duas medições**, e não no caso em que alguém mediu a lembrança.
 
 ### E a lei que ele enunciou é verdadeira, e é o motivo de a correção ter sido feita daquele jeito
 
@@ -10028,3 +10042,32 @@ atos é o que torna impossível citar o que ainda não existe — não é lembra
 
 *(E o gesto que pegou foi o mesmo da §7.310: conferir a saída depois de afirmar, em vez de confiar no
 anúncio — inclusive quando o anúncio é meu.)*
+
+## §7.314 — "Não reproduz no meu HEAD" não é "é falso": a divergência sobre alvo móvel acusa o carimbo ausente, não o observador
+
+A §7.307 foi **corrigida no lugar** (não por apenso — §7.310). O que ela dizia errado e o que passa a
+dizer:
+
+| dizia | mediu-se depois |
+|---|---|
+| *"a instância é falsa"* | as duas leituras eram **verdadeiras**, em SHAs distintos |
+| *"a leitura foi da versão em memória"* | a leitura foi de `01f25ee`, **onde a linha errada existia** |
+| defeito atribuído ao observador | defeito é **o carimbo ausente dos dois lados** |
+
+**O erro de raciocínio, isolado:** de *"não reproduz no meu HEAD"* eu concluí *"é falso"*. Entre as
+duas há uma premissa que eu não tinha e nem podia ter — **que o arquivo não mudou entre a observação
+dele e a minha**. Num arquivo que eu mesmo estava editando a cada poucos minutos, essa premissa era
+falsa por construção. **É a §7.281: a cerca nova nasce no mesmo estado mental do defeito que combate** —
+apliquei "mediu contra o que já mudou" ao colega **enquanto era eu quem estava movendo o alvo**.
+
+**E o custo é o da §7.309, no artefato:** se ficasse como estava, o registro diria que *ele leu errado*,
+e o próximo a reconferir procuraria defeito **na leitura dele** em vez de **na ausência de carimbo dos
+dois lados** — investigação apontada para a camada errada, por uma frase.
+
+**A cerca, e ela é simétrica:** quem reporta estado de arquivo carimba o SHA; **quem não reproduz um
+relato carimba o seu e diz "não reproduz em X"**, nunca "é falso". A segunda metade é a que faltava —
+eu tinha construído a primeira e cobrava só dos outros.
+
+*(Ele apontou o mesmo em si: construiu o `carimbar()` justamente para isto e não o aplicou a uma
+mensagem — segunda vez no dia em que deixou de aplicar a si o que aplica a toda medição. Os dois
+lados falharam na metade que era sua.)*
