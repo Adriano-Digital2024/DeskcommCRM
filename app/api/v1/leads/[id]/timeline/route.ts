@@ -40,6 +40,7 @@ import {
   TIMELINE_COLS,
   comNomeDoAtor,
   decodeCursor,
+  eixoDoDossie,
   encodeCursor,
 } from "@/lib/leads/timeline-query";
 import type { TimelineItem } from "@/lib/types/contacts";
@@ -91,11 +92,11 @@ export async function GET(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     .order("id", { ascending: false })
     .limit(limit + 1);
 
-  // A cláusula. Sem contato, só o primeiro lado — e é isso que dá porta ao lead
-  // que antes não tinha nenhuma.
-  q = contactId
-    ? q.or(`lead_id.eq.${leadId},and(contact_id.eq.${contactId},lead_id.is.null)`)
-    : q.eq("lead_id", leadId);
+  // A cláusula mora em `eixoDoDossie` — não aqui — porque é ela que o teste
+  // prende. Sem contato ela devolve null e o filtro vira igualdade simples: é
+  // isso que dá porta ao lead que antes não tinha nenhuma.
+  const eixo = eixoDoDossie(leadId, contactId);
+  q = eixo ? q.or(eixo) : q.eq("lead_id", leadId);
 
   if (types.length > 0) q = q.in("type", types);
   if (cursor) {

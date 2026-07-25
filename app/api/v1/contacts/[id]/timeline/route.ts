@@ -10,15 +10,19 @@
  *   - type: repeatable query param (?type=order_created&type=message_inbound)
  *   - cursor: opaque base64 of (performed_at, id)
  *   - limit: 1..100 (default 50)
+ *
+ * ESTA ROTA NÃO É O DOSSIÊ DO NEGÓCIO. Ela é a vida do CONTATO, e por isso
+ * soma os negócios dele — o que no dossiê de UM negócio apareceria como
+ * história do irmão. O dossiê usa `leads/[id]/timeline`, ancorada no lead;
+ * as duas dividem as peças de `lib/leads/timeline-query.ts` e divergem só na
+ * cláusula, que é justamente onde a diferença mora.
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
 import { ok, fail } from "@/lib/api/wrappers";
 import { createClient } from "@/lib/supabase/server";
-import type { TimelineItem, TimelineItemView } from "@/lib/types/contacts";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { isServiceRoleConfigured } from "@/lib/audit";
+import type { TimelineItem } from "@/lib/types/contacts";
 import {
   TIMELINE_COLS,
   comNomeDoAtor,
@@ -29,21 +33,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/**
- * As colunas que a timeline entrega. **Tem que acompanhar `TimelineItem`**
- * (`lib/types/contacts.ts`) — e essa concordância não é vigiada por nada: isto
- * é uma string, o `.select()` aceita qualquer coisa, e o resultado é convertido
- * para `TimelineItem` sem o compilador conferir.
- *
- * Já custou uma vez: a `0071` criou `reason`/`actor_kind`, o tipo passou a
- * declará-los, a tela passou a lê-los — e esta lista ficou para trás. Como os
- * campos são **opcionais** no tipo, `it.reason` virava `undefined`, o corpo da
- * linha caía no resumo do payload (JSON de UUID na cara do usuário) e todo ator
- * virava "não registrado". Tudo isso compilando verde: a interrogação do
- * opcional é que cala o compilador.
- *
- * Campo novo em `TimelineItem` → campo novo AQUI, no mesmo commit.
- */
 export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },

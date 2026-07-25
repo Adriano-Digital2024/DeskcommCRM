@@ -4979,3 +4979,36 @@ esperado, **o OBSERVÁVEL que ele lê** — superfície + elemento (ex.: `timeli
 opostas" deixa de depender de coincidência e vira **checagem que o próprio placar roda antes da
 suíte**. Treze critérios declararem uma string a mais custa minutos; a alternativa é continuar
 apostando que os dois vão falhar no mesmo dia.
+
+## §7.134 — Afirmar sobre mais do que se perguntou (e é a única variante MECANIZÁVEL)
+
+Um critério selecionava um conjunto de campos e afirmava sobre **outro**. O campo vinha `undefined`
+— ausente da RESPOSTA, não ausente do BANCO — e virou o laudo "grava sem dizer o que mudou" sobre
+uma coluna que o instrumento **nunca pediu**. O vermelho sai idêntico ao de um defeito real.
+
+Os dois números nunca estiveram brigando: um era dado, o outro era **a própria omissão do
+instrumento com cara de dado**.
+
+**Por que esta é fácil de cometer:** a linguagem apaga a distinção de graça. `undefined` e `null`
+caem juntos em `== null`, em teste de falsidade, em `?.` e em quase toda serialização — o idioma
+DEFAULT destrói exatamente a evidência que separa "não perguntei" de "não tem". Não é desatenção;
+é a ferramenta trabalhando contra.
+
+**E por isso ela é a única das nove que vira cerca em vez de disciplina:** o critério ESTOURA
+quando a consulta não trouxe o campo. `undefined` acusa o INSTRUMENTO; `null` acusa o PRODUTO. Dois
+estados, duas mensagens, nenhuma decisão humana no meio.
+
+**Generaliza para todo instrumento que lê uma PROJEÇÃO** — `select` parcial, resposta de API com
+fieldset, DTO, GraphQL, objeto serializado que descarta nulos. Regra: **a asserção declara o que
+exigiu da consulta**, e o que não foi exigido não pode ser afirmado. É a §7.125-b uma camada
+abaixo: lá se declara a superfície, aqui os campos — e aqui a declaração se mecaniza sozinha.
+
+## §7.134-a — Não gaste critério provando que um mecanismo faz o que ele É
+
+Ficou a pergunta de produto: "o motivo está atrás de um clique, dentro do bloco agrupado". Não é
+pergunta. **Agrupamento esconder detalhe é a DEFINIÇÃO de agrupamento**, e as linhas individuais
+mostram o motivo normalmente ("Movido de Avaliação para Proposta enviada"), como a captura prova.
+
+O achado só existiria se o detalhe **não voltasse ao expandir** — e isso já está medido. Critério
+que verifica que o colapso colapsa não separa nenhuma hipótese: passa sempre, e o verde não
+autoriza nada.

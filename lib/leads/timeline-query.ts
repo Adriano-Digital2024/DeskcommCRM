@@ -37,6 +37,14 @@ export const TIMELINE_COL_LIST = [
  * doeu de verdade: campo novo no tipo e esquecido no SELECT deixa de ser um
  * bug silencioso (opcional vira `undefined`, tela cai no fallback, tudo verde)
  * e passa a ser erro de tipo, com o nome do campo que falta na mensagem.
+ *
+ * O CASO QUE O MOTIVOU, porque portão sem história vira "cerimônia" e é
+ * removido: a `0071` criou `reason`/`actor_kind`, o tipo passou a declará-los, a
+ * tela passou a lê-los — e a lista de colunas ficou para trás. Como os campos
+ * são OPCIONAIS no tipo, `it.reason` virava `undefined`, o corpo da linha caía
+ * no resumo do payload (JSON de UUID na cara do usuário) e todo ator virava
+ * "não registrado". Tudo compilando verde: a interrogação do opcional é que
+ * cala o compilador. Este bloco existe para que aquilo não compile de novo.
  */
 type ColunasPedidas = (typeof TIMELINE_COL_LIST)[number];
 type Faltando = Exclude<keyof TimelineItem, ColunasPedidas>;
@@ -64,6 +72,28 @@ export function decodeCursor(raw: string): Cursor | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * O EIXO do dossiê: quais atividades pertencem a ESTE negócio.
+ *
+ * Função em vez de string solta na rota porque o segundo lado da união é
+ * removível sem nada quebrar — hoje ele casa ZERO linhas, e é exatamente por
+ * isso que parece redundante para quem lê rápido. O teste ao lado
+ * (`timeline-eixo.test.ts`) prende as três propriedades; o comentário pede, o
+ * teste obriga.
+ *
+ *  - lado 1 (`lead_id = este`): dá porta ao negócio SEM contato, que antes não
+ *    tinha nenhuma e mostrava "Nada aconteceu" com 111 atividades no banco;
+ *  - lado 2 (`contact_id = <contato> and lead_id is null`): preserva a
+ *    atividade que nasce da CONVERSA e não de um negócio — o que o eixo antigo,
+ *    por contato, protegia de graça e que eu perderia ao trocar de eixo;
+ *  - o negócio IRMÃO fica de fora por construção: a atividade dele tem
+ *    `lead_id = irmão`, e não casa com nenhum dos dois lados.
+ */
+export function eixoDoDossie(leadId: string, contactId: string | null): string | null {
+  if (!contactId) return null; // sem contato o lado 2 não existe: quem chama usa `.eq`
+  return `lead_id.eq.${leadId},and(contact_id.eq.${contactId},lead_id.is.null)`;
 }
 
 /** Anexa o nome do agente e da pessoa que agiram, para a linha não dizer só "Agente". */
