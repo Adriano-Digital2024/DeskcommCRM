@@ -7822,3 +7822,29 @@ medições cercando uma mudança**, que é a única forma de atribuir.
 
 **Regra:** medição não destrutiva **sempre vem antes** da mudança que ela poderia explicar. O custo é
 uma rodada; o custo de inverter é perder a atribuição de forma irrecuperável.
+
+## §7.255 — Antes de perguntar a alguém, veja se o SCHEMA já responde
+
+A pergunta *"a janela do worker fechou o E4/E6?"* foi feita **três vezes** e voltou incompleta as três,
+porque quem responde relata **o que fez**, e a pergunta era sobre **o que ficou**.
+
+**Uma consulta respondeu:**
+
+```
+followup_turn | enabled=true  | n=8  | vencidos=7  | tentativas=0
+followup_turn | enabled=false | n=14 | vencidos=14 | tentativas=0
+```
+
+**`tentativas=0` é o número decisivo**, e ele distingue exatamente o que a pergunta não conseguia:
+*"o consumidor rodou e falhou"* teria `attempts > 0`. **Zero significa que nenhum consumidor jamais
+pegou esses jobs** — o envio da reativação **nunca foi executado**, e o E4/E6 seguem bloqueados por
+falta de consumidor, não por defeito.
+
+**Regra:** antes de gastar uma rodada perguntando o estado do sistema, verifique se o **schema já
+registra a resposta**. Campos como `attempts`, `last_error`, `updated_at` existem exatamente para
+distinguir *"tentou e falhou"* de *"nunca foi tentado"* — e a resposta que vem do banco não depende de
+alguém lembrar o que fez, nem chega corrompida pelo canal.
+
+**E o custo do erro é assimétrico:** perguntar custa uma rodada de ida e volta por vez; medir custa
+uma consulta, uma vez. Três perguntas equivalem a três rodadas para uma informação que estava a um
+`select` de distância desde o início.
