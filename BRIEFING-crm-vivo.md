@@ -7612,3 +7612,55 @@ observável**, não um indicador de qualidade do trabalho.
 **A dicotomia fragilidade×progresso vale para contagens usadas como EVIDÊNCIA DE QUALIDADE.** Forçar
 uma regra de medição numa das duas produziria classificação errada e enfraqueceria o filtro — que é
 justamente o que o filtro existe para evitar.
+
+## §7.247 — O aparato não "não funcionou": ele funcionou SOBRE OUTRA CONDIÇÃO
+
+Quatro aparatos para matar a entrega, e **três produziram condições diferentes da desejada** — cada um
+com resultado limpo e legível, **sobre outra coisa**:
+
+| aparato | condição que ele realmente criou |
+|---|---|
+| `page.route` | intercepta **HTTP**, não WebSocket — canal vivo |
+| `throw` no construtor do WebSocket | **app quebrado** (Runtime Error), não canal mudo |
+| stub artesanal | stub **nem entrou em uso** — canal seguia `SUBSCRIBED` |
+| `page.routeWebSocket` | **a condição certa**: canal em `connecting`, nunca entrega |
+
+**O modo de falha não é "o instrumento quebrou" — é "o instrumento funcionou perfeitamente sobre uma
+condição que não é a sua".** Por isso não há erro visível: a saída é coerente, o teste passa ou falha
+com clareza, e o laudo é sobre outro fenômeno.
+
+**E a consequência foi assumida:** o aparato (2) era o da prova do board já reportada e aceita. **A
+prova foi REFEITA** — o resultado se manteve, mas *"o resultado anterior valia menos do que
+parecia, e refazer era a única forma de saber"*. **Invalidar retroativamente o próprio resultado
+aceito é mais caro que reportar um vermelho novo, e é a única coisa a fazer.**
+
+### §7.247-a — Sinal inútil para uma pergunta pode ser exato para OUTRA
+
+`data-realtime-status` foi medido como **inútil para o usuário**: diz `subscribed` com a entrega
+morta, porque descreve a ASSINATURA e não a ENTREGA (§7.199).
+
+**E foi exatamente ele que salvou a investigação** — respondendo *"o bloqueio pegou?"* quando *"nada
+chegou"* era indistinguível de *"o refetch chegou primeiro"*. **Para a pergunta do instrumento, ele é
+preciso**, porque a pergunta do instrumento é sobre a assinatura.
+
+**Não é o sinal que é bom ou ruim — é o par sinal↔pergunta.** Declarar um sinal "inútil" sem dizer
+*para qual pergunta* descarta valor real; aqui, descartá-lo teria custado a única forma de distinguir
+duas causas.
+
+## §7.248 — Feature nova INVALIDA os instrumentos que contam elementos apresentados
+
+Depois de tudo funcionando, a medição ainda dizia que a cura não acontecera: contava `<li>`, e as
+duas atividades da sonda são do mesmo ator com segundos de diferença — **o agrupamento por ator,
+construído nesta mesma wave, funde as duas num bloco.** A contagem ficava igual.
+
+> ***"O meu próprio recurso da wave sabotou a minha própria medição, e eu quase reportei 'a rede não
+> cura o dossiê'."***
+
+**Toda feature que muda COMO o dado é apresentado invalida silenciosamente os instrumentos que contam
+o apresentado** — e ninguém reaudita instrumentos ao entregar feature, porque a feature "não mexeu
+nos testes".
+
+**Versão contável:** ao entregar mudança de apresentação (agrupar, truncar, paginar, ordenar,
+colapsar), conte **quantos instrumentos contam elementos renderizados naquela superfície**. Cada um é
+um laudo futuro errado. **A correção é medir o FATO (ações representadas), não o VEÍCULO (elementos
+na tela)** — o veículo muda com o desenho, o fato não.
