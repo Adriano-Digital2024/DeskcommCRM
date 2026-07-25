@@ -125,6 +125,33 @@ describe("emitLeadActivity", () => {
     expect(inserts[0]).toMatchObject({ actor_kind: "ai" });
   });
 
+  // A ramificação que a PRODUÇÃO usa: depois da 0072, o turno do agente grava
+  // `llm_call_ids` (antes punha id de `llm_calls` dentro de `run_ids`, que
+  // apontava para a tabela errada). Era a única das três formas de lastro sem
+  // teste — justamente a que o único escritor real exercita.
+  it("llm_call_ids sozinho já sustenta a autoria da IA (o lastro do turno)", async () => {
+    const { client, inserts } = supabaseFake();
+    await emitLeadActivity(client, {
+      ...base,
+      actor: { type: "ai_agent", id: "ag-1", role: "agent" },
+      evidence: { llm_call_ids: ["call-1"] },
+    });
+    expect(inserts[0]).toMatchObject({
+      actor_kind: "ai",
+      evidence: { llm_call_ids: ["call-1"] },
+    });
+  });
+
+  it("llm_call_ids VAZIO não sustenta — degrada para system, como as outras duas", async () => {
+    const { client, inserts } = supabaseFake();
+    await emitLeadActivity(client, {
+      ...base,
+      actor: { type: "ai_agent", id: "ag-1", role: "agent" },
+      evidence: { llm_call_ids: [] },
+    });
+    expect(inserts[0]).toMatchObject({ actor_kind: "system", evidence: null });
+  });
+
   it("falha do banco vira retorno, NÃO exceção — a timeline não derruba a operação", async () => {
     const { client } = supabaseFake("boom");
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
