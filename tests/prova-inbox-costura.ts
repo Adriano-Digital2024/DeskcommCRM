@@ -48,9 +48,26 @@ import { BASE, CREDS, carimbar, criarPlacar, login } from "./qa-helpers";
  * não é "está quebrado?", é "qual caminho de escrita não atualiza?".
  */
 const LINHA_DE_BASE = {
-  quando: "25/07, commit e65eb5f, antes da wave 8",
-  desfecho: "nem recarregando" as Desfecho,
+  quando: "25/07, medida pelo caminho de produção",
+  desfecho: "acompanha ao vivo" as Desfecho,
 };
+
+/**
+ * ⚠️ A BASE ANTERIOR ERA "nem recarregando" E ESTAVA ERRADA — e a distinção
+ * importa para quem ler daqui a seis meses: ela NÃO subiu porque um conserto
+ * entrou. Ela subiu porque a medição que a produziu era inválida.
+ *
+ * Aquela versão inseria em `messages` direto pelo cliente de serviço e nunca
+ * chamava `fn_mark_conversation_message` — a RPC que `lib/waha/ingest.ts` executa
+ * DEPOIS do insert e que mantém `last_message_preview`/`last_message_at`. A lista
+ * lê essa coluna. Eu pulei o escritor e cobrei o resultado dele.
+ *
+ * Medido pelo caminho certo: 0ms de discordância, 2 de 2. A tela sempre esteve
+ * certa — ela mostra o que a coluna diz, e a coluna não tinha por que mudar.
+ *
+ * Se alguém marcar isto como "conserto de 25/07" vai procurar um commit que não
+ * existe.
+ */
 
 /** Os três desfechos, em ordem de gravidade crescente. O contrato do 27 pedia
  *  "sem regressão", e passa/falha não distingue regressão de defeito herdado. */
@@ -91,6 +108,17 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
   if (antes.includes(marca)) throw new Error("a marca já estava na tela antes da ação");
 
   const t0 = Date.now();
+  // A ESCRITA PASSA PELO MESMO MARCADOR QUE O CAMINHO DE PRODUÇÃO USA.
+  //
+  // A primeira versão inseria direto em `messages` — e a lista NUNCA atualizava.
+  // Eu ia entregar isso como defeito de produto. Não é: `lib/waha/ingest.ts`
+  // chama a RPC `fn_mark_conversation_message` DEPOIS do insert, e é ela que
+  // mantém `last_message_preview`/`last_message_at`. Inserindo à mão eu pulei o
+  // escritor e medi uma coluna que ninguém tinha mandado atualizar.
+  //
+  // É a lei que eu venho cobrando dos outros mordendo em mim: INSERT à mão prova
+  // a tela e MENTE SOBRE A ORIGEM. A tela estava certa — ela mostra o que a
+  // coluna diz, e a coluna não tinha por que mudar.
   const { error } = await admin.from("messages").insert({
     organization_id: ORG,
     conversation_id: conversaId,
@@ -107,6 +135,13 @@ async function rodada(page: Page, conversaId: string, contactId: string, session
     sent_at: new Date().toISOString(),
   } as never);
   if (error) throw new Error(`gatilho: ${error.message}`);
+  const { error: erroMarca } = await admin.rpc("fn_mark_conversation_message" as never, {
+    p_conv: conversaId,
+    p_direction: "inbound",
+    p_preview: `${marca} mensagem de costura`,
+    p_at: new Date().toISOString(),
+  } as never);
+  if (erroMarca) throw new Error(`marcador da conversa: ${erroMarca.message}`);
 
   // A LISTA é lida DENTRO da coluna da esquerda, não na página inteira: a
   // conversa aberta também contém a marca, e procurar no corpo todo faria a
