@@ -27,7 +27,7 @@
 
 import { chromium } from "@playwright/test";
 
-import { BASE, carimbar, login } from "./qa-helpers";
+import { BASE, carimbar, gotoBoard, login } from "./qa-helpers";
 
 interface Evento {
   tipo: "join" | "leave";
@@ -90,12 +90,15 @@ async function main(): Promise<void> {
     await page.getByRole("link", { name: "Inbox", exact: true }).click();
     await page.waitForURL(/\/app\/inbox/, { timeout: 20_000 });
     await page.waitForTimeout(2500);
-    await page.getByRole("link", { name: "Kanban", exact: true }).click();
-    await page.waitForURL(/\/app\/kanban/, { timeout: 20_000 });
-    await page.waitForTimeout(2000);
+    // O BOARD, não a LISTA de pipelines. `/app/kanban` é o índice — o canal do
+    // kanban só nasce DENTRO do pipeline, e visitar o índice mediria uma tela
+    // que não assina nada. É o mesmo erro do `goto` noutra escala: parecer que
+    // se visitou a superfície sem ter entrado nela.
+    await gotoBoard(page);
+    await page.waitForTimeout(2500);
     const j = eventos.filter((e) => e.visita === i && e.tipo === "join").length;
     const l = eventos.filter((e) => e.visita === i && e.tipo === "leave").length;
-    console.info(`[visita ${i}] inbox → kanban · entradas=${j} saídas=${l}`);
+    console.info(`[visita ${i}] inbox → board · entradas=${j} saídas=${l}`);
   }
 
   await browser.close();
@@ -127,7 +130,7 @@ async function main(): Promise<void> {
   const vazando = orfaos.map((c) => `${c} entrou e NUNCA saiu`);
   console.info(
     vazando.length === 0
-      ? "\n==> SEM VAZAMENTO: todo tópico que entrou também saiu. O inbox desassina ao sair da tela."
+      ? "\n==> SEM VAZAMENTO: todo tópico que entrou também saiu, nas DUAS superfícies que assinam."
       : `\n==> VAZAMENTO: ${vazando.length} tópico(s) órfão(s) — ${vazando.join(" · ")}\n` +
         `    Canal órfão só incomoda quando acumula, e é por isso que teste curto nunca pega.`,
   );
