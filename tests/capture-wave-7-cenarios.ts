@@ -77,6 +77,7 @@ const CRITERIOS = [
   "E24.pre",
   "E24",
   "E25.prazo",
+  "E26.ciclo",
 ];
 const { record, fechar } = criarPlacar("WAVE 7", CRITERIOS);
 
@@ -301,6 +302,67 @@ async function main(): Promise<void> {
         "mostrar esfriamento — três independentes, porque o ciclo pode falhar em qualquer elo",
       "BLOQUEADO",
     );
+
+    // ---- 26: o ciclo que se autodestrói — mensurável HOJE --------------------
+    //
+    // `trg_update_last_activity_at` é AFTER INSERT FOR EACH ROW **sem cláusula
+    // WHEN**, e a função faz `last_activity_at = greatest(..., performed_at)`
+    // para QUALQUER tipo. Conferi na definição, não no relato.
+    //
+    // Consequência: no instante em que a atividade "esfriou" entrar na timeline,
+    // ela zera o relógio do silêncio e o lead volta a "em dia". O PRODUTOR DO
+    // ESTADO APAGA O PRÓPRIO ESTADO — e o defeito só apareceria depois da
+    // entrega, com o sintoma de "o esfriamento não gruda", que manda alguém
+    // investigar o classificador em vez do gatilho.
+    //
+    // Dá para medir HOJE porque o gatilho não filtra tipo: qualquer atividade
+    // serve para exibir o mecanismo. O tipo usado aqui é PALPITE — quando o tipo
+    // de risco existir, troca-se uma linha.
+    const { data: antesRelogio } = await admin
+      .from("crm_leads")
+      .select("last_activity_at")
+      .eq("id", casos.CICLO!.leadId)
+      .single();
+    await admin
+      .from("crm_leads")
+      .update({
+        last_activity_at: new Date(Date.now() - RISK_COLD_HOURS * 4 * 3_600_000).toISOString(),
+      } as never)
+      .eq("id", casos.CICLO!.leadId);
+    await admin.from("crm_lead_activities").insert({
+      organization_id: ORG,
+      lead_id: casos.CICLO!.leadId,
+      source_module: "qa",
+      type: "note",
+      actor_kind: "system",
+      reason: `${RUN} · faz de conta que esta atividade diz "este negócio esfriou"`,
+      evidence: {},
+      performed_at: new Date().toISOString(),
+    } as never);
+    const { data: depoisRelogio } = await admin
+      .from("crm_leads")
+      .select("last_activity_at")
+      .eq("id", casos.CICLO!.leadId)
+      .single();
+    const relogioAntes = (antesRelogio as { last_activity_at: string } | null)?.last_activity_at;
+    const relogioDepois = (depoisRelogio as { last_activity_at: string } | null)?.last_activity_at;
+    const horasDeSilencio = relogioDepois
+      ? (Date.now() - new Date(relogioDepois).getTime()) / 3_600_000
+      : -1;
+    const continuaFrio = horasDeSilencio >= RISK_COLD_HOURS;
+    record(
+      "E26.ciclo",
+      "emitir a atividade do esfriamento NÃO ressuscita o relógio do silêncio",
+      continuaFrio,
+      continuaFrio
+        ? `o lead seguiu com ${horasDeSilencio.toFixed(1)}h de silêncio depois da atividade`
+        : `o relógio voltou para ${horasDeSilencio.toFixed(1)}h de silêncio — o lead estava frio ` +
+          `há ${(RISK_COLD_HOURS * 4).toFixed(0)}h e a atividade o devolveu a "em dia" NO MESMO ` +
+          `INSTANTE. O produtor do estado apaga o próprio estado, e o sintoma futuro seria "o ` +
+          `esfriamento não gruda", mandando investigar o classificador em vez do GATILHO ` +
+          `(trg_update_last_activity_at, AFTER INSERT sem cláusula WHEN)`,
+    );
+    void relogioAntes;
 
     // ---- 25: o PRAZO da proposta, que não é cenário e é a armadilha ---------
     record(
