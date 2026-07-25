@@ -1576,3 +1576,42 @@ um pedaço dela), e **se mais de uma casar, reprova em vez de escolher** — o m
 `resolveActiveLeadForContact`, que se recusa a adivinhar em empate. Adivinhar num instrumento de
 medição é pior que adivinhar num roteador: o roteador erra um card, o instrumento erra o veredito
 sobre todos.
+
+---
+
+## §7.33 — DIRC-C pergunta "pode ser calculado?"; falta perguntar "é função PURA?"
+
+Lição do @Arquiteto, registrada com o nome dele porque ele a formulou ao se refutar.
+
+Ele propôs **não persistir** a faixa de score: pelo DIRC (C de *Calcular*), faixa se deriva do score,
+e valor derivado persistido é duplicação. O raciocínio é o certo — para **função pura**. Faixa com
+histerese **não é função do score, é função do HISTÓRICO**: depende da faixa anterior, por definição.
+
+> **Ele tratou dependência de caminho como se fosse derivação** — confundiu o que **parece**
+> derivável com o que **é** derivável.
+
+**E a refutação decisiva foi dele contra si mesmo, não minha.** Eu mostrei que a variante sem memória
+**pisca**. Ele foi ao traçado seguinte e achou o modo pior: ela **engole travessia real**. Com
+`prev=69`, `now=71` ela corretamente não dispara — e deixa `prev` **acima** do corte; quando o score
+sobe de verdade para 76, a condição *"prev < corte"* é falsa e **nada dispara**. Trocaria piscar por
+**silêncio**, e pela regra de assimetria do épico silêncio é a falha cara.
+
+**Teste de bolso antes de invocar DIRC-C:** *"esta saída depende só das entradas de agora, ou também
+de por onde o valor passou?"* Se depende do caminho, é **estado** — e estado não se recupera do
+último valor. Persistir é o certo; o que a duplicação ameaça se resolve com **CHECK de coerência**,
+não deixando de persistir.
+
+### O CHECK de coerência, e o lado que eu tinha deixado aberto
+
+Propus `quente ⇒ score ≥ 65` e `frio ⇒ score ≤ 45` — e **esqueci o teto do `morno`**. Sem ele,
+`morno` com score **92** é gravável: faixa velha enquanto o score disparou, exatamente a divergência
+que o CHECK existe para impedir. Fechava dois dos três lados. Pelas transições
+(`frio→morno` ≥45 · `morno→frio` ≤35 · `morno→quente` ≥75 · `quente→morno` ≤65), `morno` só existe
+entre **35 e 75**. Somado: **faixa sem score é impossível** — a faixa é a memória de uma travessia, e
+sem número não houve travessia.
+
+**E uma propriedade do CHECK que fica declarada para ninguém "corrigir" depois:** ele é **permissivo
+na fronteira** de propósito (`<= 45`, `>= 65`, e não `<`/`>`). É um guarda contra **deriva**, não uma
+reconstrução exata da transição — a transição exata é trabalho do TypeScript. Um CHECK apertado
+demais rejeitaria escrita **legítima** (`numeric(5,2)` põe 44,99 e 45,00 dos dois lados de um limiar
+inteiro), e guarda que reprova o certo é pior que guarda ausente: ensina a desligá-lo.
