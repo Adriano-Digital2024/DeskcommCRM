@@ -422,6 +422,12 @@ async function main(): Promise<void> {
     // dossiê observado", que é um BLOQUEADO falso: o instrumento acusaria
     // ausência de recurso onde havia ausência de escuta.
     const assinatura = { joins: 0, leaves: 0, porTopico: new Map<string, { j: number; l: number }>() };
+    // COLETADO DESDE O NASCIMENTO DA PÁGINA. Anexar no meio do fluxo perderia o
+    // join e a confirmação do canal da timeline, que acontecem quando o dossiê
+    // abre — e "nenhuma resposta do servidor" seria o meu ouvinte chegando tarde,
+    // não o servidor calado. Já me pegou hoje com o contador de assinatura.
+    let quadrosDeAtividade = 0;
+    const respostasTimeline: string[] = [];
     page.on("websocket", (ws) => {
       if (!ws.url().includes("supabase")) return;
       ws.on("framesent", (f) => {
@@ -437,6 +443,13 @@ async function main(): Promise<void> {
           reg.l++;
         }
         assinatura.porTopico.set(topico, reg);
+      });
+      ws.on("framereceived", (f) => {
+        const t = String(f.payload);
+        if (/"postgres_changes"/.test(t) && /crm_lead_activities/.test(t)) quadrosDeAtividade++;
+        if (/timeline-/.test(t) && /(phx_reply|system|error)/.test(t)) {
+          respostasTimeline.push(t.slice(0, 200));
+        }
       });
     });
 
@@ -919,18 +932,6 @@ async function main(): Promise<void> {
     //       nada sobre esta tela;
     //   (c) chegou e a tela não aplicou — o defeito.
     // Por isso a ação é confirmada NO BANCO antes de julgar a tela.
-    // O ELO QUE FALTAVA no relato do D21: "a tela não aplicou" e "o quadro não
-    // chegou" produzem o MESMO resultado, e mandam gente para lugares
-    // diferentes. Conto os quadros de atividade que a aba A recebe na janela.
-    let quadrosDeAtividade = 0;
-    page.on("websocket", (ws) => {
-      if (!ws.url().includes("supabase")) return;
-      ws.on("framereceived", (f) => {
-        const t = String(f.payload);
-        if (/"postgres_changes"/.test(t) && /crm_lead_activities/.test(t)) quadrosDeAtividade++;
-      });
-    });
-
     const ctxB = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const abaB = await ctxB.newPage();
     abaB.setDefaultTimeout(60_000);
@@ -959,6 +960,20 @@ async function main(): Promise<void> {
 
       // A ação nasce na OUTRA aba, pela interface: editar um campo emite
       // `lead_edited`, que é atividade de verdade no mesmo eixo da timeline.
+      // JANELA: a contagem tem de ser DEPOIS da ação. O total desde o nascimento
+      // da página inclui os quadros do próprio seed, e reportar esse número
+      // responderia "chegam quadros nesta página", não "chegou ESTE".
+      const quadrosAntes = quadrosDeAtividade;
+      // QUANTAS ATIVIDADES EXISTEM ANTES da ação. A pré-condição procurava
+      // QUALQUER `lead_edited` — e o critério anterior já tinha criado um. Ela
+      // era satisfeita por linha VELHA, então "a ação persistiu" podia ser
+      // verdade sobre uma ação de dez minutos atrás. Pré-condição que não
+      // distingue o novo do antigo não é pré-condição.
+      const { data: antesDaAcao } = await admin
+        .from("crm_lead_activities")
+        .select("id")
+        .eq("lead_id", caso.leadComContato);
+      const totalAntes = ((antesDaAcao ?? []) as unknown[]).length;
       const cardB = abaB.locator(`[data-rfd-draggable-id="${caso.leadComContato}"]`).first();
       await cardB.scrollIntoViewIfNeeded();
       await cardB.click();
@@ -973,10 +988,10 @@ async function main(): Promise<void> {
       // (a) A AÇÃO ACONTECEU? Confirmado no banco, não na tela de quem agiu.
       const { data: novas } = await admin
         .from("crm_lead_activities")
-        .select("id,type,performed_at")
-        .eq("lead_id", caso.leadComContato)
-        .eq("type", "lead_edited");
-      const acaoPersistiu = ((novas ?? []) as unknown[]).length > 0;
+        .select("id")
+        .eq("lead_id", caso.leadComContato);
+      const totalDepois = ((novas ?? []) as unknown[]).length;
+      const acaoPersistiu = totalDepois > totalAntes;
 
       // (c) A ABA A recebeu, SEM F5?
       await page.waitForTimeout(6000);
@@ -988,16 +1003,18 @@ async function main(): Promise<void> {
         "CENÁRIO 21: ação na OUTRA aba entra na timeline aberta, sem F5",
         acaoPersistiu && mudou,
         !acaoPersistiu
-          ? "INCONCLUSIVO: a edição da outra aba não chegou ao banco — sem evento não há entrega " +
-            "a julgar, e culpar o realtime aqui seria acusar a superfície errada"
+          ? `INCONCLUSIVO: a edição da outra aba não criou atividade nenhuma (${totalAntes} antes, ` +
+            `${totalDepois} depois) — sem evento não há entrega a julgar, e culpar o realtime aqui ` +
+            `seria acusar a superfície errada`
           : mudou
             ? `a timeline aberta ganhou linha sozinha: ${antesA} → ${depoisA} atividades`
             : `a timeline aberta seguiu com ${antesA} atividades e a ação PERSISTIU. ` +
-              `Quadros de crm_lead_activities recebidos pela aba A na janela: ${quadrosDeAtividade} — ` +
-              (quadrosDeAtividade > 0
+              `Quadros de crm_lead_activities recebidos pela aba A DEPOIS da ação: ` +
+              `${quadrosDeAtividade - quadrosAntes} (${quadrosDeAtividade} desde o carregamento) — ` +
+              (quadrosDeAtividade - quadrosAntes > 0
                 ? "o quadro CHEGOU e a tela não aplicou"
-                : "o quadro NÃO chegou: o defeito é a montante da tela, e acusá-la aqui mandaria " +
-                  "alguém procurar no lugar errado"),
+                : "o quadro NÃO chegou: o defeito é a montante da tela. Respostas do servidor ao " +
+                  `canal da timeline: ${respostasTimeline.slice(0, 2).join(" | ") || "(NENHUMA — o canal não foi confirmado)"}`),
         acaoPersistiu ? undefined : "BLOQUEADO",
       );
     } finally {
