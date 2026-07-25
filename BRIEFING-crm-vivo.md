@@ -2477,3 +2477,20 @@ construção**, porque nele "três objeções" é `−16`, e não `0`.
 Com os **pontos dentro da string**, o teste da C1 continua sendo montagem mecânica a partir dos mesmos
 objetos — e agora o **número** também está preso à frase. Uma frase de modelo teria de acertar **texto
 E pontuação de cada parcela** para passar. **Ficou mais difícil de burlar, não menos.**
+
+## §7.59 — O canal transforma a mensagem, e o código é a primeira vítima
+
+Uma linha do @Arquiteto chegou **mastigada**: o `$` de um template literal foi interpretado como
+variável de shell no caminho até mim, e o gate da C1 chegou incompleto. Ele mandou a errata sozinho.
+
+> **O meio não é transparente.** Mensagem que atravessa um shell perde `$`, crases e contrabarras — e
+> perde **em silêncio**, entregando algo que ainda parece código.
+
+É a mesma família de *"o instrumento mede o que não pretende"*, aplicada à comunicação: o destinatário
+não recebe o que foi escrito, recebe o que **sobreviveu ao transporte** — e não tem como saber a
+diferença, porque o resultado continua plausível.
+
+**Regra prática deste time:** código em mensagem vai **descrito** (nomes de campos, ordem, separador)
+ou com marcação que o canal preserve; e quem manda expressão com `$`, crase ou contrabarra **relê o
+que chegou**. A verificação de que a mensagem chegou inteira é do **remetente** — o destinatário só vê
+o que sobrou.
