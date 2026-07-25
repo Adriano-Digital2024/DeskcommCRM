@@ -473,7 +473,11 @@ async function main(): Promise<void> {
     }
 
     const yCabecalho = await topoDe(painel, new RegExp(RUN));
-    const yTimeline = await topoDe(painel, /a IA respondeu sobre prazo/i);
+    // A ÂNCORA DA SEÇÃO, não o texto de um evento. Eu ancorava no motivo de uma
+    // atividade — e ela está COLAPSADA dentro de um bloco, então o texto não
+    // aparece. Quarto critério meu hoje a exigir uma forma específica em vez da
+    // coisa: a seção existe, o evento individual é detalhe dela.
+    const yTimeline = await topoDe(painel, /linha do tempo/i);
     const yCampos = await topoDe(painel, /valor|título|estágio/i);
     const ordemOk =
       yCabecalho !== null &&
