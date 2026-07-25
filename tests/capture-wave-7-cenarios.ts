@@ -255,10 +255,20 @@ async function main(): Promise<void> {
       faixaConvergiu = await faixa(frioRecarregado);
     }
     const ehJanela = faixaRecarregada === "" && faixaConvergiu !== "";
+    // PRÉ-CONDIÇÃO: o estado precisa ser OBSERVÁVEL em algum momento. Sem isso,
+    // "as duas leituras concordam" é satisfeito por AMBAS estarem vazias — que
+    // foi o que aconteceu numa rodada: ao vivo "" e recarregado "", passando,
+    // enquanto o estado real aparecia 18s depois. Concordância por ausência é o
+    // verde mais fácil de fabricar, e ele fecha a pergunta.
+    const estadoObservavel = faixaConvergiu !== "";
     record(
       "E22.consistencia",
-      "o MESMO lead lê igual ao vivo e depois de recarregar",
-      faixaRecarregada === faixaDepois && corRecarregada === corDepois,
+      "quando o estado É observável, as duas leituras concordam",
+      estadoObservavel && faixaRecarregada === faixaDepois && corRecarregada === corDepois,
+      (estadoObservavel
+        ? ""
+        : "INCONCLUSIVO — o estado não apareceu em NENHUMA das leituras, então concordar não " +
+          "significa concordar sobre o estado. ") +
       `ao vivo: faixa "${faixaDepois}" · logo após recarregar: "${faixaRecarregada}" · ` +
         `depois de esperar até 18s: "${faixaConvergiu}" (borda ${corRecarregada})` +
         (faixaRecarregada === faixaDepois
