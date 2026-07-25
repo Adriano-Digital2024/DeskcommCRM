@@ -288,6 +288,7 @@ async function main(): Promise<void> {
               "não chega, o card AFIRMA que o negócio está saudável em vez de dizer que não sabe. " +
               "Desconhecido virando normal, que é a afirmação que este épico existe para impedir"
             : " — é PERMANENTE nesta janela de observação: a faixa não apareceu nem depois de 18s"),
+      estadoObservavel ? undefined : "INCONCLUSIVO",
     );
 
     // ---- 27: o TERCEIRO estado — frio, quente e NÃO SEI ---------------------

@@ -311,7 +311,22 @@ export async function shotPage(page: Page, arquivo: string, fullPage = true): Pr
  * nunca registrado sai como **AUSENTE** — e ausente é falha do INSTRUMENTO, não
  * do produto: ninguém precisa caçar defeito, alguém precisa consertar o teste.
  */
-export type EstadoCriterio = "PASS" | "FALHA" | "BLOQUEADO" | "AUSENTE";
+/**
+ * Cinco estados, e a separação entre os dois do meio é o que faltava.
+ *
+ * BLOQUEADO diz "o recurso não existe ainda" — acusa quem PLANEJOU, e não é
+ * falha da rodada: ninguém precisa investigar código que não foi escrito.
+ *
+ * INCONCLUSIVO diz "a medição não pôde decidir" — a pré-condição não valeu, o
+ * caso não se montou, o dado não chegou. E ele CONTA COMO FALHA, porque o
+ * veredito tem dois desfechos nativos e a realidade tem três: sem o terceiro,
+ * "não deu para saber" é sistematicamente absorvido pelo VERDE, por omissão do
+ * ferramental e não por decisão de ninguém.
+ *
+ * A regra: onde não dá para ter o terceiro desfecho, FALHE. Investigar um alarme
+ * falso custa menos que arquivar uma pergunta que ninguém mais vai abrir.
+ */
+export type EstadoCriterio = "PASS" | "FALHA" | "INCONCLUSIVO" | "BLOQUEADO" | "AUSENTE";
 
 export function criarPlacar(nome: string, esperados: string[]) {
   const vistos = new Map<string, EstadoCriterio>();
@@ -363,14 +378,20 @@ export function criarPlacar(nome: string, esperados: string[]) {
     }
     const conta = (e: EstadoCriterio) => linhas.filter((l) => l.estado === e).length;
     const ausentes = conta("AUSENTE");
+    const inconclusivos = conta("INCONCLUSIVO");
     console.info(
       `\n=== ${nome}: ${conta("PASS")} verdes · ${conta("FALHA")} vermelhos · ` +
-        `${conta("BLOQUEADO")} bloqueados${ausentes > 0 ? ` · ${ausentes} AUSENTES` : ""} ===`,
+        `${conta("BLOQUEADO")} bloqueados` +
+        `${inconclusivos > 0 ? ` · ${inconclusivos} INCONCLUSIVOS` : ""}` +
+        `${ausentes > 0 ? ` · ${ausentes} AUSENTES` : ""} ===`,
     );
     for (const l of linhas.filter((x) => x.estado !== "PASS")) {
       console.info(`  ${l.estado} [${l.n}] ${l.titulo}: ${l.detalhe}`);
     }
-    return conta("FALHA") + ausentes;
+    // INCONCLUSIVO conta como falha: ele está mais perto de vermelho que de
+    // verde, e o único jeito de o "não deu para saber" não ser engolido pelo
+    // verde é ele custar o mesmo que um vermelho.
+    return conta("FALHA") + ausentes + inconclusivos;
   }
 
   return { record, fechar };

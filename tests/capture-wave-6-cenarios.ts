@@ -575,7 +575,7 @@ async function main(): Promise<void> {
         : `blocos de 3 anunciados: ${blocos.length} (esperado 2 — cliente e time) · ` +
           `painel diz: "${texto.slice(0, 150)}"` +
           (blocos.length === 1 ? " — um bloco só significa que os dois atores foram engolidos juntos" : ""),
-      timelineCarregou ? undefined : "BLOQUEADO",
+      timelineCarregou ? undefined : "INCONCLUSIVO",
     );
 
     // ---- 19.rótulo: o bloco do CLIENTE não pode se ler como o do TIME -------
@@ -600,7 +600,7 @@ async function main(): Promise<void> {
         ? "INCONCLUSIVO: sem timeline carregada não há bloco para rotular"
         : `no painel: cliente nomeado=${dizCliente} · time nomeado=${dizTime} — a forma não ` +
           `distingue os dois (ambos preenchidos), então quem distingue é o texto`,
-      timelineCarregou ? undefined : "BLOQUEADO",
+      timelineCarregou ? undefined : "INCONCLUSIVO",
     );
 
     // ---- 20: as duas metades, medidas separado -----------------------------
@@ -754,7 +754,7 @@ async function main(): Promise<void> {
             ` — sem marcador dizendo de onde veio. Vazio se lê como "nada aconteceu"; isto se lê ` +
             `como "aconteceu AQUI"`
           : `só as atividades deste negócio (bloco do time anuncia ${quantasDoTime}, que é o certo)`,
-      timelineCarregou ? undefined : "BLOQUEADO",
+      timelineCarregou ? undefined : "INCONCLUSIVO",
     );
 
     // ---- 26: o lead SEM contato — 25% deles, e 66% das atividades ------------
