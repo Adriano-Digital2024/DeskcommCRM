@@ -32,18 +32,50 @@ export interface SinaisDoLead {
    * CÁLCULO — o pior lugar possível, porque ninguém procuraria por ele lá.
    */
   risco: RiskBucket;
+  /**
+   * `crm_leads.status`. Negócio FECHADO não tem probabilidade de fechar —
+   * um lead ganho exibindo "72%" para sempre é o dado que não muda decisão
+   * nenhuma, e o card ficaria carregando um número que já foi respondido.
+   */
+  status: "open" | "won" | "lost";
   /** Faixa anterior, para a histerese. `null` na primeira vez. */
   bandAnterior: ScoreBand | null;
 }
+
+/**
+ * Uma parcela do cálculo, ESTRUTURADA — não só dentro da frase.
+ *
+ * O card precisa renderizar as evidências separadas, e extraí-las do `reason`
+ * exigiria fazer parse de volta do texto que a fórmula acabou de montar. É o
+ * mesmo anti-pattern já barrado no 4.5 (ler a frase legível em vez do payload):
+ * frase é para humano, estrutura é para máquina, e quem precisa das duas grava
+ * as duas.
+ */
+export interface FatorDoScore {
+  /** Com sinal: o sinal É o número. Campo separado poderia divergir dele. */
+  pontos: number;
+  frase: string;
+  /** Para onde o clique leva, quando existe um ponto no tempo. */
+  ancora?: { kind: "checkpoint" | "message"; id: string };
+}
+
+/** Versão da fórmula. Sem ela, score de v1 e de v2 são maçã com pera. */
+export const FORMULA_V = 1;
 
 export interface ScoreCalculado {
   /** `null` = sinal insuficiente. NUNCA zero — zero é uma afirmação. */
   score: number | null;
   reason: string;
-  evidence: { checkpoint_ids?: string[]; activity_ids?: string[]; message_ids?: string[] };
+  evidence: {
+    checkpoint_ids?: string[];
+    activity_ids?: string[];
+    message_ids?: string[];
+    formula_v?: number;
+    factors?: FatorDoScore[];
+  };
   band: ScoreBand | null;
   /** Por que não deu score, quando não deu — para o log, não para a tela. */
-  semSinal?: "sem_lastro_citavel" | "sem_conteudo";
+  semSinal?: "sem_lastro_citavel" | "sem_conteudo" | "negocio_fechado";
 }
 
 /** Uma parcela do cálculo: o quanto mexeu e como isso se lê em português. */
@@ -59,6 +91,10 @@ const POR_CAMPO_BANT = 5;
 const TETO_COMPROMISSOS = 3;
 const TETO_OBJECOES = 3;
 const TETO_BANT = 4;
+/** Abaixo disto não há score: um sinal só é magro demais para virar porcentagem. */
+const MINIMO_DE_SINAIS = 2;
+/** O contrato promete três evidências na tela; a frase acompanha. */
+const MAX_PARCELAS_NA_FRASE = 3;
 
 /** Recência entra como AJUSTE, com os buckets do classificador único. */
 const PESO_RISCO: Record<RiskBucket, number> = {
@@ -94,72 +130,101 @@ function plural(n: number, singular: string, plural_: string): string {
  * descobrir no INSERT.
  */
 export function calculaScore(sinais: SinaisDoLead): ScoreCalculado {
+  // DELTA 1 — negócio fechado não tem probabilidade de fechar. Vem antes de
+  // tudo: não importa quanto sinal exista, a pergunta já foi respondida.
+  if (sinais.status !== "open") {
+    return { score: null, reason: "", evidence: {}, band: null, semSinal: "negocio_fechado" };
+  }
+
   const compromissos = sinais.commitments.filter((c) => c.trim() !== "");
   const objecoes = sinais.objections.filter((o) => o.trim() !== "");
   const camposBant = Object.entries(sinais.qualification).filter(
     ([, v]) => typeof v === "string" && v.trim() !== "",
   ).length;
 
-  const temConteudo = compromissos.length > 0 || objecoes.length > 0 || camposBant > 0;
-  if (!temConteudo) {
-    return {
-      score: null,
-      reason: "",
-      evidence: {},
-      band: null,
-      semSinal: "sem_conteudo",
-    };
+  // DELTA 4 — DOIS sinais substantivos, não um. Score construído sobre um
+  // único campo preenchido é magro demais para virar porcentagem na tela, e
+  // uma porcentagem magra é indistinguível de uma bem apurada para quem lê.
+  // Recência NÃO conta aqui: vitalidade não é conteúdo (ver cenário 17).
+  const substantivos = compromissos.length + objecoes.length + camposBant;
+  if (substantivos < MINIMO_DE_SINAIS) {
+    return { score: null, reason: "", evidence: {}, band: null, semSinal: "sem_conteudo" };
   }
   if (sinais.checkpointId === null) {
-    return {
-      score: null,
-      reason: "",
-      evidence: {},
-      band: null,
-      semSinal: "sem_lastro_citavel",
-    };
+    return { score: null, reason: "", evidence: {}, band: null, semSinal: "sem_lastro_citavel" };
   }
 
-  const parcelas: Parcela[] = [];
+  const ancora = { kind: "checkpoint" as const, id: sinais.checkpointId };
+  const fatores: FatorDoScore[] = [];
   const nComp = Math.min(compromissos.length, TETO_COMPROMISSOS);
   if (nComp > 0) {
-    parcelas.push({
+    fatores.push({
       pontos: nComp * POR_COMPROMISSO,
       frase: plural(nComp, "compromisso do cliente", "compromissos do cliente"),
+      ancora,
     });
   }
   const nObj = Math.min(objecoes.length, TETO_OBJECOES);
   if (nObj > 0) {
-    parcelas.push({
+    fatores.push({
       pontos: nObj * POR_OBJECAO,
       frase: plural(nObj, "objeção em aberto", "objeções em aberto"),
+      ancora,
     });
   }
   const nBant = Math.min(camposBant, TETO_BANT);
   if (nBant > 0) {
-    parcelas.push({
+    fatores.push({
       pontos: nBant * POR_CAMPO_BANT,
       frase: plural(nBant, "item de qualificação", "itens de qualificação"),
     });
   }
-  parcelas.push({ pontos: PESO_RISCO[sinais.risco], frase: FRASE_RISCO[sinais.risco] });
+  // Recência não ganha âncora: ela não é um ponto no tempo da conversa, é a
+  // AUSÊNCIA de pontos. Dar-lhe âncora seria apontar para o que não aconteceu.
+  fatores.push({ pontos: PESO_RISCO[sinais.risco], frase: FRASE_RISCO[sinais.risco] });
 
-  const bruto = parcelas.reduce((soma, p) => soma + p.pontos, BASE);
+  const bruto = fatores.reduce((soma, f) => soma + f.pontos, BASE);
   const score = Math.max(0, Math.min(100, bruto));
 
-  // A razão é a LEITURA das parcelas que entraram, em ordem de peso absoluto —
-  // o que mais mexeu no número aparece primeiro. Nada aqui é gerado: se uma
-  // parcela não pesou, ela não é citada.
-  const reason = parcelas
-    .filter((p) => p.pontos !== 0)
-    .sort((a, b) => Math.abs(b.pontos) - Math.abs(a.pontos))
-    .map((p) => `${p.pontos > 0 ? "+" : "−"}${Math.abs(p.pontos)} ${p.frase}`)
-    .join(", ");
+  const relevantes = fatores
+    .filter((f) => f.pontos !== 0)
+    .sort((a, b) => Math.abs(b.pontos) - Math.abs(a.pontos));
+
+  // DELTA 4 (segunda metade) — no máximo TRÊS parcelas nomeadas, que é o que o
+  // contrato promete. O resto vira UMA linha agregada em vez de sumir: truncar
+  // sem dizer quebraria a reconstrução da frase, e uma razão que não soma o
+  // próprio número é a frase gerada que a C1 proíbe, com outro disfarce.
+  const nomeadas = relevantes.slice(0, MAX_PARCELAS_NA_FRASE);
+  const resto = relevantes.slice(MAX_PARCELAS_NA_FRASE);
+  const pontosDoResto = resto.reduce((soma, f) => soma + f.pontos, 0);
+  const partes = nomeadas.map(escreveParcela);
+  if (resto.length > 0 && pontosDoResto !== 0) {
+    partes.push(
+      `${pontosDoResto > 0 ? "+" : "−"}${Math.abs(pontosDoResto)} ` +
+        plural(resto.length, "outro fator", "outros fatores"),
+    );
+  }
+
+  // O CLAMP PRECISA APARECER. É o único caso em que a soma das parcelas não dá o
+  // número exibido — e uma razão que não fecha com o próprio score é
+  // indistinguível de razão gerada, que é o que a C1 proíbe. Dizer "limitado a
+  // 0" custa quatro palavras e mantém a conta auditável por quem lê.
+  if (score !== bruto) {
+    partes.push(`limitado a ${score}`);
+  }
 
   return {
     score,
-    reason: reason === "" ? "sem parcelas relevantes além da base" : reason,
-    evidence: { checkpoint_ids: [sinais.checkpointId] },
+    reason: partes.length > 0 ? partes.join(", ") : "sem parcelas relevantes além da base",
+    evidence: {
+      checkpoint_ids: [sinais.checkpointId],
+      formula_v: FORMULA_V,
+      factors: relevantes,
+    },
     band: resolveBand(score, sinais.bandAnterior),
   };
+}
+
+function escreveParcela(f: FatorDoScore): string {
+  return `${f.pontos > 0 ? "+" : "−"}${Math.abs(f.pontos)} ${f.frase}`;
 }
