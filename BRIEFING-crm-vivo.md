@@ -10003,3 +10003,28 @@ resultado é duas definições da mesma coisa.
 vezes a coisa já existe** — não conferir a ferramenta, conferir o gesto.
 
 *(Instância que fechou o círculo: a duplicata apareceu no arquivo que guarda a lei sobre duplicatas.)*
+
+## §7.313 — A lei escrita não impediu a repetição, e a causa é o GESTO de compor a citação antes do fato existir
+
+**Reincidência medida, minha, na mesma sessão:** citei o SHA `d9b0b4d` para a §7.312. O commit é
+`67a51f6`. É o **segundo** SHA inventado hoje — o primeiro (§7.294, `5f5ea0b`) foi corrigido, virou lei,
+foi discutido por três pessoas, e **a lei não impediu a repetição**.
+
+**Isto é a §7.287 medida em campo:** *a lei não impede o erro, encurta o caminho até achá-lo.* O
+intervalo caiu (peguei sozinho, no mesmo turno, sem ninguém apontar), **e a taxa não caiu.** Quem
+esperava que escrever a lei fizesse a taxa cair estava medindo a coisa errada.
+
+### E a causa não é atenção — é o gesto, exatamente como a §7.312
+
+**As duas vezes eu compus a mensagem que cita o SHA NA MESMA CHAMADA que produzia o SHA.** O texto foi
+escrito antes de o commit existir; a saída chegou depois; ninguém volta a corrigir uma frase já
+redigida. **A cerca "tomar cuidado com SHA" nunca teve chance** — é cerca de atenção contra defeito de
+estrutura (§7.311: o defeito não parece defeito enquanto se escreve, porque nesse instante o SHA ainda
+é uma *intenção de commitar*).
+
+**A cerca real, e é do mesmo formato das outras:** **nunca compor, no mesmo ato, a citação e o fato
+citado.** Commitar primeiro, ler a saída, e só então escrever a mensagem que a cita. Separar os dois
+atos é o que torna impossível citar o que ainda não existe — não é lembrar melhor, é **não ter como**.
+
+*(E o gesto que pegou foi o mesmo da §7.310: conferir a saída depois de afirmar, em vez de confiar no
+anúncio — inclusive quando o anúncio é meu.)*
