@@ -664,16 +664,34 @@ async function main(): Promise<void> {
         !temTraco && !/null|undefined/i.test(faixaN.texto),
         `faixa: "${faixaN.texto || "(vazia)"}" (${Math.round(faixaN.altura)}px)`,
       );
+      /**
+       * 14.b — a distinção que resolve o critério, decidida pelo regente e
+       * escrita aqui porque critério sem o porquê volta como dúvida na wave
+       * seguinte:
+       *
+       *   um travessão AFIRMA "não há". Espaço reservado NÃO AFIRMA NADA.
+       *
+       * O primeiro é dado fingindo ser dado; o segundo é geometria — e é a
+       * geometria que impede o board de pular quando o dado chega (Wave 2,
+       * documentado no próprio KanbanCard). O critério proíbe o placeholder que
+       * se passa por informação, não a altura constante.
+       *
+       * Então a checagem tem DUAS pernas, e nenhuma delas é "o texto é vazio":
+       *   (1) a faixa não afirma ausência — nem travessão, nem "sem ação", nem N/A;
+       *   (2) a altura reservada é a MESMA do card que tem proposta (senão a
+       *       promessa de altura constante é retórica), e o card responde as
+       *       outras perguntas: título, valor, dono, estágio.
+       */
+      const AFIRMA_AUSENCIA = /[—–]|\bN\/?A\b|sem (pr[óo]xima )?a[çc][ãa]o|nenhuma a[çc][ãa]o|vazi[oa]/i;
+      const alturaIgual = Math.abs(faixaN.altura - faixaA.altura) < 2;
+      const temEstagio = / em .+/.test(textoN);
       record(
         "14.b",
-        "a faixa mostra o estado NORMAL — e não um buraco",
-        faixaN.texto.length > 0,
-        faixaN.texto.length > 0
-          ? `faixa diz: "${faixaN.texto}"`
-          : `faixa VAZIA (0 caracteres, ${Math.round(faixaN.altura)}px reservados). ` +
-            `A Wave 2 reservou a altura de propósito; o que "estado normal" mostra sem ` +
-            `medidor (Wave 5) e sem ação é decisão de produto, não de implementação.`,
-        faixaN.texto.length > 0 ? "PASS" : "BLOQUEADO",
+        "faixa reservada NÃO AFIRMA ausência — e o card no estado normal não está vazio",
+        !AFIRMA_AUSENCIA.test(faixaN.texto) && alturaIgual && temEstagio,
+        `faixa: "${faixaN.texto || "(sem texto)"}" · ${Math.round(faixaN.altura)}px vs ` +
+          `${Math.round(faixaA.altura)}px no card com proposta (igual=${alturaIgual}) · ` +
+          `rodapé com estágio=${temEstagio}`,
       );
       const semDecisao =
         !botoesN.some((b) => APROVAR.test(b)) &&
