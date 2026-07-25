@@ -6688,3 +6688,56 @@ fez o certo; **quem explicou apagou a marca**.
 **Regra:** observação declarada não isolada só admite uma resposta — **isolar**. Explicá-la antes é
 gastar trabalho de terceiros num fenômeno que ainda não se sabe existir, e é pior que ignorá-la,
 porque a explicação vira a razão para não isolar.
+
+## §7.208 — O experimento tem de incluir a CONDIÇÃO QUE A HIPÓTESE NOMEIA
+
+A hipótese era: `REPLICA IDENTITY DEFAULT` + **RLS** faz o `old_record` de um UPDATE não satisfazer a
+policy, e o evento é descartado. **E todo o aparato de medição usava service role — que BYPASSA
+RLS.**
+
+Logo, aquele aparato **não testa essa hipótese nem para confirmar nem para negar**. E a consequência
+é pior do que "não conclui":
+
+> *"Se eu tivesse rodado o ALTER e visto 'passou a entregar', teria concluído causa a partir de um
+> experimento que nunca tocou o mecanismo proposto."*
+
+**Um resultado que CONFIRMA, vindo de um aparato cego para o mecanismo, é uma causa inventada com
+número em cima** — e ninguém a questiona, porque o número existe.
+
+A correção foi pôr no experimento **o papel que a hipótese nomeia**: autenticado, mesma linha, mesmo
+instante. Resultado: UPDATE por serviço 3/3, UPDATE **autenticado** 3/3, INSERT 3/3. **Refutada.**
+
+**Regra:** antes de rodar o teste de uma hipótese, leia a hipótese e liste os elementos que ela cita —
+papel, permissão, tipo de evento, estado. **Cada um tem de estar PRESENTE no aparato.** Elemento
+citado que o aparato desliga transforma o experimento em teatro, e o teatro que confirma é o pior.
+
+**E o que a refutação NÃO diz:** `REPLICA IDENTITY FULL` pode ser desejável por outros motivos
+(`old_record` em DELETE). O que caiu foi **a causa proposta para aquele zero**, não o mérito da
+mudança. Refutação também tem escopo — se alguém quiser FULL, que seja por um motivo que sobreviva
+sozinho.
+
+## §7.209 — A lista de ELIMINADOS vincula quem a mantém (erro meu, atravessando mensagens)
+
+Horas antes, eu havia despachado a lista do que estava eliminado por medição, e nela constava:
+***"RLS: medido com service role, fora do caminho."*** Depois propus uma hipótese **que depende de
+RLS** — e mandei alguém aplicar DDL para testá-la.
+
+**Eu mantinha a lista para os outros e não a consultei contra a minha própria proposta.** A
+eliminação e a hipótese estavam em mensagens diferentes, separadas por horas, e **nada verifica
+coerência entre despachos do mesmo autor** — cada um é lido isoladamente e parece razoável, que é
+exatamente a §7.125 (a incoerência mora no PAR e ninguém revisa o par) aplicada a quem coordena.
+
+**Regra para o papel:** a lista de eliminados é registro **vinculante para quem a mantém**. Antes de
+propor hipótese, o regente relê a própria lista — se o mecanismo proposto usa algo já declarado fora
+do caminho, ou a hipótese está errada, ou a eliminação estava. **As duas exigem correção, e ambas são
+dele.**
+
+### E a §7.202 virada para mim, com razão
+
+*"A sua hipótese encaixava perfeitamente no resto da história — e foi exatamente por encaixar tão bem
+que eu fui medir em vez de aplicar. Coerência com o resto da história não substitui validade **nem
+quando quem propõe é o regente**."*
+
+O peso da fonte funciona na mesma direção da coerência: os dois **reduzem** o escrutínio no momento
+em que ele mais importa. Uma hipótese vinda de quem coordena chega com autoridade emprestada, e a
+autoridade não mede nada.
