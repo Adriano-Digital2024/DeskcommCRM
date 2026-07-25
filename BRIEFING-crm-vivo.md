@@ -5103,3 +5103,48 @@ resultado não informa nada.
 geral: **todo conserto que restaura volume de dados deve ser seguido de um olhar na apresentação**,
 porque a ausência estava mascarando o comportamento com carga real — e o time acabou de provar que
 o vazio se lê como aprovação.
+
+## §7.138 — Toda lei tem DOMÍNIO; aplicá-la fora dele produz o erro que ela evitava
+
+A varredura por asserções de ausência achou três. A conclusão natural — e errada — seria invalidar
+as três invocando a §7.123-a ("contagem de hoje não responde pergunta sobre o que o código
+permite"). **Teriam sido três achados falsos.**
+
+Porque a §7.123-a governa perguntas sobre o **POSSÍVEL** ("alguém consegue escrever este estado?"),
+e a pergunta aqui era sobre o **ATUAL** ("estas três asserções valem hoje?"). Para esta, a medição
+de hoje **é** a resposta — e ela foi feita: o agrupamento mora na timeline do DOSSIÊ; a do contato
+não agrupa; contagem de blocos zero; ausência significa ausência.
+
+**Lei aplicada fora do domínio vira ruído com aparência de rigor** — e o erro é simétrico ao de
+ignorá-la: nos dois casos alguém reporta o que não existe. Antes de invocar qualquer lei daqui,
+pergunte de que ela é lei: do que o código PERMITE, ou do que o sistema FAZ hoje.
+
+### §7.138-a — Invalidação mecanizada é melhor que remoção
+
+A saída adotada foi melhor que a que eu tinha pedido. Em vez de reescrever as três asserções, elas
+passaram a **medir a superfície junto com o conteúdo**: se um dia aquela tela começar a agrupar,
+truncar ou paginar, a asserção **se declara INVÁLIDA** e informa quantos blocos fecharam a
+superfície — em vez de virar verde falso em silêncio.
+
+**O instrumento se recusa a afirmar ausência sobre tela que esconde.** É a diferença entre corrigir
+hoje e tornar o erro inescrevível amanhã — e aqui custou um contador.
+
+E o argumento que fecha a questão contra "só desconfiar mais": **desconfiar do próprio verde não
+escala.** É a única defesa disponível contra o falso verde e depende de quem está cansado às seis
+da tarde. Cerca escala; suspeita não.
+
+## §7.139 — Guarda de regressão nasce SEM PROVA por construção
+
+Um critério escrito DEPOIS do conserto nunca viu o defeito vivo. Ele passa — e passaria também se
+estivesse mirando no lugar errado, porque não há mais nada ali para pegá-lo (§7.133).
+
+**É a única categoria de cerca que não tem como ser provada no nascimento pelos meios normais**, e
+o motivo é estrutural: o defeito que ela guarda já morreu. Restam duas saídas honestas, e nenhuma
+terceira:
+
+1. **Reverter o conserto e exigir o vermelho** — caro, e é a única prova real.
+2. **Declarar no próprio critério que ele é NÃO-PROVADO** — para que ninguém o cite como evidência
+   de que o defeito não pode voltar.
+
+O que não vale é o silêncio, que hoje é o padrão: uma suíte cheia de guardas de regressão
+não-provadas parece proteção e é **afirmação**.
