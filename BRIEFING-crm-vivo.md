@@ -6537,3 +6537,35 @@ lugar onde um defeito novo na mesma direção fica visível — e é o caso que 
 
 É a lei do par (§7.196) num terceiro eixo: não basta medir com/sem o conserto; é preciso medir
 também **onde não havia o que consertar**.
+
+## §7.202 — Resultado que CONFIRMA a expectativa de quem pediu passa por menos escrutínio dos DOIS lados
+
+A primeira rodada da grade deu ZERO para os seis leads — inclusive os do controle positivo. Com o
+controle caído, *"o CRM Vivo continua quebrado"* é indistinguível de *"nada está sendo entregue
+agora"*. E a frase que fecha o dia:
+
+> ***"Reportar aquilo teria confirmado a sua hipótese com uma rodada que não mediu nada, e você teria
+> acreditado porque bate com o resto."***
+
+**A coerência com o resto da história substitui a validade.** Quem reporta sente-se seguro (ninguém
+questiona o resultado esperado) e quem recebe sente-se confirmado (encaixa no que já sabe) — os dois
+escrutínios caem ao mesmo tempo, e é exatamente aí que um resultado vazio entra no registro como
+fato.
+
+**E o caso difícil é este, não o contrário:** honrar um controle que cai **quando a rodada estava
+prestes a te dar razão**. Descartar um resultado que contradiz é fácil e parece rigor; descartar um
+que confirma parece perfeccionismo — e é a única vez que a disciplina paga.
+
+**Regra:** resultado que confirma a expectativa declarada de quem pediu a medição exige a MESMA
+verificação de controle que um resultado surpreendente. Se o controle caiu, o veredito é *"não
+mediu"*, e o fato de a resposta ser a esperada **não é evidência substituta**.
+
+### O desenho que sobreviveu, e por que alternar importa
+
+Trocou-se para o caminho com controle VIVO (INSERT em `crm_lead_activities`) e **alternou-se os lados
+dentro da mesma janela** — não um bloco de cada. Bloco por lado deixa o ambiente mudar entre eles e
+devolve a diferença como se fosse do sujeito. Resultado: **Pedidos 2/2 e 2/2; CRM Vivo 0/2 e 0/2.**
+
+**Veredito: dois defeitos independentes.** O conserto da memoização e a remoção da assinatura anônima
+resolvem o board mudo **e deixam este vivo** — o pior desfecho para quem olhasse só o board, porque
+ele fica **com aparência de resolvido**.
