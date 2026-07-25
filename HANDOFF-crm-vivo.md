@@ -3134,3 +3134,60 @@ A guarda existia e não pegou: era uma **lista mantida à mão** com quatro nome
 Provado nos dois sentidos: a sonda agora **recusa**, nomeando o arquivo e o motivo, e `FORCE=1`
 libera com log visível. Terceira lista mantida à mão desta entrega que virou critério mecânico —
 depois do vocabulário de atividades e da quarentena.
+
+---
+
+## Wave 4 — a próxima ação da IA saiu do banco e virou decisão (`f017ac3`, `c5ce373`, `c69fe66`)
+
+O defeito que a wave mata: `next_action` era **calculada, gravada e nunca exibida**. Mesma forma
+do veto — a IA decide e o sistema engole.
+
+### A ponte, que é a decisão que sustenta o resto
+
+`lead_state` é por CONTATO; o card é um NEGÓCIO. Juntar por `contact_id` faria a mesma proposta
+aparecer em N cards, e aprovar num executaria pelos outros. A proposta vai para o negócio ATIVO
+do contato e, havendo ambiguidade, **não vai para nenhum** — `resolveActiveLeadForContact` reusado,
+não um segundo roteador que divergiria do primeiro.
+
+> **Sutileza que só apareceu ao escrever o teste:** os candidatos precisam vir da ORG, não do
+> pipeline aberto na tela. Com a lista recortada por pipeline, dois negócios ambíguos em boards
+> diferentes apareceriam como **um único negócio em cada board**, e os dois exibiriam a mesma
+> proposta com o mesmo botão. A função sabe recusar, mas só enxerga o que lhe mostram — a recusa
+> por ambiguidade some justamente quando você recorta a visão. Está como teste explícito,
+> comparando a visão recortada (roteia) com a visão real (recusa).
+
+### O que a prova na tela mostrou (`evidence/wave4-*`, carimbo limpo em `c69fe66`)
+
+| perna | resultado |
+|---|---|
+| 13a — o card mostra o texto que o agente escreveu | ✅ |
+| 13b — botões de decisão visíveis | ✅ |
+| 13c — Aprovar gera atividade (`Aprovou: <ação>`, ator `user`) | ✅ |
+| 13d — a proposta sai de cena depois de decidida | ✅ |
+| 13e — **Ignorar também gera atividade** (`Descartou: <ação>`) | ✅ |
+| 13f — autorização vencida recusada: **HTTP 409 e nenhuma atividade nova** (3 → 3) | ✅ |
+| 14 — card sem proposta fica no estado NORMAL, sem slot vazio nem "—" | ✅ |
+
+A trava compara o **texto**, não o `updated_at`: é o texto que a pessoa leu e aprovou. Na tela, o
+aviso explica o que houve e o card **já mostra a proposta nova** — quem clicou vê o que mudou.
+
+### Dois achados que valem mais que a feature
+
+**1. Os cinco contatos com `next_action` não têm negócio nenhum.** O contrato dizia "use os cinco
+que já estão no banco, não precisa semear" — mas `leads_totais = 0` para todos. Sem lead não há
+card, e o roteador corretamente devolve `no_open_lead`. O harness está calculando a próxima ação
+para gente que **não está no funil**: mesmo com a ponte pronta, esse dado continua invisível, agora
+por outro motivo. Para a prova, criei o negócio que faltava para dois contatos reais da org — o
+texto da proposta continua sendo o que a IA escreveu; o lead é só o container.
+
+**2. "Aprovar EXECUTA" não tem executor hoje — declarado, não escondido.** O motor de follow-up
+funciona por fluxo desenhado (`pointer_id`/`version_id`) e a proposta é texto livre; matricular
+num fluxo arbitrário seria inventar semântica. Então aprovar **registra** a decisão e tira a
+proposta de cena, e a ação em si é do humano.
+
+> **Refinamento do carimbo:** a sonda passou a declarar **a si mesma** entre as dependências.
+> Instrumento não commitado produz veredito irreprodutível igual a produto não commitado —
+> declarando só as dependências do produto, o carimbo dizia "todas limpas" com a régua mudando
+> debaixo do resultado. Foi o que aconteceu na execução anterior ao `c69fe66`.
+
+`typecheck` 0 · `lint` 0 · `test:unit` **918/918**.
