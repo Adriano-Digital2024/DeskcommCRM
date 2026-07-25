@@ -42,7 +42,7 @@ import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 
-import { ACTIVITY_LABELS, type ActivityType } from "@/lib/leads/activity-vocabulary";
+import { ACTIVITY_LABELS, actorShape, type ActivityType } from "@/lib/leads/activity-vocabulary";
 import { CREDS, EVIDENCE, cardLocator, carimbar, gotoBoard, login, shotPage } from "./qa-helpers";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
@@ -192,6 +192,29 @@ async function main(): Promise<void> {
     voc.tem ? undefined : "BLOQUEADO",
   );
 
+  // ---- D22.formas: o marcador do ator, ANTES de existir pixel na tela --------
+  //
+  // O critério é "distinguir o CONTATO do AGENTE sem legenda, no tamanho
+  // renderizado". Ele passa hoje — mas o mapa de formas conta uma história que
+  // vale ler antes de mexer nele.
+  const ATORES = ["user", "ai", "system", "rule", "contact"];
+  const mapa = Object.fromEntries(ATORES.map((a) => [a, actorShape(a)]));
+  const colisoes = ATORES.flatMap((a, i) =>
+    ATORES.slice(i + 1)
+      .filter((b) => mapa[a] === mapa[b])
+      .map((b) => `${a}=${b} (${mapa[a]})`),
+  );
+  record(
+    "D22.formas",
+    "o marcador do CONTATO se distingue do marcador do AGENTE pela forma",
+    mapa.contact !== mapa.ai,
+    `mapa atual: ${ATORES.map((a) => `${a}→${mapa[a]}`).join(" · ")}` +
+      (colisoes.length ? ` | pares que COMPARTILHAM forma: ${colisoes.join(", ")}` : "") +
+      ` | atenção ao plano de dar TRACEJADO ao contato: hoje tracejado significa "nem gente ` +
+      `nem agente" e é onde system e rule já moram — mover o contato para lá troca a colisão ` +
+      `com "user" (duas pessoas) por uma colisão com "system/rule" (uma pessoa e duas máquinas)`,
+  );
+
   const sobras = await limpar();
   if (sobras > 0) console.info(`[limpeza inicial] ${sobras} lead(s) de rodada anterior`);
   const caso = await montarCaso();
@@ -225,6 +248,8 @@ async function main(): Promise<void> {
         ["D19", "CENÁRIO 19: timeline colapsa eventos consecutivos do mesmo ator"],
         ["D20", "CENÁRIO 20: editar campo salva E aparece na timeline com ator humano"],
         ["D21", "CENÁRIO 21: ação do agente na outra aba entra na timeline ao vivo"],
+        ["D23", "o Sheet DESASSINA ao fechar — abrir e fechar N vezes não acumula canal"],
+        ["D24", "a fonte devolve EVENTOS; quem agrupa é a tela"],
       ] as [string, string][]) {
         record(n, nome, false, "sem dossiê aberto não há superfície para medir — preso ao D18", "BLOQUEADO");
       }
@@ -288,6 +313,46 @@ async function main(): Promise<void> {
           `as duas metades falham separado: salvar pode funcionar e o registro não existir`,
       );
     }
+
+    // ---- 23: o vazamento que teste curto NUNCA pega -------------------------
+    //
+    // Abrir e fechar UMA vez não revela assinatura que não é desfeita: o canal
+    // órfão só incomoda quando se acumula. Então o instrumento faz o que o uso
+    // real faz — abre e fecha várias vezes — e compara ENTRADAS com SAÍDAS.
+    //
+    // A contagem é de `phx_join` contra `phx_leave` no socket: se o Sheet
+    // desassina, cada abertura tem a sua saída. Se não desassina, as entradas
+    // crescem e as saídas não — e o número da diferença É o vazamento.
+    let joins = 0;
+    let leaves = 0;
+    page.on("websocket", (ws) => {
+      if (!ws.url().includes("supabase")) return;
+      ws.on("framesent", (f) => {
+        const t = String(f.payload);
+        if (/phx_join/.test(t) && /timeline|lead|dossie/i.test(t)) joins++;
+        if (/phx_leave/.test(t) && /timeline|lead|dossie/i.test(t)) leaves++;
+      });
+    });
+    const CICLOS = 4;
+    for (let i = 0; i < CICLOS; i++) {
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(600);
+      const { card: c } = await cardLocator(page, caso.titulo);
+      await c.click();
+      await page.waitForTimeout(900);
+    }
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(900);
+    record(
+      "D23",
+      "o Sheet DESASSINA ao fechar — abrir e fechar N vezes não acumula canal",
+      joins > 0 && joins - leaves <= 1,
+      joins === 0
+        ? "nenhum canal do dossiê observado — ou ele não assina nada, ou o nome do canal mudou"
+        : `${CICLOS + 1} aberturas → ${joins} entradas e ${leaves} saídas no socket ` +
+          `(diferença ${joins - leaves}) — teste que abre e fecha UMA vez nunca veria isto`,
+      joins === 0 ? "BLOQUEADO" : undefined,
+    );
 
     // ---- 21: ao vivo, com pré-condição de capacidade -----------------------
     record(
