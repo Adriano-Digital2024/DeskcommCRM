@@ -6592,3 +6592,45 @@ silêncio**. Só o isolamento torna o significado do teste estável no tempo.
 2. **Monte cada caso VÁLIDO em tudo menos no que está sob teste** (status inválido **com**
    `decided_at` preenchido), para que só a trava alvo possa reprovar. Caso "inválido em duas coisas"
    prova a primeira e não diz nada sobre a segunda.
+
+## §7.204 — Para julgar instrumentos CONCORRENTES, a verdade de referência não pode ser nenhum deles
+
+Quatro predicados de "isto é uma entrega?" precisavam ser comparados, e três deles já tinham errado.
+A saída não foi eleger o mais plausível: foi **construir uma verdade independente de todos** — uma
+**marca plantada no banco depois de a página já estar aberta**. O quadro que carrega a marca **é** a
+entrega, porque só a entrega pode conter aquele texto.
+
+Com ela, a tabela sai sozinha e sem argumento: v1 acerta a entrega **e** confunde recibo (falso
+positivo); v2 não acerta nem a entrega (falso negativo); v3 e v4 acertam sem confundir.
+
+**Regra:** quando os candidatos a instrumento discordam, medir um contra o outro só ordena os erros.
+É preciso um **observável que o fenômeno sob estudo seja o único capaz de produzir** — e quase sempre
+ele se constrói (§7.176: fabricar, não procurar).
+
+## §7.205 — "Provavelmente está ok" tem histórico, e nesta investigação o histórico é ruim
+
+Ao encontrar duas sondas com um predicado nunca julgado, a frase que quase saiu foi *"provavelmente
+estão ok"* — e a observação que o autor fez sobre si mesmo é a lei: **"provavelmente" foi exatamente
+o que eu disse das duas versões que quebraram.**
+
+Não se trata de banir a estimativa. É que **a taxa-base já tinha sido medida ali mesmo**: naquela
+investigação, instrumentos julgados por plausibilidade falharam duas vezes em duas. Continuar
+estimando depois disso é ignorar a evidência local que a própria investigação produziu.
+
+**Regra:** dentro de uma investigação onde instrumentos já falharam, **instrumento não recebe
+presunção** — recebe a mesma tabela dos outros. O custo é baixo quando a verdade de referência já
+está construída, e foi exatamente o que aconteceu: julgar o terceiro predicado custou uma linha na
+tabela que já existia.
+
+### Resolução da dúvida sobre o contador (respondida por varredura, não por memória)
+
+- **v2 (sempre-zero) esteve em dois lugares.** Num, produziu a linha *"Entregas na MESMA janela:
+  NENHUMA"* **dentro do vermelho do D21** — aquele zero não informava nada, como suspeitado. No
+  outro, o autoteste do proxy o pegou **antes de qualquer conclusão sair**.
+- **O veredito do D21 não se apoia nela:** "mudou" compara LINHAS NA TELA, com controle em processo
+  irmão. Re-executado com o contador consertado: continua 0, **agora um zero que significa algo**.
+- **A grade do pipeline nunca passou pelo contador** — aquelas sondas medem pelo CALLBACK do
+  supabase-js, não por texto de quadro. Aparatos diferentes, e é por isso que Pedidos deu 3/3
+  enquanto o contador da wave 6 marcava zero.
+
+**Nenhuma conclusão viva se apoiava na v2. A grade continua valendo: NÃO CHEGAM, dois defeitos.**
