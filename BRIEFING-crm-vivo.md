@@ -8250,3 +8250,58 @@ sem o que o desambigua, e as duas causas viram uma só.
 **E o que a lei compra não é para quem escreveu o aparato** — esse lê a própria saída e já compensava
 à mão. É para **quem não está olhando**: outra sessão roda a suíte, vê "13 verdes", e **não repara no
 aviso três linhas acima**.
+
+## §7.269 — Erro ENGOLIDO torna a hipótese sobre ele INFALSIFICÁVEL — e uma cerca que mascara o sintoma destrói o diagnóstico
+
+Premissa falsa corrigida pelo próprio autor, **depois de eu ter aprovado em cima dela**: o ingest do
+WhatsApp **atualiza sim** `conversations`, por RPC (`fn_mark_conversation_message`, SECURITY DEFINER)
+através de um helper. Verificado: a função existe e atualiza `last_message_at`,
+`last_message_preview` e `unread_count_for_assignee`.
+
+**E o mecanismo do erro dele é uma lei que ele mesmo tinha aprendido HOJE:** varreu por
+`from("conversations")` **dentro do arquivo**, e o ingest chega lá **pelo portão** (helper → RPC).
+É a §7.190 exata — *varredura que procura o RECURSO perde quem chega nele pelos PORTÕES*. **Ele levou
+a lição para o invariante e não a aplicou em si três horas depois.**
+
+> **Lei aplicada num contexto não transfere sozinha para outro.** Aprender a regra e usá-la onde ela
+> nasceu é o caso fácil; reconhecê-la num terreno diferente é outro ato, e é o que falha.
+
+**E o que muda a decisão do trigger, verificado no código:**
+
+```ts
+if (error) console.error("[waha.ingest] fn_mark_conversation_message failed", error.message);
+```
+
+**A falha da RPC é engolida** — a mensagem entra, a conversa não é marcada, nada quebra. E é
+duplamente contra a doutrina do repo: *engolir erro* **e** *`console.error` em código merged, em vez
+de log estruturado ou Sentry*.
+
+**A consequência é o que decide:** *"a RPC falha às vezes"* é hoje **INFALSIFICÁVEL** — falhas não
+deixam contador, não deixam evento, e `console.error` em função serverless vai para um log que
+ninguém lê. **Não dá para provar nem refutar.**
+
+**E é exatamente por isso que o trigger seria o pior movimento agora:** ele faria o sintoma
+desaparecer **enquanto a taxa de falha permanece desconhecida para sempre**. É a §7.228 num grau
+acima — não apenas destravamento em vez de conserto, mas **cerca que apaga a evidência do defeito
+que ela esconde**.
+
+**Ordem correta, e ela inverte a minha aprovação anterior:**
+1. **Tornar a falha OBSERVÁVEL** — Sentry/log estruturado com contador. **Sem mudar o fluxo**: a
+   decisão de que "a mensagem vale mais que o campo derivado" continua defensável; **falhar em
+   silêncio** é que não.
+2. **Medir** — com o sinal existindo, *"a RPC falha às vezes"* vira testável.
+3. **Só então** decidir sobre o trigger, que passa a ser cerca contra escritores **fora dos dois
+   caminhos** (sondas, seeds, scripts) — benefício menor do que se supunha, com o mesmo custo
+   (dobrar tráfego de realtime por mensagem).
+
+**Regra geral:** diante de *"talvez X falhe às vezes"*, o primeiro movimento **nunca** é consertar o
+efeito — é **tornar as falhas de X contáveis**. Hipótese sobre um evento que não deixa rastro não é
+hipótese: é opinião com aparência de causa.
+
+### E parte da evidência era contaminação própria, declarada
+
+A conversa com `preview` NULO tendo mensagens tem última mensagem **de hoje, com `external_id` NULO**
+— não veio do WAHA, foi inserida direto em `messages` pelas próprias sondas de realtime. **Esse caso
+é do instrumento.** As demais defasadas **têm `external_id` do WAHA** e previews de datas anteriores:
+**essas são reais, e a causa é desconhecida.** Separar as duas populações antes de reportar é o que
+impediu um conserto apontado para o alvo errado.
