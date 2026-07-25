@@ -8597,3 +8597,44 @@ mesma operação**, com contagem antes e depois provando que saíram exatamente 
 precisa recompor a derivada explicitamente. O caminho de escrita cobre INSERT; **ninguém escreveu o
 caminho de DELETE**, porque apagar mensagem não é operação de produto — e é exatamente por isso que
 a limpeza manual é onde esse buraco aparece.
+
+## §7.276 — Valor RECONSTRUÍDO é indistinguível de medido depois de gravado — declare no instante
+
+O contador de não lidos foi devolvido a **2**. E o autor declarou, sem que ninguém perguntasse:
+
+> ***"O 2 é RECONSTRUÍDO, não medido.*** É o número de inbound reais e bate com 10 menos as ~8
+> rodadas que chamaram a RPC. **Eu não tenho leitura do valor anterior à primeira contaminação.** Se
+> alguém depender desse contador, o número certo é o que o produto recalcular, não o meu."
+
+**Uma vez gravado, um valor reconstruído é idêntico a um medido** — mesma coluna, mesmo tipo, mesma
+aparência de fato. **Nada no dado marca a diferença**, e a diferença é grande: medido é observação,
+reconstruído é **inferência com aparência de observação**.
+
+**Regra:** reparo que ESTIMA um valor declara a estimativa **no instante do reparo** — no commit, no
+log, no próprio registro se houver onde. Depois é tarde: o número já entrou na base indistinguível
+dos outros, e quem o ler daqui a um mês vai tratá-lo como leitura.
+
+## §7.277 — Desfazer CONTAMINAÇÃO não é simular operação de produto: o caminho de produção está errado para limpar
+
+A sonda passou a restaurar **o estado derivado**, não só a linha — captura as colunas antes e devolve
+depois, **por UPDATE direto**. E isso está certo pelo motivo que o autor deu:
+
+> *"Não estou simulando operação do produto, estou desfazendo contaminação minha. **Restaurar pela
+> RPC incrementaria o contador de novo, que é o conserto repetindo o dano.**"*
+
+**O caminho de produção é o certo para CRIAR estado e o errado para DESFAZER**, porque seus efeitos
+colaterais são corretos **indo** e errados **voltando**: incrementar contador, carimbar timestamp,
+emitir evento. **Chamar o caminho real para limpar re-causa exatamente o que se quer remover.**
+
+**E a cascata que produziu tudo isso merece o registro, porque é silenciosa:** o marcador foi movido
+para o **começo** do corpo (conserto correto, §7.248 — a apresentação truncava o fim) — **e a limpeza
+casava pelo FIM**. O conserto de um lado quebrou a limpeza do outro, **sem erro**, deixando linhas
+que a RPC então carimbou e que inflaram o contador.
+
+**Versão contável:** ao mudar posição ou formato de um marcador, conte **quantos lugares dependem
+dessa posição** — quem escreve, quem lê, quem limpa. O terceiro é o que ninguém lembra, porque
+limpeza não é funcionalidade.
+
+**E a lei que ele tirou é a forma geral, para o lado do instrumento:** *"limpeza que só remove a
+linha deixa o rastro exatamente onde a próxima medição vai olhar"* — em toda tabela com coluna
+derivada, contador ou carimbo, **apagar a causa não apaga o efeito**.
