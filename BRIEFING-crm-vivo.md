@@ -4672,3 +4672,40 @@ limpeza.
 > **Prova que se acusa de não-veredito não sustenta afirmação.** O artefato auto-acusatório é **registro
 > bom e evidência ruim**: serve para dizer *"isto aconteceu assim"*, não para sustentar *"portanto o
 > produto faz X"*.
+
+## §7.123 — Componente correto no substantivo errado
+
+O QAVivo achou o dossiê de um negócio com quatro atividades dizendo **"Nada aconteceu com este
+negócio ainda."** A causa não é um defeito na timeline. A timeline está **certa** — sobre o
+CONTATO. Ela foi reusada como dossiê do NEGÓCIO, que é outro substantivo.
+
+Isto é uma classe própria de defeito, e ela engana de um jeito específico: **a peça passa em toda
+inspeção interna, porque a peça não tem nada de errado.** Quem investiga entra nela e não acha
+nada — e sai concluindo que o problema é ambiente, dado ou sorte. O erro não está DENTRO de
+nenhum dos dois lados; está na **junção**, que é o único lugar onde ninguém é dono.
+
+Sinal de reconhecimento: **um comentário que defende bem a peça e não menciona o consumidor.**
+O comentário do hook argumentava "filtrar por lead_id deixaria de fora a atividade que nasce da
+conversa" — verdadeiro sobre a timeline do contato, e mudo sobre o único caso que quebra: o
+negócio SEM contato, que não recebe nenhum dos dois eixos. Defesa boa da peça isolada é o
+disfarce mais eficaz deste defeito, porque quem lê o comentário para de procurar.
+
+**A pergunta que separa:** não "esta peça está correta?", e sim "correta SOBRE O QUÊ?".
+
+## §7.123-a — Zero linhas não autoriza nenhum dos dois lados
+
+Medido: a atividade "nascida da conversa" que o comentário protege tem **zero linhas** (toda
+atividade com contato também tem lead). E o vazamento entre negócios irmãos que eu encontrei —
+o dossiê de A somando as atividades de B — também tem **zero linhas** hoje, embora o código o
+produza.
+
+A tentação é usar o zero como argumento, e ela vem nas duas direções: *"o medo do comentário é
+vazio, filtre por lead e pronto"* e *"meu vazamento não acontece, deixa quieto"*. **As duas são
+o mesmo erro** — contagem de hoje respondendo pergunta sobre o que o código permite.
+
+A saída não é escolher quem ganha o argumento: é **a cláusula que dispensa o argumento**. Ancorar
+no lead e unir com `contact_id = <contato> and lead_id is null` custa uma linha, é hoje
+EXATAMENTE equivalente a filtrar só por lead (porque o conjunto é vazio), preserva o que o
+comentário teme perder se algum dia aparecer, e exclui o irmão por construção.
+
+**Quando uma linha compra as duas hipóteses, medir qual delas está certa é trabalho jogado fora.**
