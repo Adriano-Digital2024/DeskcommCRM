@@ -317,6 +317,28 @@ async function main(): Promise<void> {
    * "não chegou" e um que diz QUAL ELO caiu.
    */
   const canalB = { joins: 0, comToken: 0, papel: "(nenhum join)", quadros: 0, replies: 0 };
+
+  /**
+   * ERRO DO CLIENTE, coletado AQUI e não delegado à telemetria.
+   *
+   * O túnel do Sentry está devolvendo 429 por volume — então "não apareceu nada
+   * no Sentry" deixou de ser argumento: ausência de sinal por canal entupido tem
+   * a mesma cara de ausência de problema, e a telemetria é justamente a camada
+   * que existe para separar os dois estados.
+   *
+   * O sintoma que eu investiguei tinha a assinatura de erro silencioso no
+   * cliente — `CHANNEL_ERROR` capturado, ou exceção morrendo dentro do handler.
+   * Um coletor local não substitui a telemetria, mas garante que a evidência
+   * exista NO MOMENTO da falha, que é quando ela existe.
+   */
+  const errosDoCliente: string[] = [];
+  abaB.on("console", (m) => {
+    if (m.type() === "error") errosDoCliente.push(`console: ${m.text().slice(0, 120)}`);
+  });
+  abaB.on("pageerror", (e) => errosDoCliente.push(`exceção: ${String(e.message).slice(0, 120)}`));
+  abaB.on("requestfailed", (r) =>
+    errosDoCliente.push(`requisição falhou: ${r.url().slice(0, 90)} (${r.failure()?.errorText ?? "?"})`),
+  );
   abaB.on("websocket", (ws) => {
     if (!ws.url().includes("supabase")) return;
     ws.on("framesent", (f) => {
@@ -351,7 +373,10 @@ async function main(): Promise<void> {
     return (
       `[diagnóstico da aba B] status=${status ?? "(ausente)"} · joins=${canalB.joins} ` +
       `(com token: ${canalB.comToken}, ${canalB.papel}) · respostas=${canalB.replies} · ` +
-      `quadros de mudança recebidos=${canalB.quadros}`
+      `quadros de mudança recebidos=${canalB.quadros} · erros do cliente: ` +
+      (errosDoCliente.length === 0
+        ? "nenhum"
+        : `${errosDoCliente.length} → ${errosDoCliente.slice(0, 3).join(" | ")}`)
     );
   };
 
