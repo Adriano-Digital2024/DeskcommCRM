@@ -58,14 +58,20 @@ async function main(): Promise<void> {
     .order("position", { ascending: true });
   if (!stages || stages.length < 2) throw new Error("pipeline sem estágios suficientes");
 
-  const comDestino = stages.slice(0, -1).map((s) => s.id);
-  const { data: leads } = await admin
+  // O estágio MAIS À ESQUERDA que tenha lead, não um sorteado entre os que têm
+  // destino: coluna à direita pode nascer fora da viewport, e aí o arrasto por
+  // teclado simplesmente não acontece — a sonda estoura no `waitForResponse` e
+  // o erro não diz nada sobre o pulso. Sem `order`, o `.limit(1)` era loteria.
+  const { data: candidatos } = await admin
     .from("crm_leads")
     .select("id, title, stage_id")
     .eq("pipeline_id", pipelineId)
-    .in("stage_id", comDestino)
-    .limit(1);
-  const lead = leads?.[0];
+    .in("stage_id", stages.slice(0, -1).map((s) => s.id));
+  const posicaoDoEstagio = new Map(stages.map((s) => [s.id, s.position]));
+  const lead = (candidatos ?? []).sort(
+    (a, b) =>
+      (posicaoDoEstagio.get(a.stage_id) ?? 0) - (posicaoDoEstagio.get(b.stage_id) ?? 0),
+  )[0];
   if (!lead) throw new Error("nenhum lead com estágio à direita");
   console.info(`alvo: "${lead.title}"`);
 
