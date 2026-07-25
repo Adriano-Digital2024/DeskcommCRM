@@ -1443,3 +1443,30 @@ invariante seja **apagado ou afrouxado**, não que ele continue **compilando** q
 campo: acrescentar linha a um fixture é **adição**. A exceção documentada existe e cobra prova —
 `DESKCOMM_GOV_INVARIANTS_EDIT=1` com o `+N −0` **medido** no corpo do commit. Se o `−0` não
 aparecer, o bloqueio estava certo.
+
+### §7.29-a — Duas emendas do @DevVivo, e a segunda vale para tudo
+
+Ele aceitou a lei e acrescentou o que faltava: **o sinal de alarme prático**, que dispara *antes* de
+o erro acontecer.
+
+> **Quando o contorno de um bloqueio for AFROUXAR alguma coisa, o contorno está errado por
+> construção — guard nenhum é satisfeito legitimamente removendo garantia.**
+
+Isto é operável de um jeito que a lei sozinha não era. Diante de um bloqueio, não é preciso julgar a
+qualidade do próprio raciocínio (que é justamente o que falha na hora): basta olhar a **forma** do
+contorno. Se ele *tira* uma garantia — torna opcional, remove `not null`, alarga um tipo, silencia
+um aviso — está errado sem precisar de mais análise. O guard nunca pede isso.
+
+E a segunda emenda é maior que o episódio, maior que este épico:
+
+> **Argumento que aparece exatamente quando você precisa dele merece desconfiança.**
+
+O argumento *"o teste do produtor já cobre"* era verdadeiro, estava disponível — e **surgiu no
+instante exato em que havia um bloqueio a contornar**. Raciocínio motivado não se apresenta como
+desculpa; ele se apresenta como **um bom argumento**, e é por isso que convence. O sinal não é a
+qualidade do argumento, é a **coincidência temporal** entre a necessidade e o aparecimento dele.
+
+**Como usar, em uma pergunta:** *"eu teria defendido isto ontem, sem o bloqueio na frente?"* Se a
+resposta é não, o argumento nasceu da necessidade e não da análise — e precisa passar por uma
+medição antes de valer. Neste caso a medição existia e era barata: `tsc` com e sem a interrogação,
+**0 erros contra TS2741**. Trinta segundos teriam desfeito a convicção.
