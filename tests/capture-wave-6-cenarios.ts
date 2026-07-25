@@ -43,7 +43,7 @@ import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 
 import { ACTIVITY_LABELS, actorShape, type ActivityType } from "@/lib/leads/activity-vocabulary";
-import { CREDS, EVIDENCE, cardLocator, carimbar, gotoBoard, login, shotPage } from "./qa-helpers";
+import { CREDS, EVIDENCE, cardLocator, carimbar, casoConstruido, gotoBoard, login, shotPage } from "./qa-helpers";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
 const envVars: Record<string, string> = {};
@@ -182,6 +182,9 @@ async function main(): Promise<void> {
     "components/contacts/TimelineView.tsx",
     "lib/leads/activity-vocabulary.ts",
   ]);
+  casoConstruido(
+    "lead sem contato e quatro atividades semeadas — o quinto ator não existe em dado",
+  );
 
   // ---- 20.contrato: verificável sem abrir a tela ---------------------------
   const voc = vocabularioTemEdicaoHumana();

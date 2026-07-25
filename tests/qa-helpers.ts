@@ -256,12 +256,31 @@ function guardaEvidencia(file: string): void {
   );
 }
 
+/**
+ * DECLARA que as capturas desta execução saem de caso FABRICADO.
+ *
+ * Observação do regente e ela é do mesmo tipo da âncora inventada: prova de caso
+ * construído sem o rótulo "construído" sugere um fluxo que ninguém exercita.
+ * Hoje isso só se percebia por acidente — o lead de teste tem prefixo no título,
+ * e quem olhasse o print notaria. Acidente não é declaração.
+ *
+ * O sufixo entra no NOME do arquivo, como o `-ARVORE-SUJA`: a evidência diz o
+ * que ela é sem depender de alguém lembrar de ler a narrativa ao lado.
+ */
+let sufixoCasoConstruido = "";
+export function casoConstruido(motivo: string): void {
+  sufixoCasoConstruido = "-CASO-CONSTRUIDO";
+  console.info(`[evidencia] caso CONSTRUÍDO nesta execução: ${motivo}`);
+  console.info("[evidencia] as capturas sairão marcadas com -CASO-CONSTRUIDO");
+}
+
 /** Screenshot do card inteiro, com o retângulo validado antes de gravar. */
 export async function shotCard(
   page: Page,
   title: string | RegExp,
-  file: string,
+  arquivo: string,
 ): Promise<void> {
+  const file = arquivo.replace(/\.png$/, `${sufixoCasoConstruido}.png`);
   guardaEvidencia(file);
   const { card, box } = await cardLocator(page, title);
   await card.scrollIntoViewIfNeeded();
@@ -271,7 +290,8 @@ export async function shotCard(
   );
 }
 
-export async function shotPage(page: Page, file: string, fullPage = true): Promise<void> {
+export async function shotPage(page: Page, arquivo: string, fullPage = true): Promise<void> {
+  const file = arquivo.replace(/\.png$/, `${sufixoCasoConstruido}.png`);
   guardaEvidencia(file);
   await page.screenshot({ path: path.join(EVIDENCE, file), fullPage });
   console.info(`[evidencia] evidence/${file}`);

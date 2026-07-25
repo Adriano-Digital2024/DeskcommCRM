@@ -86,8 +86,16 @@ interface Caso {
  * "aceito" que o usuário nunca veria não é a linha positiva de nada.
  */
 const ANCORA = "11111111-1111-1111-1111-111111111111";
+/**
+ * O lastro canônico, na forma que o banco passou a exigir.
+ *
+ * A trípice foi implementada MELHOR do que eu tinha armado: em vez de exigir
+ * duas chaves irmãs (`activity_ids` E `factors`), a constraint exige `factors`
+ * não vazio COM `ancora` DENTRO — `evidence @? '$."factors"[*]."ancora"'`.
+ * Os dois vocabulários viraram UM, e a âncora deixa de poder existir sem a
+ * frase que a explica. É o conserto certo do defeito que eu tinha reportado.
+ */
 const LASTRO = {
-  activity_ids: [ANCORA],
   factors: [{ pontos: 20, frase: "Cliente confirmou o orçamento", ancora: { kind: "activity", id: ANCORA } }],
 };
 
@@ -133,9 +141,14 @@ const CASOS: Caso[] = [
     // o CHECK conta activity_ids/message_ids/checkpoint_ids. Se o CHECK também
     // aceitasse `factors`, dava para escrever só a chave que a tela usa. Não
     // aceita — então quem grava precisa preencher AS DUAS, e nada o obriga.
+    // Este caso já foi o INVERSO: quando a tela lia `factors` e a constraint
+    // contava `activity_ids`, um lastro na chave que o board consome era
+    // RECUSADO — e era o defeito. Agora é o payload canônico, e o critério
+    // afirma a aceitação. O nome do teste mudou junto com a regra: critério que
+    // sobrevive à mudança do contrato com o nome antigo mente na próxima leitura.
     n: "C16.k",
-    nome: "evidência SÓ com a chave que a tela lê (factors) é recusada pelo banco",
-    recusar: true,
+    nome: "evidência na chave que a tela LÊ, com âncora dentro, é ACEITA",
+    recusar: false,
     campos: {
       ai_probability: 72,
       ai_probability_reason: "lastro na chave que o board consome",
@@ -234,24 +247,25 @@ async function tabelaVerdade(): Promise<void> {
   const CASOS_TRIPLICE: Caso[] = [
     {
       n: "C16.l",
-      nome: "âncora SEM factors é recusada — evidência rastreável e MUDA",
+      nome: "âncora fora de factors é recusada — a tela não leria esse lastro",
       recusar: true,
       campos: {
         ai_probability: 72,
-        ai_probability_reason: "lastro que o banco vê e a tela não",
+        ai_probability_reason: "lastro que o banco via e a tela não",
         ai_probability_evidence: { activity_ids: [ANCORA] },
       },
     },
     {
+      // O nome PRECISA casar com o payload: a versão anterior deste caso se
+      // chamava "sem âncora" e mandava um factor COM âncora. Passou a reprovar
+      // o produto por um acerto dele — a §7.63 aplicada a mim, de novo.
       n: "C16.m",
-      nome: "factors SEM âncora é recusado — evidência legível e IRRASTREÁVEL",
+      nome: "factor SEM âncora é recusado — frase legível e IRRASTREÁVEL",
       recusar: true,
       campos: {
         ai_probability: 72,
         ai_probability_reason: "frase bonita sem destino",
-        ai_probability_evidence: {
-          factors: [{ pontos: 10, frase: "parece animado", ancora: { kind: "activity", id: ANCORA } }],
-        },
+        ai_probability_evidence: { factors: [{ pontos: 10, frase: "parece animado" }] },
       },
     },
   ];

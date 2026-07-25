@@ -40,7 +40,7 @@ import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import pg from "pg";
 
-import { CREDS, EVIDENCE, cardLocator, carimbar, gotoBoard, login, shotCard, shotPage } from "./qa-helpers";
+import { CREDS, EVIDENCE, cardLocator, carimbar, casoConstruido, gotoBoard, login, shotCard, shotPage } from "./qa-helpers";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
 const envVars: Record<string, string> = {};
@@ -154,13 +154,32 @@ async function montarAlvos(): Promise<Record<string, Alvo>> {
     `insert into crm_lead_scores (lead_id, organization_id, ai_probability, ai_probability_reason,
                                   ai_probability_evidence, ai_probability_at, ai_probability_band)
      values ($1, $2, 72, 'dois compromissos assumidos e a objeção de preço resolvida', $3::jsonb, now(), 'morno')`,
-    [alvos.COM!.leadId, ORG, JSON.stringify({ activity_ids: evidencias })],
+    [
+      alvos.COM!.leadId,
+      ORG,
+      // A trípice unificou os vocabulários: a âncora vive DENTRO do factor. Não
+      // existe mais lastro que o banco aceite e a tela não leia — era esse o
+      // defeito, e o conserto o tornou impossível de escrever.
+      JSON.stringify({
+        factors: evidencias.map((id, i) => ({
+          pontos: [20, 15][i] ?? 10,
+          frase: ["Cliente confirmou o orçamento por telefone", "Objeção de preço resolvida com desconto de 8%"][i] ?? "fato",
+          ancora: { kind: "activity", id },
+        })),
+      }),
+    ],
   );
   await pool.query(
     `insert into crm_lead_scores (lead_id, organization_id, ai_probability, ai_probability_reason,
                                   ai_probability_evidence, ai_probability_at, ai_probability_band)
      values ($1, $2, 0, 'contato pediu para não ser procurado de novo', $3::jsonb, now(), 'frio')`,
-    [alvos.ZERO!.leadId, ORG, JSON.stringify({ activity_ids: [evidencias[0]] })],
+    [
+      alvos.ZERO!.leadId,
+      ORG,
+      JSON.stringify({
+        factors: [{ pontos: -30, frase: "Contato pediu para não ser procurado", ancora: { kind: "activity", id: evidencias[0] } }],
+      }),
+    ],
   );
   // AMBOS: mesma evidência dos ids MAIS a chave `factors`, que é a única que o
   // board lê hoje. Existe para separar "a tela não sabe mostrar evidência" de
@@ -174,7 +193,6 @@ async function montarAlvos(): Promise<Record<string, Alvo>> {
       alvos.AMBOS!.leadId,
       ORG,
       JSON.stringify({
-        activity_ids: evidencias,
         factors: [
           { pontos: 20, frase: "Cliente confirmou o orçamento por telefone", ancora: { kind: "activity", id: evidencias[0] } },
           { pontos: 15, frase: "Objeção de preço resolvida com desconto de 8%", ancora: { kind: "activity", id: evidencias[1] } },
@@ -266,6 +284,9 @@ async function main(): Promise<void> {
     "hooks/kanban/useBoard.ts",
     "app/api/v1/pipelines/[id]/board/route.ts",
   ]);
+  casoConstruido(
+    "três leads irmãos criados aqui, com score gravado à mão — o dado real não tem o par zero/ausente",
+  );
 
   const sobras = await limpar();
   if (sobras > 0) console.info(`[limpeza inicial] ${sobras} lead(s) de rodada anterior removidos`);
@@ -365,6 +386,12 @@ async function main(): Promise<void> {
     // O critério se chamava "mostra as evidências que existem" e não assertava
     // isso — nome que promete mais do que a asserção cobre é a §7.48 outra vez,
     // agora no rótulo. Separado, e com o PAR que distingue as causas.
+    //
+    // O PAR MUDOU DE SENTIDO quando a trípice entrou. Ele nasceu para separar
+    // "a tela não sabe mostrar evidência" de "a tela lê outra chave" — e a
+    // segunda hipótese deixou de existir: agora a âncora vive DENTRO do factor,
+    // e não há lastro que o banco aceite e a tela não leia. O par vira uma
+    // cerca: se alguém reintroduzir a divergência, ele volta a acusar.
     const semLastro = /Sem evidências registradas/i.test(porHover);
     const { card: cardAmbos } = await cardLocator(page, alvos.AMBOS!.titulo);
     const faixaAmbos = await faixaDoAgente(cardAmbos);
@@ -376,11 +403,11 @@ async function main(): Promise<void> {
       "as evidências GRAVADAS aparecem — as duas, sem cota e sem invenção",
       exibe && !semLastro,
       exibe
-        ? `lead com activity_ids (o que a constraint EXIGE): ${semLastro ? '"Sem evidências registradas"' : "evidências na tela"} · ` +
-          `lead com a chave factors (a que o board LÊ, faixa="${faixaAmbos.texto}"): ` +
+        ? `lead com o lastro canônico: ${semLastro ? '"Sem evidências registradas"' : "evidências na tela"} · ` +
+          `lead de controle (faixa="${faixaAmbos.texto}"): ` +
           `${!ambosRenderizou ? "INCONCLUSIVO — o card do controle nem mostrou score" : ambosMostra ? "evidências na tela" : "nada"}` +
           (semLastro && ambosMostra
-            ? " — DOIS VOCABULÁRIOS: o banco exige activity_ids/message_ids/checkpoint_ids e a tela lê `factors`"
+            ? " — DIVERGÊNCIA DE VOCABULÁRIO DE VOLTA: há lastro que o banco aceita e a tela não lê"
             : "")
         : "sem medidor não há o que revelar",
       exibe ? undefined : "BLOQUEADO",
