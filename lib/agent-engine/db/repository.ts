@@ -33,6 +33,7 @@ export type InboxKind =
   | 'followup_dead'
   | 'snooze_expired'
   | 'next_action_ambiguous'
+  | 'risk_backlog_seeded'
   | 'other';
 
 export interface InboxItemRow {

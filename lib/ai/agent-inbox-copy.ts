@@ -28,6 +28,7 @@ export const KIND_LABEL = {
   followup_dead: "Um fluxo de follow-up parou de tentar",
   snooze_expired: "O lead não respondeu no prazo que você definiu",
   next_action_ambiguous: "Próxima ação sem negócio definido — precisa da sua escolha",
+  risk_backlog_seeded: "Negócios que já estavam parados — precisam de uma decisão",
   other: "Aviso do assistente",
 } as const satisfies Record<InboxKind, string>;
 

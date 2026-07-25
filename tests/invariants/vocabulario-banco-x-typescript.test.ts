@@ -93,6 +93,7 @@ const PARES: Array<{ tabela: string; coluna: string; ts: string[]; origem: strin
       "followup_dead",
       "snooze_expired",
       "next_action_ambiguous",
+      "risk_backlog_seeded",
       "other",
     ],
     origem: "InboxKind (lib/agent-engine/db/repository.ts)",
