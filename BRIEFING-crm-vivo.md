@@ -5513,3 +5513,54 @@ limiar nada é escrito, logo nada é publicado, logo nenhum realtime tem o que e
 reload"* é **impossível** sem que a travessia vire escrita. O cenário 22 estar bloqueado hoje é o
 comportamento correto do que existe, e reprová-lo na tela seria acusar a superfície por uma ausência
 que nasce três camadas antes.
+
+## §7.153 — Instrumento com DOIS desfechos sobre realidade que tem TRÊS
+
+Um ataque a constraints reportou *"SEM ERRO (aceitou)"* para quatro casos inválidos — **e a tabela
+nem existia** (a migration tinha falhado por permissão). O `grep` procurava só
+`violates check constraint`; a ausência dessa string virou "aceitou".
+
+**Ausência de erro de constraint não é aceitação.** Todo instrumento que classifica por
+presença/ausência de UMA string tem exatamente dois desfechos, e a realidade quase sempre tem três:
+*rejeitou pela constraint X*, *aceitou*, e **"aconteceu outra coisa"** — que não tem string própria e
+por isso se funde silenciosamente em um dos dois. Aqui se fundiu no pior: "a trava aceitou lixo",
+que é o laudo mais alarmante possível, sobre uma tabela inexistente.
+
+**Regra:** instrumento de veredito enumera os desfechos ANTES de procurar strings, e o desfecho
+"outra coisa" é sempre um deles — nomeado, nunca implícito.
+
+### §7.153-a — Toda constraint precisa de um caso que ela DEVE aceitar
+
+O ataque incluiu, além dos quatro inválidos, **dois casos que tinham de passar**. Sem eles, o teste
+não distingue *constraint correta* de *constraint que rejeita tudo* — **apertada demais também é
+defeito**, e só um dos dois lados aparece num teste só de rejeição. É a §7.126 (contraste) na camada
+do schema: uma trava provada só pelo que ela barra não foi provada.
+
+### §7.154 — Sabote onde a perda é PROVÁVEL e INVISÍVEL aos outros testes
+
+A sabotagem escolhida não foi aleatória: removeu-se o `add table` da publicação — **a asserção que o
+próprio autor marcou como a mais fácil de perder**, porque quem copiar o bloco da migration anterior
+sem ler o cabeçalho inverte o sinal da publicação, e o card para de reagir sem reload. **Falha que
+nenhum teste de API pega.**
+
+Sabotar uma asserção bem coberta por outros testes prova pouco — o vermelho viria de qualquer jeito.
+O alvo certo é onde as duas coisas coincidem: **perda provável** (alguém vai mexer ali) e **cegueira
+do resto da suíte** (só esta asserção enxerga).
+
+## §7.155 — A cerca me pegou: "completar" o que está certo
+
+Ia mandar acrescentar o CHECK em `crm_lead_activities.type` — o `CLAUDE.md` manda "type é text +
+check constraint", e o banco não tem. **Fui ler antes, e a ausência é DECISÃO documentada:** um clone
+com tipo legado quebraria no `update.sh`, e a doutrina de migrations proíbe. O comentário no
+invariante diz, com todas as letras, que quem quiser "completar" estaria consertando o que está
+certo — e nomeia o movimento tentador (§7.128). **Funcionou comigo.**
+
+**Mas o achado é real e aponta para o outro lado:** o `CLAUDE.md` e o código discordam, e **o código
+tem o argumento melhor**. Doutrina que empurra para quebrar clones é pior que doutrina omissa, então
+o conserto é na doutrina — a regra ganha a exceção, com o motivo junto.
+
+**E a consequência para a peça 2 fica registrada:** sem CHECK, o vocabulário de tipos é aberto por
+decisão. Então a **lista positiva** do trigger é o ÚNICO lugar que define o que conta como interação
+— e um erro de digitação no emissor produz um tipo que ninguém rejeita e que a lista não conhece.
+Falha para o lado seguro (não carimba o relógio), o que confirma a escolha da lista positiva, e
+**exige que o emissor use constante compartilhada, nunca string literal**.
