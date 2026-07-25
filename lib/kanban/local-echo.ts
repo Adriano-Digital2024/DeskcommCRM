@@ -6,45 +6,90 @@
  * card se move sob o cursor), e pulsar de novo é ruído com cara de novidade.
  * O pulso existe para o que chegou de FORA.
  *
+ * A marca segue o CICLO DE VIDA DA MUTAÇÃO, não um relógio: abre quando a ação
+ * começa, fecha quando ela assenta (`onSettled`) mais uma folga curta para o
+ * evento atrasado. Assim a janela é o tempo que a ação REALMENTE levou —
+ * medido, não estimado —, e se ajusta sozinha ao fluxo e à máquina.
+ *
+ * Por que isso importa aqui: uma ação do usuário produz VÁRIAS escritas na
+ * linha. No arrasto, a rota grava `stage_id`/`position_in_stage` e depois, com
+ * três consultas no meio, a atividade `stage_changed` carimba
+ * `last_activity_at` — dois `UPDATE`, dois eventos de realtime. Ganhar e perder
+ * mexem também em `status`; o bulk mexe em vários leads. **A cascata tem
+ * tamanho diferente por fluxo**, então qualquer constante calibrada no arrasto
+ * estaria errada nos outros — e numa VPS modesta, errada em todos.
+ *
  * Memória de processo, sem persistência: se a aba recarregar, o eco se perde e
  * o pior caso é um pulso a mais — nunca um evento remoto silenciado.
  */
-const ECOS = new Map<string, number>();
+interface Marca {
+  /** Quando a mutação começou. */
+  aberta: number;
+  /** Quando ela assentou (`onSettled`), ou null se ainda está em voo. */
+  assentada: number | null;
+}
+
+const ECOS = new Map<string, Marca>();
 
 /**
- * Quanto tempo uma mudança minha continua sendo "minha".
+ * Folga depois que a mutação assenta, para o último evento da cascata chegar.
  *
- * É JANELA, e não uma marca gasta por evento, porque UMA ação do usuário
- * produz VÁRIAS escritas na mesma linha. Medido no arrasto de card: a rota
- * grava `stage_id`/`position_in_stage`, e ~112 ms depois a atividade
- * `stage_changed` do barramento (Wave 3) carimba `last_activity_at` — dois
- * `UPDATE`, dois eventos de realtime, uma única ação do usuário.
- *
- * 2 s é ~18× a distância medida entre as duas escritas (folga para uma cadeia
- * mais longa) e curto o bastante para não engolir a mudança de outra pessoa no
- * MESMO lead logo em seguida.
+ * Cobre só o trecho que sobra depois da resposta: commit, distribuição e
+ * websocket. O caro — as idas ao banco dentro do handler — já está coberto pelo
+ * tempo real da mutação.
  */
-const JANELA_MS = 2_000;
+const FOLGA_MS = 1_000;
 
-/** Chamado pelas mutações locais, ANTES de o evento voltar pelo realtime. */
+/**
+ * Rede de segurança para a mutação que NUNCA assenta (aba suspensa, rede caída,
+ * `onSettled` que não roda). Sem isto a marca ficaria para sempre e o lead
+ * pararia de pulsar de vez, que é o erro caro.
+ *
+ * 4 s, e não um número justo: errar para cá custa **um pulso perdido** — falha
+ * cosmética, e o dado atualiza igual. Errar para menos ressuscita o defeito do
+ * `12.c`, intermitente e só sob carga. Entre o barato e o caro, o desenho
+ * escolhe o barato.
+ */
+const FALLBACK_MS = 4_000;
+
+/** A ação começou (chamado antes de o evento voltar pelo realtime). */
 export function marcarEcoLocal(leadId: string, agora = Date.now()): void {
-  ECOS.set(leadId, agora);
+  ECOS.set(leadId, { aberta: agora, assentada: null });
+}
+
+/**
+ * A ação assentou (`onSettled`): a marca ainda vale por `FOLGA_MS`.
+ *
+ * Não apaga na hora — o último evento da cascata costuma chegar DEPOIS da
+ * resposta HTTP, e apagar aqui traria o defeito de volta pela porta dos fundos.
+ */
+export function liberarEcoLocal(leadId: string, agora = Date.now()): void {
+  const marca = ECOS.get(leadId);
+  if (!marca) return;
+  marca.assentada = agora;
 }
 
 /**
  * Este evento é eco da minha própria ação?
  *
- * NÃO consome a marca ao responder que sim — ela expira por tempo. Consumir era
- * o defeito (`12.c`): a primeira escrita da ação gastava a marca, e a segunda
- * chegava sem lastro e pulsava. A aba que agiu piscava sozinha, que é
- * exatamente o ruído que esta peça existe para evitar.
+ * NÃO consome a marca ao responder que sim — era esse o defeito do `12.c`: a
+ * primeira escrita da ação gastava a marca e a segunda pulsava, fazendo a aba
+ * que agiu piscar sozinha.
  */
 export function ehEcoLocal(leadId: string, agora = Date.now()): boolean {
-  const marcado = ECOS.get(leadId);
-  if (marcado === undefined) return false;
-  if (agora - marcado <= JANELA_MS) return true;
-  ECOS.delete(leadId); // marca vencida é lixo; o próximo evento pulsa.
-  return false;
+  const marca = ECOS.get(leadId);
+  if (!marca) return false;
+
+  const vencida =
+    marca.assentada === null
+      ? agora - marca.aberta > FALLBACK_MS
+      : agora - marca.assentada > FOLGA_MS;
+
+  if (vencida) {
+    ECOS.delete(leadId); // marca velha é lixo; o próximo evento pulsa.
+    return false;
+  }
+  return true;
 }
 
 /** Só para testes: zera o estado de módulo. */

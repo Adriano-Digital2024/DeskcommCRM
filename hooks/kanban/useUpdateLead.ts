@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
-import { marcarEcoLocal } from "@/lib/kanban/local-echo";
+import { liberarEcoLocal, marcarEcoLocal } from "@/lib/kanban/local-echo";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import type { Lead } from "@/lib/types/leads";
 import type { UpdateLeadInput } from "@/lib/schemas/leads";
@@ -22,7 +22,10 @@ export function useWinLead(pipelineId: string) {
       return apiClient.post<{ data: Lead }>(`/api/v1/leads/${leadId}/win`, {});
     },
     onError: showApiError,
-    onSettled: () => qc.invalidateQueries({ queryKey: ["board", pipelineId] }),
+    onSettled: (_data, _err, { leadId }) => {
+      liberarEcoLocal(leadId);
+      qc.invalidateQueries({ queryKey: ["board", pipelineId] });
+    },
   });
 }
 
@@ -36,7 +39,10 @@ export function useLoseLead(pipelineId: string) {
       });
     },
     onError: showApiError,
-    onSettled: () => qc.invalidateQueries({ queryKey: ["board", pipelineId] }),
+    onSettled: (_data, _err, { leadId }) => {
+      liberarEcoLocal(leadId);
+      qc.invalidateQueries({ queryKey: ["board", pipelineId] });
+    },
   });
 }
 
@@ -54,6 +60,9 @@ export function useEditLead(pipelineId: string) {
       return apiClient.patch<{ data: Lead }>(`/api/v1/leads/${leadId}`, patch);
     },
     onError: showApiError,
-    onSettled: () => qc.invalidateQueries({ queryKey: ["board", pipelineId] }),
+    onSettled: (_data, _err, { leadId }) => {
+      liberarEcoLocal(leadId);
+      qc.invalidateQueries({ queryKey: ["board", pipelineId] });
+    },
   });
 }

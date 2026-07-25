@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import type { BulkLeadActionInput } from "@/lib/schemas/leads";
-import { marcarEcoLocal } from "@/lib/kanban/local-echo";
+import { liberarEcoLocal, marcarEcoLocal } from "@/lib/kanban/local-echo";
 
 export function useBulkAction(pipelineId: string) {
   const qc = useQueryClient();
@@ -19,6 +19,9 @@ export function useBulkAction(pipelineId: string) {
       );
     },
     onError: showApiError,
-    onSettled: () => qc.invalidateQueries({ queryKey: ["board", pipelineId] }),
+    onSettled: (_data, _err, input) => {
+      for (const leadId of input.lead_ids) liberarEcoLocal(leadId);
+      qc.invalidateQueries({ queryKey: ["board", pipelineId] });
+    },
   });
 }

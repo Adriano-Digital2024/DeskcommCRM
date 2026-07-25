@@ -24,7 +24,7 @@ import * as fs from "node:fs";
 import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
-import { BASE, CARD_ATTR, login } from "./qa-helpers";
+import { BASE, CARD_ATTR, carimbar, login } from "./qa-helpers";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
 const env: Record<string, string> = {};
@@ -37,6 +37,15 @@ const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL!, env.SUPABASE_SERVICE_R
 });
 
 async function main(): Promise<void> {
+  // O veredito só vale para um commit: se o que esta sonda mede estiver com
+  // diff pendente, ela grita antes de medir.
+  carimbar([
+    "lib/kanban/local-echo.ts",
+    "hooks/kanban/useBoard.ts",
+    "hooks/kanban/useMoveCard.ts",
+    "app/api/v1/leads/[id]/move/route.ts",
+  ]);
+
   const creds = JSON.parse(fs.readFileSync(".e2e-creds.json", "utf8")) as {
     crm_vivo: { pipeline_id: string };
   };
