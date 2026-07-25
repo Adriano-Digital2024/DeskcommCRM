@@ -5717,3 +5717,43 @@ vez, e não em cada ponto de uso.
 **E o epílogo:** o épico existe porque o produto fazia isso com o CLIENTE do usuário. Passamos o dia
 descobrindo que fazíamos com os nossos próprios dados, em três andares independentes. Mesmo hábito,
 mesma origem, mesma cura.
+
+## §7.162 — Instrumento cujo SUJEITO depende da história recente do sistema: viés sistemático, não ruído
+
+O seletor casava dois elementos, e qual deles vinha primeiro dependia de **ter havido evento recente
+na tela**. Frase do QA, e é a lei: *"um instrumento que muda de sujeito conforme a história recente
+da tela não mede nada de forma reproduzível."*
+
+**E o agravante é que não é aleatório.** O sujeito era escolhido por algo **correlacionado com o
+fenômeno sob teste** — havia pulso justamente quando havia atividade em tempo real, que é o que se
+estava medindo. Alvo escolhido sem ordem (§7.125-a) produz ruído, e repetir a medição atenua; alvo
+escolhido pela própria condição produz **viés na direção que esconde o defeito**, e repetir só
+confirma o erro com mais casas decimais.
+
+**Teste rápido:** o que decide QUAL elemento/linha/registro meu instrumento pega tem alguma relação
+com o que estou tentando provar? Se tem, o instrumento está do lado errado do experimento.
+
+## §7.163 — Defeito AUTO-AGRAVANTE: mais fraco exatamente onde mais importa
+
+A janela em que o card afirma saúde sem saber dura até 18s — e a consulta que a fecha **classifica
+todos os leads**, logo **a janela cresce com o tamanho do tenant**. O alarme fica mais lento à medida
+que aumenta o número de coisas para alarmar.
+
+É uma categoria própria, e merece prioridade acima do que o número de hoje sugere: **defeito cuja
+gravidade cresce junto com a condição que ele deveria detectar**. Testado em ambiente pequeno, parece
+tolerável; no cliente com mais negócios morrendo, é onde ele mais falha. *"Piora na direção errada,
+que é a única direção que importa."*
+
+**Ao medir qualquer defeito, pergunte: ele piora com escala, e a escala do QUÊ?** Se for a escala do
+próprio problema, o número medido hoje é o melhor caso e não vai se repetir.
+
+## §7.164 — Relate RAÍZES, não vermelhos
+
+Quatro vermelhos não eram quatro defeitos: dois são a mesma raiz vista por duas perguntas, um é
+consequência de não haver estado visível, e um é anterior a tudo. Consertada a raiz do primeiro
+grupo, três mudam juntos.
+
+**A contagem crua de vermelhos é artefato de comunicação, e ela mente para cima** — cria a impressão
+de uma fila de trabalho que não existe, e uma fila inflada muda decisão de prioridade tanto quanto um
+defeito real. O relatório honesto lidera pelas **raízes**, com os vermelhos listados como sintomas
+delas; a contagem vai no rodapé, onde não induz.
