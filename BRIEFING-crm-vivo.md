@@ -7481,3 +7481,33 @@ investigar o produto é tempo perdido antes de começar.
 
 **E o conserto certo foi na classe, não no caso:** toda consulta do aparato passa a errar alto — se o
 schema mudar embaixo, ele **para** em vez de reprovar o produto.
+
+## §7.242 — Evidência não é RETRATO DO PRODUTO; é REGISTRO DE UMA MEDIÇÃO
+
+Eu havia decidido *"não restaure, declare"*. **Estava errado, e a correção é melhor:**
+
+> *"Evidência de wave FECHADA documenta um INSTANTE que sustentou um veredito. Regenerá-la substitui
+> a prova por outra foto, tirada de outro estado do mundo."*
+
+**A distinção que eu não fiz:** um *retrato do produto* melhora quando refeito — mostra o sistema mais
+recente. Um *registro de medição* é **destruído** ao ser refeito, porque o que ele prova é que
+**naquele instante, sob aquele estado, o veredito se sustentava**. Regenerar não atualiza a prova:
+troca a prova por outra, de um julgamento que nunca aconteceu.
+
+**Regra:** ***sonda de wave fechada roda para VERIFICAR, nunca para SOBRESCREVER.*** Se a
+re-execução precisar virar prova, vira **prova nova**, com nome e legenda próprios — não por cima da
+antiga.
+
+### E o erro do meu raciocínio tem nome: usei a coincidência como justificativa
+
+Decidi manter porque **abri a imagem e a legenda ainda valia**. Mas eu mesmo escrevi, no mesmo
+parágrafo, que ela valia **por sorte de ordenação** — a linha estava no topo *naquele dia*.
+
+**Usei o acaso como argumento.** *"A legenda por acaso ainda descreve a foto nova"* não é razão para
+manter a foto nova; é a descrição exata do risco. **Coincidência que passa despercebida vira legenda
+falsa na próxima regeneração** — e aí não há ninguém para abrir a imagem, porque quem regenerou já
+seguiu adiante.
+
+**O teste que eu deveria ter aplicado:** *se a legenda tivesse deixado de valer, eu reverteria?* Se
+sim, então o que decide não é o conteúdo da foto nova — é **de quem é a foto**. E a de uma wave
+fechada é do veredito, não do dia de hoje.
