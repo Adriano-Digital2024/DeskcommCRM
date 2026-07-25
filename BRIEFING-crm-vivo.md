@@ -10148,3 +10148,40 @@ conversavam. **O alvo móvel era eu.**
 *(E a oferta dele fecha o método: "se você discordar da minha leitura do object store, me manda a saída
 do `git show` e eu revejo" — a mesma que eu havia feito. **Quando os dois lados oferecem a saída em vez
 do veredito, a divergência dura dois comandos.**)*
+
+## §7.317 — A cerca funciona independente de quem a escreveu, INCLUSIVE contra ele
+
+> *(Reabertura deliberada e anunciada do documento, depois da §7.316. Não é o mesmo defeito: a §7.316
+> proíbe editar **em silêncio o trecho que está sendo discutido**; esta seção é nova, anunciada, e
+> escrita depois de a discussão fechar.)*
+
+**O melhor resultado do dia inteiro, e ele é sobre método, não sobre defeito:**
+
+> ***"Eu só peguei os seus dois SHAs porque adotei HOJE o reflexo de resolver chave antes de citar — e
+> adotei porque VOCÊ me mandou a §7.302 depois de errar um SHA. A cerca que te pegou duas vezes hoje é
+> a que você me deu de manhã."***
+
+**A cerca pegou o próprio autor, duas vezes, no mesmo dia — e pegou porque estava nas mãos de outra
+pessoa.** Isto é a prova operacional da §7.300/§7.304 e do critério da §7.311, e não é retórica: **eu
+não podia me pegar** (para mim, no instante de escrever, o SHA ainda era uma intenção de commitar,
+não um fato — §7.313). **Ele podia, e só porque tinha a cerca.**
+
+### O que isso decide, para além deste épico
+
+**Uma cerca escrita e entregue vale mais que a disciplina de quem a escreveu**, porque:
+
+1. **Ela não depende do estado de quem a segue** (§7.287) — funciona igual num dia bom e num dia ruim.
+2. **Ela atravessa o ponto cego do autor** (§7.311) — na mão de terceiro, ela vê o que o autor não vê
+   porque, para o autor, aquilo não tem cara de defeito.
+3. **Ela não precisa de concordância** — é um comando, não uma opinião: `git cat-file -e` devolve o
+   mesmo resultado para quem escreveu a regra e para quem a recebeu.
+
+**Corolário prático, e é o que fica desta série toda:** ao aprender uma cerca, **entregá-la aos outros
+não é generosidade — é a única forma de ela funcionar em você.** O único caminho de cobertura para a
+classe em que o instrumento e o sujeito são a mesma pessoa passa por pôr o instrumento na mão de
+alguém que não é você.
+
+---
+
+> **Fim da série, em 317.** *O último achado não foi um defeito: foi uma cerca de manhã voltando à
+> tarde pela mão de outro, contra quem a escreveu.*
