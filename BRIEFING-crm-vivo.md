@@ -5266,3 +5266,49 @@ inequívoco (a ação, no BANCO; a entrega, no canal; a aplicação, na tela). *
 **E a serialização que descarta nulos é a pior variante da §7.134**, porque ali o campo **foi
 pedido** e sumiu no caminho: declarar o que se exigiu da consulta não protege. Nesse elo, quem
 recebe também precisa distinguir "não veio" de "não tem".
+
+## §7.145 — Visibilidade OPCIONAL não é mecanismo anti-morte (e a doutrina tinha um exemplar falso)
+
+O cabeçalho de `lib/leads/risk-radar.ts` declara-se o desilhamento C1 da doutrina do sistema vivo:
+*"uma demanda aberta que esfriou e não tem próximo passo garantido está morrendo sem ninguém ver; o
+radar a torna visível"*.
+
+**Tornar visível numa tela que ninguém é obrigado a abrir não é mecanismo anti-morte — é a mesma
+morte, com testemunha opcional.** A peça que a doutrina cita como exemplo de desilhamento é, ela
+própria, ilha do lado da SAÍDA: recebe de todo lado e não alimenta ninguém.
+
+E o levantamento confirma que o buraco é estrutural, não de ênfase:
+
+1. **Não existe como ESTADO.** `classifyRisk` é função pura recalculada a cada leitura, e todos os
+   chamadores são de leitura. *"Esfriando" não existe até alguém abrir a tela.*
+2. **Não existe como PALAVRA.** Nenhum tipo de atividade de risco no vocabulário — os seis tipos
+   gravados são `stage_changed`, `lead_edited`, `next_action_approved`, `next_action_dismissed`,
+   `ai_turn`, `note`. A timeline não sabe dizer "esfriou" nem "voltou".
+3. **E o dado não é RETIDO.** Sem registro de entrada e saída, não há resposta para "há quanto tempo
+   está esfriando" nem "quantas vezes já esfriou e voltou". Não é invisível — **é inexistente**.
+
+**Teste para qualquer "solução de visibilidade":** se a única forma de o problema ser notado é
+alguém decidir olhar, a solução não mudou a mortalidade — mudou quem se sente culpado.
+
+## §7.146 — O ACERVO é a primeira prova de um mecanismo novo, e enchente queima o sinal no dia um
+
+Medido (teto declarado, sem o `inFlight`): **48 críticos e 2 em risco, de 66 negócios abertos**. Um
+mecanismo que emita demanda por transição produziria ~50 demandas no primeiro turno do worker, em
+cima de um estado que ninguém sabia que existia.
+
+**As duas saídas ingênuas são ruins, e por motivos opostos:** anunciar tudo faz o usuário descartar
+em massa no primeiro contato, e um mecanismo descartado em massa no dia um **nunca mais é lido** —
+queima-se o sinal antes de ele significar algo. Nascer em silêncio "absolve" 48 negócios que estão
+morrendo de verdade, por decreto de migração.
+
+**Regência:** separar o que é ESTADO do que é DEMANDA.
+- **Estado para todos, inclusive o acervo** — grava-se `esfriando` e desde quando. Barato, e é o que
+  finalmente RETÉM o dado (consequência 3).
+- **Evento/proposta só na TRANSIÇÃO observada** pelo worker — o acervo não vira 48 propostas.
+- **O acervo recebe UM item agregado** ("48 negócios já estavam esfriando quando o mecanismo
+  entrou"), com dono, honesto sobre ser artefato de migração. Não floda e não absolve.
+
+**E a decisão não esperou o número exato de propósito:** a aproximação foi declarada como teto, e
+tanto 48 quanto metade disso dão a MESMA regência. **Quando os dois extremos do intervalo levam à
+mesma decisão, refinar a medição antes de decidir é trabalho que não muda nada** — refine depois, se
+o desenho vier a depender do número.
