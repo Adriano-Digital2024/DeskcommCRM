@@ -4943,3 +4943,39 @@ substantivo (§7.123).
 
 E o inverso serve de teste: **se o defeito some quando você troca o consumidor, sem tocar na peça,
 então ele sempre foi de junção.**
+
+## §7.133 — Verde no minuto do nascimento não prova que o critério mira onde diz mirar
+
+Uma guarda de PII foi acrescentada, conferida, e passou — **pelo motivo errado**. Ela procurava o
+título antigo do lead certo, enquanto o valor gravado vinha de outro lead. Passava pela segunda
+cláusula. Teria ficado ali guardando PII **procurando o que nunca é escrito**.
+
+O verde de estreia é a evidência mais fraca que existe sobre um instrumento: ele demonstrou
+exatamente uma coisa — **que não quebra**. Não demonstrou que distingue, que é a única coisa que
+importa numa guarda.
+
+**E o mecanismo específico: asserção composta esconde qual metade passou.** "Os nomes têm de estar
+E os valores não podem" é uma conjunção; o verde diz que a conjunção valeu, e **não** diz que cada
+metade foi exercitada. Uma metade pode estar passando por vacuidade — a condição nunca teve chance
+de ser violada — e a outra carrega o resultado sozinha.
+
+**Ritual de nascimento de toda guarda de AUSÊNCIA:** escreva uma vez a coisa proibida e exija o
+VERMELHO. Guarda de PII que nunca viu PII jamais demonstrou que enxerga PII. É a lei da sabotagem
+aplicada ao caso mais difícil — sabotar uma guarda de ausência exige PRODUZIR o proibido, e é
+justamente por ser incômodo que ninguém faz.
+
+## §7.125-b — A detecção do par incoerente foi acidental; torne-a mecânica
+
+A incoerência entre dois critérios não foi percebida por leitura. Foi percebida porque os dois
+falharam **na mesma rodada** e as mensagens se contradiziam na tela. **Se um deles estivesse
+bloqueado por outro motivo, o outro teria sido "consertado" e a contradição seguiria viva.**
+
+Ou seja: a detecção que eu propus (ler o par junto) está certa e é **frágil** — depende de
+simultaneidade e de alguém reparar. Pela §7.99, isso pede cerca, não disciplina.
+
+**Cerca proposta, e ela é barata porque o placar já existe:** cada critério declara, além do
+esperado, **o OBSERVÁVEL que ele lê** — superfície + elemento (ex.: `timeline/bloco-agrupado`,
+`timeline/linha-individual`). Com isso, "dois critérios lendo o MESMO observável com expectativas
+opostas" deixa de depender de coincidência e vira **checagem que o próprio placar roda antes da
+suíte**. Treze critérios declararem uma string a mais custa minutos; a alternativa é continuar
+apostando que os dois vão falhar no mesmo dia.
