@@ -2990,3 +2990,51 @@ defeito do produto:**
 decodificados · o join entra **com identidade** · a entrega chega · o card **anda**) é o que converte
 *"o realtime não funciona"* — afirmação inútil — em **qual elo**. E o elo 2 existe porque `200` **não é
 token bom**: a versão anterior provava que a resposta não era cacheada e chamava isso de prova.
+
+---
+
+## §7.72 — Dois instrumentos para a mesma pergunta, um deles quebrado, fabrica vermelho falso
+
+O @QAVivo **removeu** uma sonda dele (`9128a6a`): a sonda do canal tinha um elo *"mudança nascida na UI
+de outra aba"* com arrasto por teclado escrito à mão — **e o dele não engatava, a rota nem era
+chamada**. E *"zero quadros na aba B"* é o que se vê **tanto** quando a entrega falha **quanto** quando
+nada foi movido.
+
+> **Dois instrumentos para a mesma pergunta, um deles quebrado, é como se fabrica um vermelho falso.**
+
+**E isto NÃO contradiz a §7.35** (instrumentos independentes concordando é evidência) — a distinção é
+**quem pode disparar sozinho**:
+
+| arranjo | efeito |
+|---|---|
+| instrumentos independentes que você **compara** | concordância é **evidência**; divergência manda **voltar a medir** |
+| instrumentos independentes que **cada um pode acusar sozinho** | cada um é **uma chance a mais de falso alarme** |
+
+**Redundância só é segurança quando é confrontada.** Sem confronto, ela é **superfície**. Ele deixou a
+travessia entre abas **num aparato só** — o que tem o helper que funciona **e** a guarda de que a ação
+**persistiu** (§7.70).
+
+### E uma decisão de desenho que se pagou sem ninguém tocar nela
+
+O aviso de contaminação (exigir `band` mudou o que o card renderiza) **poderia** ter envenenado o
+`12.d.visivel`, que **compara pixels**. Não envenenou, por uma escolha antiga:
+
+> Ele compara **DURANTE × DEPOIS**, não **antes × depois**. Um card que perdeu o medidor **perde nas
+> duas fotos igualmente** — então a diferença continua sendo **só o overlay do pulso**.
+
+A escolha foi feita por outro motivo (*"comparar duas fotos com mais de uma variável mudando é teste
+confundido"*) e protegeu contra uma contaminação **que ainda não existia**. É o que desenho bom faz:
+**paga em situações que não foram previstas**. Guarda escolhido pelo princípio certo cobre casos que o
+autor não imaginou; guarda escolhido para passar no caso de hoje cobre exatamente o caso de hoje.
+
+### O fecho do incidente, e ele é o que a §7.71 pede
+
+`23/0/0` no aparato completo, `5/5` no cenário de duas abas com tenant B, e a cadeia do canal medida
+elo a elo — com **status e identidade na mesma linha**: `data-realtime-status=subscribed` **ao lado de**
+`role=authenticated` lido do JWT no quadro de join.
+
+> **O status diz que CONECTOU; o JWT diz QUEM. Sozinho, nenhum dos dois fecha.**
+
+E o que ele **não** sabe continua dito: a falha original **não foi reproduzida** e **não há causa**.
+Duas rodadas determinísticas aconteceram, e nenhuma explicação ambiental foi inventada para fechar a
+história.
