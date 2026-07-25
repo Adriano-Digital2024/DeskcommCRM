@@ -89,6 +89,7 @@ const CRITERIOS = [
   "D24",
   "D25",
   "D26",
+  "D20.pii",
 ];
 const { record, fechar } = criarPlacar("WAVE 6", CRITERIOS);
 
@@ -461,6 +462,7 @@ async function main(): Promise<void> {
         ["D19.rotulo", "o bloco colapsado nomeia o ATOR pelo texto — CLIENTE não se lê como TIME"],
         ["D25", "âncora sem alvo vira TEXTO, não link nem exceção (LGPD, e não é defeito)"],
         ["D26", "lead SEM contato mostra as PRÓPRIAS atividades na timeline"],
+        ["D20.pii", "o registro diz QUAL campo mudou e NÃO carrega o valor"],
         ["D20", "CENÁRIO 20: editar campo salva E aparece na timeline com ator humano"],
         ["D21", "CENÁRIO 21: ação do agente na outra aba entra na timeline ao vivo"],
         ["D23", "o Sheet DESASSINA ao fechar — abrir e fechar N vezes não acumula canal"],
@@ -553,23 +555,50 @@ async function main(): Promise<void> {
       const persistiu = (linha as { title: string } | null)?.title === novo;
       const { data: ativs } = await admin
         .from("crm_lead_activities")
-        .select("type,actor_kind")
+        .select("type,actor_kind,reason,payload")
         .eq("lead_id", caso.leadComContato);
-      const humana = ((ativs ?? []) as { type: string; actor_kind: string; reason: string | null }[]).find(
-        (a) => a.actor_kind === "user" && a.type === "lead_edited",
-      );
-      // O `reason` tem de dizer QUAIS campos mudaram. "Alterou" sem dizer o quê
-      // é a mesma frase vazia que a gente recusou no score: registro que não
-      // permite discordar não serve para auditar.
-      const dizOQueMudou = Boolean(humana?.reason && /t[íi]tulo|valor|est[áa]gio|dono/i.test(humana.reason));
+      const humana = (
+        (ativs ?? []) as {
+          type: string;
+          actor_kind: string;
+          reason: string | null;
+          payload: Record<string, unknown> | null;
+        }[]
+      ).find((a) => a.actor_kind === "user" && a.type === "lead_edited");
+
+      // QUAIS campos mudaram — no `reason` OU no `payload`, e a diferença não é
+      // detalhe: o TÍTULO DO LEAD É O NOME DO CLIENTE ("Carlos — Clínica Vida
+      // Odonto"). Um critério que exigisse os campos no texto empurraria alguém a
+      // escrever o VALOR ali, e o registro de auditoria viraria vazamento.
+      //
+      // Então a asserção aceita as duas formas e ganha a metade que faltava: os
+      // NOMES têm de estar; os VALORES não podem estar. Critério que só cobra a
+      // presença empurra para o excesso — foi o mesmo raciocínio da evidência
+      // "até três, nunca cota".
+      const registro = `${humana?.reason ?? ""} ${JSON.stringify(humana?.payload ?? {})}`;
+      const dizOQueMudou = /t[íi]tulo|title|valor|value|est[áa]gio|stage|dono|owner|descri/i.test(registro);
       record(
         "D20",
         "CENÁRIO 20: editar campo salva, registra como lead_edited e DIZ o que mudou",
         persistiu && Boolean(humana) && dizOQueMudou,
         `persistiu=${persistiu} · atividade lead_edited=${humana ? "sim" : "NENHUMA"} · ` +
-          `o motivo nomeia o campo alterado=${dizOQueMudou} ("${humana?.reason ?? "-"}") — ` +
+          `nomeia o campo alterado=${dizOQueMudou} · registro: ${registro.slice(0, 120)} — ` +
           `as três falham separado: salvar pode funcionar, o registro não existir, e o ` +
           `registro existir sem dizer o que mudou`,
+      );
+
+      // O REGISTRO NÃO PODE CARREGAR O VALOR. O título do lead é o nome do
+      // cliente, então gravar "de X para Y" põe PII num log de auditoria que
+      // sobrevive à anonimização do contato. Nome de campo é metadado; valor de
+      // campo é dado pessoal.
+      const vazouValor = registro.includes(caso.tituloComContato) || /\(editado\)/.test(registro);
+      record(
+        "D20.pii",
+        "o registro diz QUAL campo mudou e NÃO carrega o valor — título é nome de cliente",
+        Boolean(humana) && !vazouValor,
+        vazouValor
+          ? `o valor do campo aparece no registro: ${registro.slice(0, 140)}`
+          : "só nomes de campo no registro — o valor fica fora do log de auditoria",
       );
     }
 
