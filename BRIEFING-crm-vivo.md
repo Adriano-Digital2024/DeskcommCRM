@@ -7332,3 +7332,32 @@ a janela fechando, 'decido depois' é indistinguível de 'decidi não'."* O bot�
 **E a altura foi medida contra o card VIZINHO**, não contra um número escolhido: 144px com proposta,
 144px sem. Comparação com padrão conhecido em vez de medida absoluta — o card não cresce quando o
 sistema tem algo a propor.
+
+## §7.236 — Evidência de TELA em base VIVA degrada sozinha, e a legenda sobrevive à imagem
+
+Quinze capturas versionadas apareceram modificadas sem commit — **8 da wave 3, 6 da wave 4 e 1 de
+hoje**, não "15 da wave 3". E a mudança é de **conteúdo real**, não de metadados: uma delas
+**dobrou** (61 KB → 126 KB).
+
+Aberta a que mais mudou (`c11-timeline-veto`, cuja legenda promete *"a decisão de não enviar, na
+tela"*): **a linha do veto continua visível e a legenda continua verdadeira.** A imagem cresceu
+porque **a timeline daquele lead acumulou o trabalho do dia** — nove atividades novas abaixo do que
+importa.
+
+**E é aí que está o risco, que não é hipotético: a legenda vale por SORTE DE ORDENAÇÃO.** A linha do
+veto está no topo *hoje*; mais um dia de atividade e ela sai do enquadramento — e a próxima
+regeneração produz uma imagem em que **a legenda afirma o que a captura não mostra**.
+
+> ***"Ninguém lê a imagem de novo; lê a legenda."*** — e a legenda é o que envelhece pior, porque
+> parece texto estável enquanto descreve um alvo móvel.
+
+**Duas correções, e a segunda é a que resolve:**
+1. **Ao regenerar, releia a legenda contra a imagem nova.** Custa um olhar e é a única verificação que
+   existe hoje — o invariante de evidência confere que o arquivo é CITADO, nunca que ele MOSTRA.
+2. **Enquadre o ELEMENTO, não a tela.** Captura de tela inteira em base viva tem validade decrescente
+   por construção; recorte do card/linha sob julgamento é estável enquanto o componente for o mesmo.
+   Alternativa equivalente: fixar o conjunto de dados da captura.
+
+**Decisão sobre estas 15: não restaurar e não reverter.** A regeneração é legítima e o conteúdo
+melhorou (mais história real). O que falta é **declarar** — e a declaração vira parte do fechamento
+da wave 7, não uma tarefa avulsa.
