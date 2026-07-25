@@ -7435,3 +7435,49 @@ motivou a investigação, e **destrava** a cerca que só podia reprovar.
 **Regra:** sob bloqueio, ordene as opções por **número de dependências no que está em disputa** —
 e, entre as de zero dependência, pela **quantidade de problemas abertos que cada uma fecha**. Esperar
 é a única opção que fecha zero.
+
+## §7.240 — Vermelho por PRECONDIÇÃO DE AMBIENTE ausente é idêntico a vermelho por defeito
+
+O estado ficou `crítico` e a última atividade não se moveu. Número certo, asserção certa
+(*"esperado em_dia"*) — **e o vermelho seria falso.**
+
+Lido o mecanismo: a lista positiva de *"alguém tocou este negócio"* **não inclui**
+`reactivation_accepted` e **inclui** `ai_turn`. **Aceitar é AUTORIZAR; quem quebra o silêncio é o
+ENVIO.** Sem worker não há envio, sem envio não há `ai_turn`, sem `ai_turn` o relógio não anda. **O elo
+não é reprovável enquanto ninguém deixou o ciclo rodar até o fim.**
+
+**A categoria é nova e não estava coberta:** não é falso verde, nem vermelho por forma, nem
+instrumento quebrado, nem inconclusivo declarado. É **medição correta com veredito falso**, porque o
+critério mediu o produto **num ambiente onde a precondição dele não existe**.
+
+> ***"Vermelho por precondição ausente parece idêntico a vermelho por defeito, e só quem foi ler o
+> mecanismo distingue."***
+
+**A versão contável:** conte **quantas precondições de AMBIENTE o critério não verifica** — worker
+rodando, fila sendo consumida, cron ativo, serviço externo no ar. Cada uma é um caminho para um
+vermelho verdadeiro na medida e falso no laudo. E é a §7.140 num degrau acima: a explicação chata
+deixa de ser sobre a ação e passa a ser **sobre o mundo em que ela roda**.
+
+## §7.241 — Critérios da MESMA execução se contradizendo é sinal de INSTRUMENTO, não de produto
+
+Uma consulta ordenava por uma coluna **que não existe**. O PostgREST devolveu **erro**; só o `data`
+foi lido (`null`); e o critério anunciou *"a proposta ficou (nenhuma)"* — **acusando o servidor de
+não gravar uma decisão que ele TINHA gravado**.
+
+*"Consulta que falha e consulta que não encontra produzem o mesmo `data`; só o `error` separa."* É a
+§7.153 pela **terceira vez hoje**, em três bibliotecas diferentes: código de saída do `grep`,
+substring de quadro, e agora `data` vs `error` do PostgREST. **O idioma sempre oferece o caminho de
+dois desfechos.**
+
+**E o sinal estava na tela antes da investigação: TRÊS CRITÉRIOS DA MESMA RODADA SE CONTRADIZIAM.**
+
+**O produto pode estar errado; ele não pode estar errado de formas mutuamente exclusivas dentro da
+mesma execução.** Contradição intra-execução é, por construção, sinal de instrumento — e é **grátis
+de checar**, porque os dados já estão na saída.
+
+**Regra:** antes de investigar um vermelho, releia os OUTROS resultados da mesma rodada procurando
+incompatibilidade. Se dois critérios não podem estar certos ao mesmo tempo, o defeito é do aparato, e
+investigar o produto é tempo perdido antes de começar.
+
+**E o conserto certo foi na classe, não no caso:** toda consulta do aparato passa a errar alto — se o
+schema mudar embaixo, ele **para** em vez de reprovar o produto.
