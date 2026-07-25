@@ -123,7 +123,17 @@ describe("primeiro checkpoint", () => {
   });
 });
 
-describe("curadoria sob volume (o teto de 12/dia)", () => {
+/**
+ * O teto de 12 atividades/lead/dia conta apenas `actor_kind` de MÁQUINA
+ * (`ai`, `system`, `rule`). Humano e contato ficam fora.
+ *
+ * O teto existe para pegar patologia de máquina — "todo turno virou atividade".
+ * Humano clicando não produz isso em escala, e o clique é o evento de MAIOR
+ * sinal do sistema: é a única linha da timeline que contém uma DECISÃO em vez
+ * de um relato. Contar decisão humana contra um teto criado para conter ruído
+ * de robô faria o guarda ameaçar exatamente o que a Wave 4 produz.
+ */
+describe("curadoria sob volume (o teto de 12/dia, só para ator de máquina)", () => {
   it("40 turnos que só reescrevem o resumo produzem ZERO atividades", () => {
     let anterior: CheckpointContent = vazio({ objections: ["preço"], next_action: "aguardar" });
     let emitidas = 0;

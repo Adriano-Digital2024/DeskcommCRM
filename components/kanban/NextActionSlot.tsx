@@ -8,8 +8,8 @@ interface NextActionSlotProps {
   /** O texto que o agente propôs, já roteado para este negócio. */
   label: string;
   leadId: string;
-  /** O texto exato que está na tela — a trava do servidor compara com ele. */
-  approvedText: string;
+  /** A identidade da proposta na tela — a trava do servidor compara com ela. */
+  approvedSeq: number;
   pipelineId: string;
 }
 
@@ -25,7 +25,7 @@ interface NextActionSlotProps {
 export function NextActionSlot({
   label,
   leadId,
-  approvedText,
+  approvedSeq,
   pipelineId,
 }: NextActionSlotProps) {
   const decidir = useDecidirProximaAcao(pipelineId);
@@ -33,7 +33,7 @@ export function NextActionSlot({
   const decide = (e: MouseEvent<HTMLButtonElement>, decision: "approve" | "dismiss") => {
     // O card inteiro seleciona ao clique; decidir não é selecionar.
     e.stopPropagation();
-    decidir.mutate({ leadId, decision, approvedText });
+    decidir.mutate({ leadId, decision, approvedSeq });
   };
 
   return (

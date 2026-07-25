@@ -157,7 +157,7 @@ export function KanbanCard({
               <NextActionSlot
                 label={state.slot.label}
                 leadId={card.id}
-                approvedText={lead.next_action?.approved_text ?? state.slot.label}
+                approvedSeq={lead.next_action?.seq ?? -1}
                 pipelineId={pipelineId}
               />
             )}

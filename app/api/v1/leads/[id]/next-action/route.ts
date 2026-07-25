@@ -29,8 +29,14 @@ interface RouteCtx {
 
 const Body = z.object({
   decision: z.enum(["approve", "dismiss"]),
-  /** O texto que estava na tela quando a pessoa clicou. */
-  approved_text: z.string().min(1).max(2_000),
+  /**
+   * QUAL proposta estava na tela — a identidade dela, não o texto.
+   *
+   * Texto igual não é proposta igual: o agente pode reescrever "enviar
+   * proposta" palavra por palavra significando outra coisa, e se o humano já
+   * tivesse ignorado a primeira, a segunda seria indistinguível dela.
+   */
+  approved_seq: z.number().int().nonnegative(),
 });
 
 export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
@@ -52,7 +58,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
       details: { issues: parsed.error.issues },
     });
   }
-  const { decision, approved_text } = parsed.data;
+  const { decision, approved_seq } = parsed.data;
 
   // O lead vem pela RLS do caller — é ele que prova a org, nunca o body.
   const { data: lead, error: leadErr } = await supabase
@@ -80,26 +86,28 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
 
   const { data: estado, error: estadoErr } = await supabase
     .from("lead_state")
-    .select("next_action, updated_at")
+    .select("next_action, next_action_seq")
     .eq("organization_id", row.organization_id)
     .eq("contact_id", row.contact_id)
     .maybeSingle();
   if (estadoErr) return fail("internal_error", estadoErr.message, 500, { requestId });
 
-  const atual = (estado as { next_action: string | null } | null)?.next_action?.trim() ?? null;
+  const linha = estado as { next_action: string | null; next_action_seq: number } | null;
+  const atual = linha?.next_action?.trim() ?? null;
   if (!atual) {
     return fail("next_action_absent", "Não há proposta pendente para este negócio.", 409, {
       requestId,
     });
   }
 
-  if (atual !== approved_text.trim()) {
-    // Autorização vencida: quem clicou aprovou OUTRA coisa.
+  if (linha!.next_action_seq !== approved_seq) {
+    // Autorização vencida: quem clicou autorizou OUTRA proposta. Comparar
+    // identidade e não texto é o que pega a reescrita com as mesmas palavras.
     return fail(
       "next_action_changed",
       "A proposta mudou desde que você a leu. Confira a nova antes de decidir.",
       409,
-      { requestId, details: { current_text: atual } },
+      { requestId, details: { current_text: atual, current_seq: linha!.next_action_seq } },
     );
   }
 

@@ -4,6 +4,8 @@ import { resolveActiveLeadForContact, type LeadCandidate } from "@/lib/leads/act
 export interface EstadoDoContato {
   contact_id: string;
   next_action: string | null;
+  /** Identidade da proposta (migration 0073) — muda a cada escrita. */
+  next_action_seq: number;
   updated_at: string;
 }
 
@@ -11,13 +13,18 @@ export interface EstadoDoContato {
 export interface ProximaAcao {
   label: string;
   /**
-   * O texto que o humano está vendo, repetido de propósito.
+   * QUAL proposta o humano está vendo — não o texto dela.
    *
-   * A trava de autorização compara TEXTO, não timestamp: é o texto que a pessoa
-   * leu e aprovou. Mandá-lo junto deixa o contrato explícito em vez de esperar
-   * que o cliente lembre de reenviar o que renderizou.
+   * Texto igual não é proposta igual: o agente pode escrever "enviar proposta",
+   * o cliente mudar o pedido, e o agente escrever "enviar proposta" de novo,
+   * palavra por palavra, significando outra coisa. Se o humano tivesse ignorado
+   * a primeira, a segunda seria indistinguível dela.
+   *
+   * Também não é `updated_at`: aquele se move por estágio e por BANT — move
+   * DEMAIS. A regra é comparar a coisa que muda exatamente quando o que importa
+   * muda (migration 0073).
    */
-  approved_text: string;
+  seq: number;
   proposed_at: string;
 }
 
@@ -39,11 +46,33 @@ export interface ProximaAcao {
  * negócios ambíguos em boards diferentes pareceriam um único negócio em cada
  * um, e cada board mostraria a proposta como se fosse dele.
  */
+/** Proposta que não achou dono — precisa de gente, não de palpite. */
+export interface PropostaAmbigua {
+  contact_id: string;
+  texto: string;
+  /** Os negócios abertos entre os quais a proposta ficaria — o humano escolhe. */
+  candidateIds: string[];
+}
+
+export interface RoteamentoDeProximasAcoes {
+  porLead: Map<string, ProximaAcao>;
+  /**
+   * NÃO ADIVINHAR NÃO PODE VIRAR NÃO AVISAR.
+   *
+   * Recusar o palpite estava certo; parar aí estava errado. Sem esta lista, a
+   * IA propõe, ninguém vê, e a demanda apodrece em silêncio — que é exatamente
+   * a morte que este épico existe para matar. Quem chama transforma isto em
+   * item de caixa, e o humano desambigua: é a única coisa que ele faz melhor
+   * que a máquina aqui.
+   */
+  ambiguas: PropostaAmbigua[];
+}
+
 export function roteiaProximasAcoes(
   estados: EstadoDoContato[],
   candidatos: Array<LeadCandidate & { contact_id: string | null }>,
   opts: { defaultPipelineId?: string | null } = {},
-): Map<string, ProximaAcao> {
+): RoteamentoDeProximasAcoes {
   const porContato = new Map<string, Array<LeadCandidate & { contact_id: string | null }>>();
   for (const c of candidatos) {
     if (!c.contact_id) continue;
@@ -53,6 +82,7 @@ export function roteiaProximasAcoes(
   }
 
   const porLead = new Map<string, ProximaAcao>();
+  const ambiguas: PropostaAmbigua[] = [];
   for (const estado of estados) {
     const texto = estado.next_action?.trim();
     if (!texto) continue; // sem proposta não há slot — o card fica NORMAL.
@@ -61,13 +91,26 @@ export function roteiaProximasAcoes(
     if (!doContato || doContato.length === 0) continue;
 
     const rota = resolveActiveLeadForContact(doContato, opts);
-    if (!rota.routed) continue; // ambíguo ou sem negócio aberto: não aparece em nenhum.
+    if (!rota.routed) {
+      // Não aparece em card nenhum — mas SAI da invisibilidade pela caixa.
+      // `no_open_lead` fica de fora desta lista de propósito: lá não há negócio
+      // para desambiguar, e o item pediria uma escolha que não existe. Esse
+      // caso está reportado ao orquestrador como pendência própria.
+      if (rota.reason === "ambiguous_open_leads") {
+        ambiguas.push({
+          contact_id: estado.contact_id,
+          texto,
+          candidateIds: rota.candidateIds,
+        });
+      }
+      continue;
+    }
 
     porLead.set(rota.leadId, {
       label: texto,
-      approved_text: texto,
+      seq: estado.next_action_seq,
       proposed_at: estado.updated_at,
     });
   }
-  return porLead;
+  return { porLead, ambiguas };
 }

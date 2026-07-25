@@ -16,7 +16,11 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
 import { fail, ok } from "@/lib/api/wrappers";
-import { roteiaProximasAcoes, type EstadoDoContato } from "@/lib/leads/next-action";
+import {
+  roteiaProximasAcoes,
+  type EstadoDoContato,
+  type PropostaAmbigua,
+} from "@/lib/leads/next-action";
 import type { LeadCandidate } from "@/lib/leads/active-lead";
 import { createClient } from "@/lib/supabase/server";
 import type { BoardData, Pipeline, Stage } from "@/lib/kanban/types";
@@ -114,6 +118,55 @@ async function withOwnerAgents(
  * lista por pipeline, dois negócios ambíguos em boards diferentes apareceriam
  * como um único negócio em cada board, e os dois exibiriam a mesma proposta.
  */
+/**
+ * Abre um item de caixa por proposta sem dono — no máximo um por contato.
+ *
+ * Deduplicado por (kind, ref_id, status='open') porque o board é lido a cada
+ * refresh: sem isto, um contato ambíguo produziria um item por render até a
+ * caixa virar ruído e ninguém mais olhar.
+ *
+ * Falha aqui NÃO derruba o board: o aviso é importante, mas menos que a tela
+ * abrir. O erro sobe para o Sentry pelo caminho normal de exceção não tratada
+ * do handler — o que não pode é o usuário perder o board por causa do aviso.
+ */
+async function avisaAmbiguas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  ambiguas: PropostaAmbigua[],
+): Promise<void> {
+  if (ambiguas.length === 0) return;
+
+  const { data: jaAbertos } = await supabase
+    .from("agent_inbox_items")
+    .select("ref_id")
+    .eq("organization_id", organizationId)
+    .eq("kind", "next_action_ambiguous")
+    .eq("status", "open")
+    .in(
+      "ref_id",
+      ambiguas.map((a) => a.contact_id),
+    );
+  const abertos = new Set(
+    ((jaAbertos ?? []) as Array<{ ref_id: string }>).map((r) => r.ref_id),
+  );
+
+  const novos = ambiguas
+    .filter((a) => !abertos.has(a.contact_id))
+    .map((a) => ({
+      organization_id: organizationId,
+      kind: "next_action_ambiguous",
+      severity: "warn",
+      title: `A IA propôs uma próxima ação, mas o contato tem ${a.candidateIds.length} negócios abertos`,
+      body: `Proposta: "${a.texto}". Escolha a qual negócio ela pertence — o sistema não adivinha para não executar no negócio errado.`,
+      ref_kind: "contact",
+      ref_id: a.contact_id,
+      status: "open",
+    }));
+  if (novos.length === 0) return;
+
+  await supabase.from("agent_inbox_items").insert(novos);
+}
+
 async function withNextActions(
   supabase: Awaited<ReturnType<typeof createClient>>,
   organizationId: string,
@@ -129,7 +182,7 @@ async function withNextActions(
     await Promise.all([
       supabase
         .from("lead_state")
-        .select("contact_id, next_action, updated_at")
+        .select("contact_id, next_action, next_action_seq, updated_at")
         .eq("organization_id", organizationId)
         .in("contact_id", contactIds)
         .not("next_action", "is", null),
@@ -146,11 +199,20 @@ async function withNextActions(
   if (candErr) return { leads, error: candErr.message };
   if (!estados || estados.length === 0) return { leads, error: null };
 
-  const porLead = roteiaProximasAcoes(
+  const { porLead, ambiguas } = roteiaProximasAcoes(
     estados as EstadoDoContato[],
     (candidatos ?? []) as Array<LeadCandidate & { contact_id: string | null }>,
     { defaultPipelineId },
   );
+
+  // Recusar o palpite não pode virar silêncio: a proposta que não achou dono vai
+  // para a caixa, onde um humano desambigua. Escrever a partir de um GET não é
+  // bonito, e é deliberado — a ambiguidade só EXISTE quando se olha o conjunto
+  // de negócios abertos AGORA, e é aqui que esse olhar acontece. Fazer no
+  // momento da escrita da proposta perderia o caso em que o segundo negócio
+  // nasce depois dela.
+  await avisaAmbiguas(supabase, organizationId, ambiguas);
+
   if (porLead.size === 0) return { leads, error: null };
 
   return {

@@ -3168,8 +3168,13 @@ não um segundo roteador que divergiria do primeiro.
 | 13f — autorização vencida recusada: **HTTP 409 e nenhuma atividade nova** (3 → 3) | ✅ |
 | 14 — card sem proposta fica no estado NORMAL, sem slot vazio nem "—" | ✅ |
 
-A trava compara o **texto**, não o `updated_at`: é o texto que a pessoa leu e aprovou. Na tela, o
-aviso explica o que houve e o card **já mostra a proposta nova** — quem clicou vê o que mudou.
+**As imagens:** `evidence/wave4-13-antes.png` mostra os dois cards da coluna "Primeiro contato"
+com a linha do agente e os botões, enquanto os demais ficam no estado normal (é o cenário 14 na
+mesma tela). `evidence/wave4-13-depois-de-aprovar.png` mostra o card decidido de volta ao estado
+normal — **sem mudar de altura**, que é o orçamento fixo do §5 segurando.
+`evidence/wave4-13-depois-de-ignorar.png` é o mesmo para a recusa. E
+`evidence/wave4-13-autorizacao-vencida.png` mostra a trava por dentro: o aviso explica o que
+houve e o card **já exibe a proposta nova** — quem clicou vê o que mudou, em vez de um erro seco.
 
 ### Dois achados que valem mais que a feature
 

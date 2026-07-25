@@ -54,7 +54,7 @@ export interface Lead {
    * já roteada para o negócio ativo dele. Ver lib/leads/next-action.ts — só
    * aparece quando o roteamento é inequívoco.
    */
-  next_action?: { label: string; approved_text: string; proposed_at: string } | null;
+  next_action?: { label: string; seq: number; proposed_at: string } | null;
   assigned_at: string | null;
   last_activity_at: string | null;
   expected_close_date: string | null;

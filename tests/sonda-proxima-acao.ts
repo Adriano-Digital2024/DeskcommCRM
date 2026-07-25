@@ -93,6 +93,33 @@ async function main(): Promise<void> {
   console.info(`  proposta do agente: "${proposta.next_action}"`);
   console.info(`controle SEM proposta: "${controle?.title ?? "(nenhum)"}"`);
 
+  /**
+   * Escreve a proposta como o AGENTE escreve: incrementando a identidade.
+   *
+   * Um UPDATE que só troca o texto não é o caminho de produção — `next_action_seq`
+   * é o que distingue "a mesma proposta" de "a mesma frase", e a sonda que
+   * esquecesse o incremento estaria testando um estado que o sistema nunca
+   * produz. O incremento real vive em `applyLeadStateUpdate`; aqui ele é
+   * reproduzido, e o invariante `next-action-identity` prova que o de lá faz o
+   * mesmo contra Postgres de verdade.
+   */
+  async function reescreveProposta(texto: string): Promise<void> {
+    const { data: atual } = await admin
+      .from("lead_state")
+      .select("next_action_seq")
+      .eq("organization_id", org)
+      .eq("contact_id", alvo!.contact_id)
+      .maybeSingle();
+    await admin
+      .from("lead_state")
+      .update({
+        next_action: texto,
+        next_action_seq: ((atual as { next_action_seq: number } | null)?.next_action_seq ?? 0) + 1,
+      })
+      .eq("organization_id", org)
+      .eq("contact_id", alvo!.contact_id);
+  }
+
   const browser = await chromium.launch();
   const page = await browser
     .newContext({ viewport: { width: 1900, height: 950 } })
@@ -156,11 +183,7 @@ async function main(): Promise<void> {
   // IGNORAR também gera atividade — a recusa é sinal. Sem esta perna, "os dois
   // geram atividade" ficaria pela metade e ninguém notaria: o caminho feliz
   // sozinho passa igual.
-  await admin
-    .from("lead_state")
-    .update({ next_action: proposta.next_action })
-    .eq("organization_id", org)
-    .eq("contact_id", alvo.contact_id);
+  await reescreveProposta(proposta.next_action);
   await page.reload({ waitUntil: "networkidle" });
   await card.getByRole("button", { name: /^Ignorar:/ }).click();
   await page.waitForTimeout(2_500);
@@ -178,19 +201,14 @@ async function main(): Promise<void> {
 
   // AUTORIZAÇÃO VENCIDA: o agente reescreve a proposta entre o render e o
   // clique. O sistema não pode executar a NOVA em nome de quem leu a ANTIGA.
-  await admin
-    .from("lead_state")
-    .update({ next_action: proposta.next_action })
-    .eq("organization_id", org)
-    .eq("contact_id", alvo.contact_id);
+  await reescreveProposta(proposta.next_action);
   await page.reload({ waitUntil: "networkidle" });
   await card.getByRole("button", { name: /^Aprovar:/ }).waitFor({ timeout: 10_000 });
   // ... e AGORA o agente muda de ideia, com a tela já renderizada.
-  await admin
-    .from("lead_state")
-    .update({ next_action: "enviar proposta comercial revisada" })
-    .eq("organization_id", org)
-    .eq("contact_id", alvo.contact_id);
+  // O TEXTO É O MESMO de propósito: é o caso que derrubou a trava por texto.
+  // Se a trava ainda comparasse o texto, isto passaria — e o humano teria
+  // autorizado uma proposta para o sistema executar outra.
+  await reescreveProposta(proposta.next_action);
   const antesDaTrava = (
     await admin
       .from("crm_lead_activities")
@@ -217,11 +235,7 @@ async function main(): Promise<void> {
 
   // Limpa o que escreveu: a sonda não pode deixar o banco diferente de como
   // achou, senão a próxima execução mede outro produto.
-  await admin
-    .from("lead_state")
-    .update({ next_action: proposta.next_action })
-    .eq("organization_id", org)
-    .eq("contact_id", alvo.contact_id);
+  await reescreveProposta(proposta.next_action);
 
   const passou =
     mostraProposta && temAprovar && temDescartar && semSlotVazio && aprovou && ignorou && travou;

@@ -7145,3 +7145,46 @@ alter table public.crm_lead_activities
 
 comment on column public.crm_lead_activities.evidence is
   'O que SUSTENTA a atividade (N referências), cada chave apontando para UMA tabela: run_ids→ai_agent_runs, trace_ids→o trace do turno, llm_call_ids→llm_calls. Não confundir com source_module/source_id, que é O QUE ORIGINOU (um ponteiro). evidence nunca repete o source_id — origem não é prova.';
+
+-- ---- identidade da próxima ação + caixa para o caso ambíguo (migration 0073) ----
+-- Duas mudanças independentes, ambas idempotentes e auto-curativas.
+--
+-- `next_action_seq` distingue "a mesma proposta" de "a mesma frase": o agente
+-- pode reescrever o mesmo texto significando outra coisa, e a autorização
+-- humana precisa saber QUAL proposta foi lida. Default 0 para as linhas que já
+-- existem — o primeiro reescrever leva a 1, que é o correto: a proposta que
+-- estava lá antes desta coluna nunca foi autorizada por ninguém.
+alter table public.lead_state
+  add column if not exists next_action_seq bigint not null default 0;
+
+comment on column public.lead_state.next_action_seq is
+  'Identidade da proposta corrente. Incrementa a CADA escrita de next_action, inclusive quando o texto novo é idêntico ao anterior — é o que distingue "a mesma proposta" de "a mesma frase". A autorização humana carrega este número; a execução o compara. Nunca usar updated_at no lugar: ele se move por outras escritas do estado.';
+
+-- Só ACRESCENTA um kind, então nenhuma linha existente passa a violar a
+-- constraint e o update.sh de um clone não quebra. Idempotente por drop+add.
+-- `followup_dead` está aqui porque a lista é a do BASELINE, não a do banco de
+-- dev: os dois divergiram, e o dev está com uma versão ANTERIOR da constraint
+-- (sem esse valor) enquanto lib/followup/engine.ts insere exatamente esse kind.
+-- Reconstruir a partir do banco apagaria o valor e mataria, em silêncio, o
+-- aviso de enrollment morto. A fonte de verdade é o arquivo versionado.
+alter table public.agent_inbox_items
+  drop constraint if exists agent_inbox_items_kind_check;
+
+alter table public.agent_inbox_items
+  add constraint agent_inbox_items_kind_check check (
+    kind = any (
+      array[
+        'qr_rescan',
+        'job_dead',
+        'event_dead',
+        'budget_exceeded',
+        'handoff',
+        'promotion_review',
+        'judge_unaligned',
+        'followup_dead',
+        'snooze_expired',
+        'next_action_ambiguous',
+        'other'
+      ]::text[]
+    )
+  );
