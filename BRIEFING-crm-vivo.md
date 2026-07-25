@@ -9013,3 +9013,37 @@ dois casos o instrumento estava certo e a narração dele, falsa.
 Os 8 leads antigos **não foram apagados**: dois podem ser de outro autor, e *"apagar alvo que um
 colega está medindo seria repetir hoje de novo"*. **Pedido feito, resposta aguardada** — no fim do
 dia, com tudo pronto, e ainda esperando.
+
+## §7.287 — A lei NÃO para o erro: ela encurta o caminho até achar
+
+Observação de fecho, e é a que reenquadra a doutrina inteira:
+
+> ***"Não é que a gente errou seis vezes. É que as seis foram DEPOIS de nomear a lei, e cinco delas
+> dentro da própria cerca escrita para preveni-la. A lei não para o erro; ela ENCURTA O CAMINHO ATÉ
+> ACHAR. Hoje o intervalo entre cometer e achar caiu de horas para minutos — e é isso que mudou, não
+> a taxa."***
+
+**É a métrica honesta desta doutrina, e ela é diferente da que qualquer um esperaria.** Não se
+escreveram ~290 seções para deixar de errar — **errou-se seis vezes depois de nomeá-las, cinco delas
+dentro da cerca recém-escrita** (§7.281). O que mudou foi o **tempo entre cometer e detectar**:
+
+| momento do dia | intervalo entre cometer e achar |
+|---|---|
+| manhã | **horas** — e alguns achados vieram de terceiros |
+| tarde | **minutos** — e quase todos pelo próprio autor |
+| fecho | **dentro da mesma mensagem** em que o autor declarava a auditoria completa |
+
+**E isso explica por que o placar de erros não é o indicador:** contar erros mede exposição ao risco,
+não qualidade do método. **Contar o INTERVALO mede o método** — e é contagem de fragilidade, no
+sentido da §7.230-refinada: sobe quando o processo piora.
+
+**E a última ocorrência é a mais didática:** o `lint` pegou um `any` **dez minutos depois** da
+declaração *"nenhuma cerca minha está sem auditoria"* — porque o autor rodou `typecheck` e **chamou
+de verificado**. **`typecheck` e `lint` cobrem coisas diferentes**, e um foi tratado como se cobrisse
+o outro. É a §7.279 na ferramenta mais banal que existe, na mensagem em que se declarava a auditoria
+completa.
+
+**Regra:** ao avaliar se a doutrina está funcionando, **não conte quantos defeitos apareceram** —
+meça **quanto tempo cada um levou para ser encontrado, e por quem**. Defeito achado pelo próprio
+autor, em minutos, é o processo funcionando. Defeito achado por terceiro, dias depois, é o processo
+ausente — **mesmo que o total de defeitos seja o mesmo.**
