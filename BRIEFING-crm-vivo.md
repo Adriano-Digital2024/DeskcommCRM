@@ -9120,3 +9120,52 @@ o que veio da lista faz a próxima pessoa tentar ser mais atenta em vez de escre
 
 É a §7.287 em primeira pessoa: **a taxa não caiu — o intervalo caiu.** E a segunda metade da frase é
 a única que importa num processo, porque erro cometido é exposição e **erro deixado em pé é dívida**.
+
+## §7.290 — Controle LARGO DEMAIS não é conservador: ele reprova o produto e manda consertar o saudável
+
+O controle do teste **nasceu vermelho, e o errado era o controle.** Estava escrito *"quando o carimbo
+dá certo, NENHUM `emit_event` acontece"* — e falhou porque o ingest emite `message.received` e
+`ai_agent.dispatch_requested` **no caminho normal**. O produto funcionando.
+
+> ***"Eu não sabia disso; descobri porque o controle reprovou o comportamento CERTO."***
+
+**Existe uma crença de que controle amplo é a escolha segura** — *"na dúvida, exija menos"* soa
+conservador. **Não é:**
+
+| controle | falha em | consequência |
+|---|---|---|
+| **estreito demais** | nada | deixa passar defeito — **falso verde** |
+| **largo demais** | comportamento **correto** | **manda consertar o que não está quebrado** |
+
+**O segundo é pior num aspecto decisivo: ele dirige trabalho para código saudável**, com a autoridade
+de um vermelho — e quem obedecer vai *"consertar"* um emissor legítimo. **Amplitude não é margem de
+segurança; é margem de erro na direção de acusar.**
+
+**E a simetria com o resto do dia fecha as quatro dimensões da régua:**
+
+> *"Eu tinha cobrado a coluna certa e o LIMIAR errado; aqui cobrei o evento certo e o ESCOPO errado."*
+
+**Para duas medições serem comparáveis — ou para uma asserção significar o que promete — precisam
+coincidir em QUATRO coisas: grandeza, limiar, instante e ESCOPO.** As quatro foram descobertas hoje,
+uma por vez, cada uma custando um falso achado.
+
+### E o conserto do erro engolido: FALHA BAIXO, MAS CONTA
+
+A pergunta que era infalsificável de manhã agora é uma consulta:
+
+```sql
+select count(*) from event_log where event_type = 'whatsapp.conversation_mark_failed'
+```
+
+**"Não bloquear" e "não contar" são decisões diferentes, e `console.error` não é nenhuma das duas** —
+ele nem falha alto nem registra. A política correta já existia no repo (`activity-write-failure.ts`),
+para a mesma doença no rastro do lead: *"não inventei política nova, achei a que a casa já tinha"*.
+
+**E o payload NÃO leva o preview** — é o texto da mensagem do cliente, e isto é registro operacional,
+não cópia de conteúdo. **Com um teste cobrando essa AUSÊNCIA**, porque sem ele um *"só pra facilitar
+o debug"* põe conversa de gente no `event_log` seis meses depois (§9, e §7.128: a cerca nomeia a
+tentação).
+
+**Provado por sabotagem, pelo caminho de produção:** com o `console.error` engolido de volta, o teste
+fica vermelho com a mensagem certa. E entra por `dispatchWahaEvent` — *"provar o helper mentiria
+sobre o caminho"*.
