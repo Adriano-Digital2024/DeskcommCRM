@@ -5312,3 +5312,46 @@ morrendo de verdade, por decreto de migração.
 tanto 48 quanto metade disso dão a MESMA regência. **Quando os dois extremos do intervalo levam à
 mesma decisão, refinar a medição antes de decidir é trabalho que não muda nada** — refine depois, se
 o desenho vier a depender do número.
+
+## §7.132-a — A propriedade é da SUPERFÍCIE, não da polaridade da asserção; e toda lei nasce estreita
+
+A §7.132 foi enunciada para AUSÊNCIA. Ela mordeu de novo na **PRESENÇA**: um critério procurava o
+texto de UMA atividade e reprovava, porque as três da IA colapsam em "Agente · 3 ações". **Reprovou
+por ocultação um conserto correto.**
+
+Exigir observável que sobreviva ao agrupamento **não é regra sobre negativas** — é regra sobre a
+SUPERFÍCIE. Onde a tela agrupa, trunca ou pagina, tanto "não vejo X" quanto "vejo X" são
+indistinguíveis do seu contrário. A §7.144 já dizia isso ao escolher o observável pelo par
+escopo+invariância; a §7.132 é que estava estreita.
+
+**E o padrão vale para toda esta coleção:** lei nasce com a largura do CASO que a gerou, e o caso é
+quase sempre mais estreito que o fenômeno. **O sinal de que uma lei estava sub-especificada é ela
+morder de novo num caso que ela "não cobria"** — quando isso acontecer, corrija o ENUNCIADO em vez
+de acrescentar uma lei irmã.
+
+## §7.147 — Previsão herda erro de modelo sobre o PRÓPRIO APARATO — e vira armadilha com cara de rigor
+
+A previsão registrada de véspera ("4 assinaturas têm de virar 5") **não se cumpriu, e o conserto
+estava completo**. Dois erros, os dois sobre o instrumento e nenhum sobre o produto: o canal deixou
+de ser indexado por contato (todo lead assina, a diferença nunca foi o eixo), e o "5" era aritmética
+de ciclos do próprio laço de teste — quatro aberturas dentro da janela e uma fora dela.
+
+**Se tivesse sido mantida, teria REPROVADO UM CONSERTO CORRETO — com autoridade extra.** E é aí que
+mora o perigo: a propriedade que torna previsão valiosa (registrada ANTES, logo não pode ter sido
+ajustada ao resultado) é exatamente a que torna uma previsão errada mais cara que uma medição
+errada. **A autoridade vem da FORMA, não do conteúdo** — então uma previsão errada herda crédito que
+não ganhou, e manda alguém revisar código certo com a assinatura de quem previu em cima.
+
+**O discriminador, antes de registrar qualquer previsão:** *o número previsto sai do comportamento
+do PRODUTO, ou da estrutura do meu aparato?* Se sai do aparato, ela prevê o aparato. Previsão
+continua barata e continua virando cerca — mas só depois desta pergunta.
+
+### §7.147-a — A explicação que você mesmo escreveu deixa de ser lida como dado
+
+O contra-exemplo estava **na mesma linha do relatório**: a saída solta já tinha sido explicada — e a
+explicação **desmentia a previsão**. Ninguém a leu, porque explicar arquiva.
+
+Uma vez explicado, o número muda de categoria na cabeça de quem explicou: vira "resolvido" e para de
+ser evidência. Por isso a §7.136-a (exigir a explicação de todo número) **produz o dado e não produz
+a conclusão** — falta o segundo passo, e ele é obrigatório: **depois de explicar, confira se a
+explicação contradiz alguma outra coisa que você afirmou.** Explicação é dado, não encerramento.
