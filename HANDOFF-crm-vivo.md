@@ -3453,3 +3453,35 @@ apaga a diferença entre *restaurado* e *reescrito*.
 A correção é de forma: **reposição no `finally` não sobrevive à morte do processo**, e quem morre
 não repõe por definição. Agora a sonda anota um bilhete **antes** de tirar e repõe na **entrada** —
 quem morreu não repõe, mas o próximo repõe por ele. Provado matando a sonda no meio.
+
+### O que do worker está provado — e o que NÃO está
+
+`recalculaScoreDoLead` (lib/leads/score-writer.ts) é o **núcleo**: lê os sinais de um lead, decide
+e grava (ou apaga). Foi por ele que todos os scores desta wave foram calculados — não houve
+`INSERT` à mão em momento nenhum.
+
+**O laço que consome `event_log` NÃO existe e NÃO está provado.** Ficou de fora por critério, não
+por esquecimento: ele é agendamento e não tem regra dentro, enquanto tudo o que pode estar errado
+mora na parte que foi escrita. Separado assim, a decisão é testável sem fila e sem cron.
+
+Fica registrado para ninguém, daqui a um mês, ler "worker de score" e concluir que o ciclo
+completo está coberto. O que falta, nomeado:
+
+- disparo (quem chama, com que evento e com que frequência);
+- idempotência sob reentrega (o `event_log` entrega ao menos uma vez);
+- ordem entre recálculo e as escritas do harness no mesmo contato;
+- o que acontece quando o recálculo falha — hoje ninguém tenta de novo.
+
+### Por que o score nasce escondido — o mecanismo é causal, não coincidência
+
+O `@Assistente` mediu e fechou a explicação melhor do que eu tinha: **o mesmo turno do harness que
+escreve o checkpoint (que dá lastro ao score) escreve a `next_action` (que ocupa o slot)**. O
+evento que torna o score possível é o mesmo que cria a proposta que o esconde.
+
+Por isso não havia um único lead com score e sem proposta no board inteiro — 2 com score, 2 com
+proposta pendente, zero sem. Não é amostra pequena nem azar: é a estrutura do dado.
+
+A decisão é do Rafael, com as duas leituras na mesa: pode estar certo (uma decisão por vez, e a
+proposta é mais urgente que o número) ou exatamente o contrário — o score é **mais** útil na hora
+de decidir a proposta, porque a pergunta do vendedor é "vale a pena fazer o que a IA propôs?", e
+saber se o lead está quente muda essa resposta.
