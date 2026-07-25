@@ -61,8 +61,35 @@ function semCodigo(texto: string): string {
 function referenciasBrutas(texto: string): string[] {
   const limpo = semCodigo(texto);
   const achados: string[] = [];
+  // Sintaxe de link/imagem: a intenção de CITAR é explícita, então vale para
+  // qualquer caminho.
   for (const m of limpo.matchAll(/!?\[[^\]]*\]\(([^)\s]+)\)/g)) achados.push(m[1]!);
-  for (const m of limpo.matchAll(/`([^`\n]+)`/g)) achados.push(m[1]!);
+
+  // Crase é AMBÍGUA NA ORIGEM: o time a usa para citar prova E para escrever
+  // exemplo literal. Documentar os quatro ruídos deste extrator (`/api/files/gone.jpg`
+  // e companhia) fez o próprio handoff "citar" quatro provas inexistentes —
+  // documentar o falso positivo CRIOU falso positivo.
+  //
+  // Nenhum ajuste de regex resolve enquanto os dois usos forem indistinguíveis,
+  // então o sinal ambíguo é trocado por um inequívoco: em crase, só conta o que
+  // mora em `evidence/`. Medido pelo @MaestroConexoes antes de propor — TODAS as
+  // citações reais dos documentos desta entrega vivem lá, sem exceção.
+  //
+  // Ganho de brinde: exemplo de caminho ruim pode ser escrito à vontade em
+  // qualquer documento sem contaminar o check. E documentar ruído virou parte do
+  // handoff.
+  for (const m of limpo.matchAll(/`([^`\n]+)`/g)) {
+    const r = m[1]!;
+    // O discriminador NÃO é o prefixo `evidence/` — é a presença de CAMINHO.
+    // Nome puro (`wave-1-card.png`) é nome de arquivo: as narrativas e os
+    // handoffs citam assim. Caminho escrito (`org1/conv1/msg1.jpg`,
+    // `/api/files/gone.jpg`) é exemplo, e foram exatamente esses quatro que
+    // fizeram o handoff "citar" provas inexistentes ao documentá-los.
+    //
+    // Exigir o prefixo derrubaria a cobertura dos documentos desta entrega, que
+    // citam por nome puro — trocaria capturar demais por capturar de menos.
+    if (r.startsWith("evidence/") || !r.includes("/")) achados.push(r);
+  }
   return achados.filter(
     (r) =>
       EXT.test(r) &&
@@ -102,7 +129,6 @@ const DOCS = versionados("*.md").filter(
  * sozinha.
  */
 const LEGADO = new Set([
-  ".claude/agents/gov-implementer.md",
   "HANDOFF-inbox-multimodal.md",
   "HANDOFF-operacao-visivel.md",
   "HANDOFF.md",
