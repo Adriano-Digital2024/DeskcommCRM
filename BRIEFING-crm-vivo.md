@@ -6876,3 +6876,51 @@ leia esse campo vai afirmar ao usuário que a mensagem está a caminho.
 
 **Enquanto o envio não existir, o campo diz `false` ou não existe.** Stub que devolve o valor
 otimista é o `?? false` da wave inteira, do outro lado do fio.
+
+## §7.216 — SUPERADO não é REFUTADO, e a diferença muda a pergunta seguinte
+
+O veredito *"dois defeitos"* **era verdadeiro às 14:26** — controle vivo, lados alternados, duas
+repetições. Às 14:50 o mesmo teste dá 2/2; às 14:55, 3/3 em dois leads. **Sem mudança de schema.**
+
+Ele **não foi refutado por medição melhor: foi superado por mudança de estado.** E a distinção não é
+semântica:
+
+- **Refutado** ⇒ a medição estava errada; a pergunta é *"qual foi o erro de método?"*.
+- **Superado** ⇒ a medição estava certa e o mundo mudou; a pergunta é ***"o que mudou, e quando?"*** —
+  e a resposta é uma raiz, não uma correção.
+
+**Relatório que diz "não reproduz mais" sem essa distinção apaga o defeito duas vezes:** perde o
+achado (parece que nunca existiu) e perde a causa (ninguém procura o que mudou). E o benefício de
+manter é imediato — aqui o intervalo fechou: **começou entre 11:41 e 12:13, terminou entre 14:26 e
+14:50, durou de 2h13 a 3h09**, e o fim tem um suspeito verificável com uma consulta.
+
+## §7.217 — O dado que desmentia estava na MESMA série, e foi lido como confirmação
+
+A tese do lote nasceu de *"sumiu tudo"*, observado **só** nas rodadas de um caminho que depois se
+mediu como transitoriamente morto **para todos**. Duas explicações para a mesma observação — e foi
+escolhida a mais interessante.
+
+**E a contraprova já estava na série:** numa rodada, a escrita saudável **chegou** e a envenenada
+não. Isso já era **descarte individual**, incompatível com "o lote morre" — e foi lido como
+confirmação.
+
+**Regra:** ao formar uma tese a partir de uma série, releia **a própria série** procurando a linha que
+a contradiz, antes de procurar dados novos. A contradição costuma já estar lá: a tese nasce da
+memória do padrão, e a memória do padrão **apaga a exceção que a fundaria**.
+
+### §7.206 — RETIFICADO
+
+A §7.206 nasceu da tese do lote. **A lei de método sobrevive e o achado cai** — e é preciso separar os
+dois, senão a retratação leva junto o que era útil:
+
+- **SOBREVIVE:** *quando duas hipóteses produzem a mesma observação, repetir não ajuda — o desenho tem
+  de forçá-las a divergir, e a variável que força quase nunca é a que está sob estudo.* Continua
+  verdadeira e foi ela que produziu a medição que derrubou a tese.
+- **CAI:** *"a linha envenenada aborta o lote em que viaja"* e todo o parágrafo de dano colateral.
+  Medido: veneno seguido de escrita saudável com Δ de 0 a 3000ms — **a saudável chega em todos,
+  inclusive com Δ zero**. A linha envenenada é descartada **sozinha**.
+
+**E o raio para o Rafael volta ao escopo honesto:** não é *"o produto perde eventos o tempo todo"*. É
+***"quando a entrega morre, por qualquer motivo, nenhuma tela avisa — e isso já aconteceu por 2h13
+hoje, com 15 mudanças escritas e nenhuma entregue"***. O raio do silêncio **nunca dependeu de qual era
+a raiz**, e por isso é a única parte que atravessou três retratações intacta.
