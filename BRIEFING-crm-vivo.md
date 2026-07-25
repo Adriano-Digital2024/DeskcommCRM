@@ -7664,3 +7664,55 @@ nos testes".
 colapsar), conte **quantos instrumentos contam elementos renderizados naquela superfície**. Cada um é
 um laudo futuro errado. **A correção é medir o FATO (ações representadas), não o VEÍCULO (elementos
 na tela)** — o veículo muda com o desenho, o fato não.
+
+## §7.249 — ÍNDICE ETIQUETADO das leis que mandam CONTAR (varredura completa)
+
+Três números, como a §7.245 exige: **259 seções no total · 34 mencionam contagem · 30 a que o filtro
+se aplica · ZERO de progresso.** As 4 excluídas (`7.16`–`7.19`) usam "contador/contagem" como
+**conteúdo**, não como regra — falsos positivos de grep, e por isso o denominador é 30.
+
+**FRAGILIDADE (20)** — o número sobe quando você está errado:
+`7.24` · `7.34` · `7.55` · `7.69` · `7.71` · `7.123-a` · `7.125` · `7.136` · `7.164` (ver ressalva) ·
+`7.201` · `7.203` · `7.205` · `7.217-corrigida` · `7.222` · `7.230-refinada` · `7.231` · `7.232` ·
+`7.234` · `7.240` · `7.243`
+
+**MEDIÇÃO (8)** — o número **é o próprio observável**, não indicador de qualidade:
+`7.1` · `7.8` · `7.112` · `7.132` · `7.138` · `7.144` · `7.158` · `7.167`
+
+**LEMBRETE, superada pela própria sucessora (2):** `7.217-original` (*"releia a série"*) e
+`7.230-original` (*"procure a versão contável"*). As duas já têm versão contável; a etiqueta registra
+que **a original não protege sozinha**.
+
+**E a resposta à pergunta que eu havia feito é a cara:** a etiqueta MEDIÇÃO passou de 2 (por título)
+para **8** (por leitura completa) — **título e regra em negrito NÃO bastam**. **A doutrina não fica
+mais barata de manter.** A leitura integral era necessária, e supor o contrário teria produzido uma
+classificação errada em seis seções.
+
+## §7.250 — Contagem de FRAGILIDADE também mente, quando vira RELATO
+
+Contraexemplo achado **dentro do filtro**, na §7.164: *"a contagem crua de vermelhos é artefato de
+comunicação, e ela **mente para cima**"*. **E vermelhos são contagem de fragilidade.** Logo:
+**contagem de fragilidade não é automaticamente segura.**
+
+**A distinção é de AUDIÊNCIA, e ela salva as duas leis:**
+
+| quem consome | o que o número faz |
+|---|---|
+| **quem MEDE**, durante o trabalho | protege — cada unidade é uma razão a mais para duvidar de si |
+| **quem LÊ**, decidindo prioridade | engana — é lido como **carga de trabalho**, e N sintomas de uma raiz viram N problemas |
+
+**A §7.230-refinada ganha a linha:** *conte fragilidade para **decidir se VOCÊ está errado**; **não
+lidere relatório por ela** (§7.164 — liderar por raízes, contagem no rodapé).*
+
+### §7.250-a — Todo número em relatório declara quantas RAÍZES o produzem
+
+O placar invertido **não basta sozinho**: começar por *"2 bloqueados, 0 vermelhos"* é melhor que
+*"5/0/2"*, mas **se um dia forem 9 bloqueados de uma raiz só, o número mente para cima igual**.
+
+E o caso recente saiu honesto **por sorte**: os dois bloqueados eram **um elo**, e isso foi escrito na
+linha em vez de deixar o "2" falar sozinho.
+
+**Regra:** número em relatório vem sempre acompanhado da **contagem de raízes** — *"2 bloqueados, 1
+raiz"* é honesto; *"2 bloqueados"* não é. É a §7.164 tornada mecânica: em vez de pedir que alguém
+*lidere por raízes* (regra de julgamento), exige-se **um segundo número que ninguém consegue omitir
+sem que a ausência apareça**.
