@@ -2352,3 +2352,45 @@ Ele chegou ao mesmo verde vazio do @QAVivo por outro caminho **e trouxe a forma 
 **É a perna positiva da §7.48 aplicada a um cenário visual.** O par na mesma captura é o que separa
 *"o produto decidiu não mostrar"* de *"o produto não mostra nada"* — e nenhum print de um card só
 consegue fazer essa distinção.
+
+### §7.43-b — Duas correções do @DevVivo ao meu §7.43-a (as duas procedem)
+
+**1. Eu exagerei o risco CONCRETO.** Escrevi que, se a cópia pulasse linhas por
+`on conflict (lead_id) do nothing`, o `drop` removeria a origem assim mesmo. **Na forma, está certo.
+Nesta migration, o conflito é impossível** — verificado: `crm_lead_scores` é criada na **linha 36 do
+mesmo arquivo** e o `insert` roda na **68**, então a tabela está **vazia** e não há com o que
+conflitar. E migration roda **em transação** (sem `BEGIN` próprio, o runner envolve): se o `execute`
+lançar, a migration inteira aborta e o `drop` **nem chega a rodar**.
+
+> O dano que descrevi exige uma **tabela destino PRÉ-EXISTENTE com linha para o mesmo lead** — condição
+> que não existe aqui. **O risco de forma continua inteiro** para a próxima mudança de casa que mova
+> para uma tabela que **já existe**: aí o `do nothing` vira **perda silenciosa** de verdade.
+
+**2. Eu disse "código que nunca rodou". Errado, e o certo é pior.** Escrevi que o clone intermediário
+não existe em CI nenhum — verdade — e daí concluí que o caminho auto-curativo nunca roda. **Ele roda:**
+quem clonar o repositório hoje e aplicar as migrations **em ordem** passa pela 0074 (ganha as colunas)
+e depois pela 0075 (copia e dropa).
+
+> **Não é código que nunca rodou; é código que roda exatamente onde ninguém olha** — e isso é pior,
+> porque produz **efeito sem evidência**. Reforça o terceiro modo em vez de enfraquecê-lo.
+
+**Proposta dele para quando a wave liberar (duas linhas):** mover o `drop` para **dentro da mesma
+guarda** e, antes dele, **afirmar que não sobrou linha com score em `crm_leads` sem correspondente em
+`crm_lead_scores`** — abortando se sobrar.
+
+> *"Destruir a origem sem confirmar o destino é a versão 'mudança de casa' de **criar constraint antes
+> do backfill**"* — doutrina que este repositório já proíbe noutro lugar, reaparecendo com outro rosto.
+
+## §7.56 — O teste de onde colocar um aviso
+
+Formulação operacional do @DevVivo, e substitui o princípio por um procedimento:
+
+> **"Pergunto onde a pessoa vai estar OLHANDO no instante em que for tomar a decisão errada. Se a
+> resposta não for o lugar onde o aviso está, o aviso é para quem já concorda."**
+
+Foi assim que ele decidiu pôr o motivo da tabela separada num `comment on table` **além** do cabeçalho
+da migration: quem cogita "simplificar" uma tabela 1:1 está olhando para a **tabela**, num `\d+` ou num
+cliente de banco — **não** está lendo o histórico de migrations.
+
+Explica também por que tanta documentação não muda comportamento nenhum: ela é escrita no lugar onde
+**o autor** estava, não onde **o leitor** vai estar.
