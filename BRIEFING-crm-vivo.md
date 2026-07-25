@@ -5461,3 +5461,55 @@ Então a asserção é composta por necessidade — e cai direto na §7.133, que
 esconde qual metade agiu**. A saída é a mesma dos dois lados: **o relatório nomeia QUAL cláusula
 disparou.** Sem isso, um vermelho de duas cláusulas é indistinguível de um vermelho de uma, e o
 laudo pode contradizer a própria evidência sem que ninguém note.
+
+## §7.151 — "Não sei" renderizado como "está tudo bem" — a doença do épico como valor DEFAULT
+
+A divergência medida (mesmo lead: ao vivo com faixa "Sem resposta há 4 dias" e borda âmbar;
+recarregado sem faixa e borda transparente) **não é dois classificadores discordando**. Rastreado:
+
+- a rota do board **não classifica risco** — devolve `last_activity_at` e mais nada;
+- o esfriamento entra pelo `coolingIds`, que vem de **outra consulta**, `useAtRiskLeads()`, com ciclo
+  de vida independente;
+- e `card-state.ts` faz `isCooling: opts.coolingIds?.has(lead.id) ?? false`.
+
+**O `?? false` é o defeito.** Enquanto a segunda consulta não chegou, o card não diz "não sei" — ele
+**afirma que o negócio está saudável**. Ausência de informação vira afirmação positiva, e a
+afirmação é exatamente a que o épico existe para impedir: *o card parado que parece que está tudo
+bem*.
+
+**É a TERCEIRA superfície da mesma doença hoje** — o instrumento (§7.134: critério afirmou sobre
+coluna que a consulta não trouxe), o handler (§7.142: campo novo cairia contra `undefined` e seria
+"alterado"), e agora a tela. Não é coincidência de pessoas: **este código transforma
+repetidamente "desconhecido" em "normal"**, porque é o default gratuito da linguagem.
+
+**A regra, e ela é de produto, não de estilo:** onde o estado desconhecido e o estado saudável
+produzem a MESMA tela, o desconhecido tem de ser representado — nem que seja por ausência de
+marcador em vez de marcador de saúde. Nesta entrega a assimetria já está decidida: **falso alarme é
+barulhento e alguém reclama; falsa saúde é silenciosa e mata.**
+
+**O que ainda não sei, e não vou afirmar:** se a segunda consulta nunca resolve naquele caminho
+(defeito permanente) ou se resolve tarde e a medição pegou a janela (defeito transitório). **As duas
+são defeito e têm a mesma raiz**; o que muda é a gravidade, e isso se decide medindo se a faixa
+aparece ao esperar.
+
+## §7.152 — O gatilho do teste tem de ser INDEPENDENTE do mecanismo sob teste
+
+Achado de método, e é o mais fino da rodada: só se consegue provocar a travessia do limiar
+**escrevendo no lead** — e escrita gera evento. Então o teste não distingue *"a tela nota o tempo
+passar"* de *"a tela recomputa quando a linha muda"*. **O método mascara exatamente a diferença que
+ele deveria medir.**
+
+Forma geral: **quando o único jeito de provocar o fenômeno é acionar o mecanismo que você quer
+testar, o experimento é circular** — passa com o mecanismo funcionando e passa com ele quebrado,
+desde que o gatilho sozinho produza o efeito.
+
+**Consequência para a wave 7, e ela é boa:** o gatilho honesto passa a existir com o desenho já
+aprovado — **rodar o worker sem tocar na linha do lead**. Se o card mudar assim, provou-se o que a
+tela promete. É mais uma razão para o estado ser escrito: sem escrita não há nem funcionalidade nem
+teste possível.
+
+E confirma o diagnóstico central: **esfriar é evento de TEMPO, não de DADO.** Quando o lead cruza o
+limiar nada é escrito, logo nada é publicado, logo nenhum realtime tem o que entregar — *"muda sem
+reload"* é **impossível** sem que a travessia vire escrita. O cenário 22 estar bloqueado hoje é o
+comportamento correto do que existe, e reprová-lo na tela seria acusar a superfície por uma ausência
+que nasce três camadas antes.
