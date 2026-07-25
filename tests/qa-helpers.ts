@@ -299,6 +299,25 @@ export async function shotPage(page: Page, file: string, fullPage = true): Promi
  */
 export function carimbar(dependencias: string[]): string {
   const head = execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim();
+
+  // A DEPENDÊNCIA DECLARADA TEM DE EXISTIR — e isto não era conferido.
+  //
+  // `git status --porcelain -- caminho/que/nao/existe` devolve VAZIO e sai com
+  // zero: indistinguível de "limpo". Então um arquivo renomeado sumia da cadeia
+  // em silêncio e o carimbo seguia dizendo "todas limpas — o veredito vale para
+  // este commit", enquanto a prova declarava depender de algo que não está lá.
+  //
+  // É o mesmo formato dos defeitos deste dia: ausência com cara de aprovação. E
+  // fica no lugar mais caro possível, porque o carimbo é o que dá validade a
+  // todo veredito que eu emito.
+  const inexistentes = dependencias.filter((d) => !fs.existsSync(path.join(process.cwd(), d)));
+  if (inexistentes.length > 0) {
+    throw new Error(
+      `[carimbo] dependência declarada que NÃO EXISTE: ${inexistentes.join(", ")}.\n` +
+        `git status sobre caminho inexistente devolve vazio, então isto passaria por "limpo" — ` +
+        `e a prova diria depender de um arquivo que não está mais lá. Atualize a lista.`,
+    );
+  }
   // `execFileSync` com lista de argumentos, NÃO string de shell: os caminhos
   // vêm de quem chama, e interpolar isso numa linha de comando seria injeção
   // esperando acontecer. Não há entrada hostil aqui hoje — mas helper de teste

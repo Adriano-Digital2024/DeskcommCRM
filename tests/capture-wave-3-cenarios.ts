@@ -286,6 +286,11 @@ async function main(): Promise<void> {
   // para fazer. Com a árvore limpa o nome não muda — o custo é zero e a proteção
   // volta a existir.
   const sufixoCarimbo = carimbar([
+    // O APARATO ENTRA NA PRÓPRIA LISTA — ideia do @DevVivo, e ele está certo:
+    // instrumento não commitado produz veredito irreprodutível do mesmo jeito que
+    // produto não commitado. Declarar só as dependências do produto deixa o carimbo
+    // dizer "todas limpas" enquanto a RÉGUA muda debaixo do resultado.
+    "tests/capture-wave-3-cenarios.ts",
     "app/globals.css",
     "components/kanban/KanbanCard.tsx",
     "components/kanban/KanbanBoard.tsx",

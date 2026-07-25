@@ -365,6 +365,11 @@ async function main(): Promise<void> {
   fs.mkdirSync(EVIDENCE, { recursive: true });
 
   const sufixo = carimbar([
+    // O APARATO ENTRA NA PRÓPRIA LISTA — ideia do @DevVivo, e ele está certo:
+    // instrumento não commitado produz veredito irreprodutível do mesmo jeito que
+    // produto não commitado. Declarar só as dependências do produto deixa o carimbo
+    // dizer "todas limpas" enquanto a RÉGUA muda debaixo do resultado.
+    "tests/capture-wave-4-cenarios.ts",
     "components/kanban/KanbanCard.tsx",
     "components/kanban/KanbanBoard.tsx",
     "components/kanban/KanbanCardActions.tsx",

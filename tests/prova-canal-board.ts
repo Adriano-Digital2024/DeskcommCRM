@@ -54,6 +54,11 @@ function claims(jwt: string | undefined): { role?: string; sub?: string; exp?: n
 
 async function main(): Promise<void> {
   carimbar([
+    // O APARATO ENTRA NA PRÓPRIA LISTA — ideia do @DevVivo, e ele está certo:
+    // instrumento não commitado produz veredito irreprodutível do mesmo jeito que
+    // produto não commitado. Declarar só as dependências do produto deixa o carimbo
+    // dizer "todas limpas" enquanto a RÉGUA muda debaixo do resultado.
+    "tests/prova-canal-board.ts",
     "hooks/realtime/useRealtimeChannel.ts",
     "hooks/kanban/useBoard.ts",
     "app/api/v1/auth/realtime-token/route.ts",
