@@ -4769,3 +4769,43 @@ um sujeito que não pode exibi-lo, e o vermelho aponta para a superfície errada
 **E trocar o caso tem custo, que precisa ser pago na hora:** todo critério que nomeava uma linha
 específica passa a apontar para o lugar errado, e **nada avisa quais**. Trocou o fixture, releia a
 lista inteira — não os que você lembra de ter mexido.
+
+## §7.126 — Contraste DENTRO de um artefato vale mais que dois artefatos contrastantes
+
+A captura do colapso pegou, sem ninguém ter pedido, as duas metades da regra na MESMA imagem:
+duas `lead_edited` do mesmo ator no mesmo minuto **agrupadas** em "E2E Manager · 2 ações", e logo
+abaixo nove `Mudou de estágio` do MESMO ator **não agrupadas**, porque estão em minutos distintos
+(10:13, 10:12, 10:10, 09:57…).
+
+Uma imagem só de colapso não prova a regra. Ela é compatível com "a regra funciona" **e** com "a
+regra agrupa tudo" — e as duas hipóteses produzem a mesma foto. É o **contraste** que exclui a
+segunda, e não a foto.
+
+E o contraste vale mais aqui do que se viesse de duas capturas separadas, pelo motivo da lei do
+teste confundido: **entre dois artefatos, qualquer outra coisa também pode ter mudado** (outro
+lead, outra sessão, outro estado do banco). Dentro de um, o ator é o mesmo, o render é o mesmo, os
+dados são os mesmos — **só o tempo decorrido difere**. É o experimento controlado saindo de graça,
+e é mais forte que o unitário da janela, que prova a função e não prova que os dois ramos dela
+chegam à tela distinguíveis por um leitor.
+
+**Ao capturar regra com limiar, enquadre para pegar os dois lados.** Uma foto do lado que passa é
+meia prova, e a metade que falta é justamente a que separa "regra" de "sempre".
+
+## §7.127 — Saiba contra QUE SUPERFÍCIE o guarda mede
+
+Terceiro tropeço na mesma lei (§7.98), agora por ORDEM: o `git add` ficou DEPOIS dos gates, e o
+guarda de evidência reprovou — corretamente — porque viu o handoff citando imagens não
+versionadas.
+
+As três posições em que já se tropeçou não são arbitrárias, e enxergar o eixo comum encerra a
+série: **cada guarda lê uma superfície diferente** — o disco, o índice, o HEAD. `git add` não é
+preparação do TRABALHO; é preparação do **campo de visão do medidor**. O guarda de evidência mede
+o índice, então trabalho que só existe no disco é, para ele, trabalho que não existe — e ele está
+certo, porque é exatamente a §7.84 que ele foi criado para pegar.
+
+**A pergunta antes de rodar qualquer gate: contra qual superfície ele mede, e o que eu preciso ter
+posto lá?** Preparação completa não é "terminei"; é "está visível de onde o guarda olha".
+
+E anote a graduação: este guarda **acabou de reprovar o próprio autor**, que é a condição da
+§7.106. Ele deixou de ser instrumento presumido e passou a instrumento provado — não porque alguém
+o revisou, mas porque mordeu.
