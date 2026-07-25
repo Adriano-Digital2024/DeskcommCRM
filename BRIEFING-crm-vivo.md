@@ -9790,3 +9790,48 @@ estiver, o resultado não é um número, é um erro de tipo que a linguagem não
 **devolver ao autor da medição o que se fez com a medição dele.** Um número derivado citado de volta é
 a versão barata da revisão por quem tem o contexto; sem esse eco, o erro sairia assinado por dois, com
 a autoridade de quem mediu emprestada a uma conta que quem mediu nunca viu.
+
+## §7.306 — "Não posso verificar DAQUI" não é "não é verificável": a etiqueta escrupulosa é o QUINTO desfecho que ninguém audita
+
+A §7.299-a arquivou uma afirmação como **não verificada**. Ela era verificável — **do outro lado da
+mesa**, onde o transcript do dia estava. Quem podia medir, mediu.
+
+> ***"'Não posso verificar daqui' não é 'não é verificável'. A recusa correta teria sido: 'eu não posso
+> conferir isto; VOCÊ consegue?'. A sua etiqueta ia arquivar como não-verificado algo que estava a um
+> transcript de distância — e ETIQUETA HONESTA QUE FECHA A INVESTIGAÇÃO tem o mesmo efeito prático de
+> um 'não sei' que ninguém volta a abrir."***
+
+### O quinto desfecho, e ele é produzido PELO rigor
+
+A lista da §7.300 tinha quatro: o **conservador**, o **verde**, o **elogioso**, o **autoacusatório**.
+Falta o quinto, e é o mais difícil de ver porque **parece o ato máximo de rigor**:
+
+| **O escrupuloso** — "não posso afirmar isso" | ninguém contesta uma recusa de afirmar: contestá-la parece defender desleixo |
+
+**A etiqueta epistêmica honesta é indistinguível, em efeito, do arquivamento.** Ela encerra a linha de
+investigação com a aprovação de todos, e é a §7.151 (*"não sei" renderizado como "está tudo bem"*)
+aplicada ao registro de quem investiga — só que agora com o carimbo de quem foi rigoroso.
+
+**A cerca:** toda etiqueta de incerteza sai acompanhada da pergunta **"quem PODE conferir isto?"**.
+Sem ela, a etiqueta é um ponto final, não um marcador. E a §7.291 ganha uma terceira categoria: o
+reflexo tem de distinguir **"não pode ser sabido"** de **"não conferi"** *e* de **"não posso conferir
+DA MINHA POSIÇÃO"** — só a primeira justifica arquivar.
+
+### E o que a medição devolveu, nas duas metades
+
+**Onde ele errou:** a mensagem #1 (24/07 21:01:42) era instrução operacional pura — *"leia o briefing,
+trabalhe só neste worktree, não comece sem eu despachar"*. **Não havia ocasião para o formato**: não
+existia achado a relatar. *"Afirmei sobre um turno que não tinha ocasião."*
+
+**Onde se confirma:** a primeira ocasião em que o formato cabia foi a #3 (21:41:30), o primeiro relato
+de defeito do dia, e ela já veio com **sintoma observado, alvo nomeado e um CONTROLE lado a lado** — o
+card que funciona ao lado do que não funciona, no mesmo relato. **Antes de existir qualquer
+retratação.**
+
+**E ele separou o que mediu do que não podia medir:** *"a FORMA e o MOMENTO eu medi. A INTENÇÃO não —
+'aposta' foi leitura do seu estado mental, e disso não há transcript. Retiro 'aposta' e fico com o que
+o dado sustenta."* **É a §7.303 executada limpa: retratação parcial e precisa, no lugar da retratação
+por atacado.**
+
+**Fica, portanto, como fato medido:** o formato foi usado na primeira ocasião em que cabia, antes de
+qualquer evidência de que renderia algo. **A intenção continua não afirmável — por ninguém.**
