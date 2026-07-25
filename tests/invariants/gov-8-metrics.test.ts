@@ -167,10 +167,33 @@ function funnelCount(actorId: string, stageId: string): number {
 }
 
 /** EXPLAIN plan text under a role, seqscan disabled to expose index applicability. */
+/**
+ * ⚠️ O `analyze` vem ANTES do `set role` (ANALYZE exige dono; sob
+ * `authenticated` é ignorado em silêncio) e existe porque este teste era
+ * INTERMITENTE: ele mede ESCOLHA DE PLANO numa tabela minúscula, e
+ * `enable_seqscan = off` é penalidade de custo, não proibição — basta a
+ * estatística oscilar para o planner trocar de índice e o `toMatch` falhar.
+ * Qualquer vizinho que insira (ou insira e REVERTA: `rollback` deixa tupla
+ * morta) muda `reltuples` e dispara autoanalyze em hora imprevisível. Com
+ * estatística recém-calculada, a escolha volta a ser determinística.
+ *
+ * `enable_bitmapscan = off` fecha a porta que sobrou: com estatística fresca o
+ * planner AINDA escolhia um Bitmap Heap Scan por outro índice (custo 7.06 contra
+ * 7.07 — a tabela é pequena demais para o índice parcial compensar), e a escolha
+ * virava no terceiro decimal. Sem bitmap, resta o index scan.
+ *
+ * Isto REMOVE UM CONFUNDIDOR, não afrouxa garantia: o teste passa a medir o que
+ * diz medir, e continua reprovando se o índice sumir — a asserção é sobre QUAL
+ * índice aparece no plano, não sobre haver plano. A prova está no commit.
+ */
 function explainAs(actorId: string, query: string): string {
   return sql(`
+    analyze public.crm_leads;
+    analyze public.conversations;
+    analyze public.messages;
     ${asRole(actorId)}
     set enable_seqscan = off;
+    set enable_bitmapscan = off;
     explain (analyze, format text) ${query}
   `);
 }
