@@ -8305,3 +8305,57 @@ A conversa com `preview` NULO tendo mensagens tem última mensagem **de hoje, co
 é do instrumento.** As demais defasadas **têm `external_id` do WAHA** e previews de datas anteriores:
 **essas são reais, e a causa é desconhecida.** Separar as duas populações antes de reportar é o que
 impediu um conserto apontado para o alvo errado.
+
+## §7.270 — A cerca mais barata contra degradação FUTURA é o número que deixa de bater
+
+Pedi uma **anotação** no helper dizendo que a lista de arquivos sujos nunca pode ser truncada. Ele
+escreveu a anotação **e disse que ela sozinha não serve**:
+
+> *"Comentário depende de alguém ler, que é a definição de regra de autoavaliação — e quem vai
+> 'limpar a saída' é exatamente quem está com pressa."*
+
+**A solução é um contador:** a linha anuncia *"ÁRVORE SUJA em N arquivo(s) — as N linhas seguintes
+são a lista COMPLETA"*. **Truncar faz o número deixar de bater com as linhas impressas, e a omissão
+aparece na saída de quem truncou.**
+
+**O que há de novo:** as cercas do dia guardam um invariante **presente**; esta guarda contra uma
+**edição futura** — alguém que, meses depois, resume a saída "para ficar mais limpa". E o mecanismo é
+o mesmo de sempre, apontado para frente: **fazer a violação se auto-anunciar**.
+
+**É mais barato que qualquer alternativa** — revisão depende de revisor, regra de lint depende de
+alguém escrevê-la, documentação depende de leitura. **Um número que precisa bater não depende de
+ninguém.**
+
+**Regra:** ao proteger algo contra degradação futura, procure a **redundância verificável** — um
+total, uma contagem, um hash — que a degradação quebra por construção. Se não existir, invente uma:
+custa uma linha e sobrevive a todos os leitores.
+
+## §7.233-a — A ordem em que o instrumento te MORDE é enviesada para o que você OLHA
+
+Observação retroativa sobre a própria priorização, e ela completa a §7.233:
+
+> *"Eu vinha consertando instrumento na ordem em que ele me mordia, e a ordem certa é a ordem em que
+> ele morde **quem não está olhando**. O vigia foi o primeiro por isso, e eu não tinha percebido que
+> era o mesmo critério."*
+
+**As mordidas que você sente vêm, por definição, dos instrumentos que você está observando.** Os
+perigosos **nunca te mordem** — rodam sozinhos, produzem saída que ninguém lê, e o defeito atinge um
+terceiro em outro dia. **Consertar por ordem de dor é consertar exatamente na ordem inversa do
+risco.**
+
+Une-se à §7.233 numa regra só: **ordene por "onde um defeito sobreviveria sem testemunha", nunca por
+"onde ele me atrapalhou"** — e a segunda é a ordem que o instinto oferece de graça.
+
+### Decisão sobre a versão geral da §7.268
+
+Foi oferecida a contagem **transitiva** de imports não declarados — *"uma tarde de trabalho, não dez
+minutos"*. **Não agora**, e a razão é proporção: o buraco específico está fechado, e o épico tem
+frentes abertas de maior valor.
+
+**Mas existe a versão barata da lei geral, e ela é para fazer:** a infraestrutura compartilhada é
+**enumerável hoje** (o helper, e pouco mais). **Listá-la explicitamente no carimbo, como conjunto
+fixo, cobre quase tudo em dez minutos** em vez de uma tarde.
+
+**E o gatilho para a versão completa fica declarado:** quando o conjunto compartilhado deixar de ser
+enumerável à mão — mais de meia dúzia de módulos, ou alguém acrescentar um sem ninguém notar. Aí a
+contagem transitiva deixa de ser luxo e vira a única forma.
