@@ -41,13 +41,10 @@
  * Run: E2E_PORT=3020 npx tsx tests/capture-wave-5-cenarios.ts
  */
 
-import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
-
-import { chromium } from "@playwright/test";
 import pg from "pg";
 
-import { CREDS, cardLocator, carimbar, gotoBoard, login, shotCard } from "./qa-helpers";
+import { CREDS, carimbar } from "./qa-helpers";
 import { resolveBand, type ScoreBand } from "@/lib/kanban/score-band";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
@@ -117,6 +114,22 @@ const CASOS: Caso[] = [
     nome: "AUSÊNCIA de score é livre — sinal insuficiente é estado legítimo",
     recusar: false,
     campos: { ai_probability: null, ai_probability_reason: null, ai_probability_evidence: {} },
+  },
+  {
+    // A OUTRA METADE DA DIVERGÊNCIA. O board lê `ai_probability_evidence.factors`;
+    // o CHECK conta activity_ids/message_ids/checkpoint_ids. Se o CHECK também
+    // aceitasse `factors`, dava para escrever só a chave que a tela usa. Não
+    // aceita — então quem grava precisa preencher AS DUAS, e nada o obriga.
+    n: "C16.k",
+    nome: "evidência SÓ com a chave que a tela lê (factors) é recusada pelo banco",
+    recusar: true,
+    campos: {
+      ai_probability: 72,
+      ai_probability_reason: "lastro na chave que o board consome",
+      ai_probability_evidence: {
+        factors: [{ pontos: 20, frase: "Cliente confirmou o orçamento", ancora: { kind: "activity", id: "11111111-1111-1111-1111-111111111111" } }],
+      },
+    },
   },
   {
     n: "C16.g",
@@ -642,106 +655,14 @@ function autoTesteDaCerca(): void {
 }
 
 
-// ---------------------------------------------------------------------------
-// C) o que a wave 5 AINDA NÃO tem — medido, não omitido
-// ---------------------------------------------------------------------------
-
-/**
- * Cenários 15 e 17 do briefing, na tela.
- *
- * Existem aqui por uma razão de leitura, não de cobertura: um placar que lista
- * só o que passou faz o leitor concluir que o resto passou junto. Então o que
- * falta é EXERCITADO e reportado como BLOQUEADO — estado que acusa quem planejou,
- * não quem construiu.
- *
- * O 17 merece atenção especial, porque é o verde vazio perfeito: "lead sem sinal
- * não mostra score inventado" é trivialmente verdadeiro num produto que não
- * mostra score NENHUM. Ele só passa a significar alguma coisa depois que o 15
- * existir — e por isso fica preso ao 15.
- */
-async function cenariosQueFaltam(sufixo: string): Promise<void> {
-  // Classificador (não é a prova): recurso que ninguém escreveu acusa quem
-  // planejou; recurso escrito e quebrado acusa quem construiu. A prova do
-  // comportamento é a tela, logo abaixo.
-  const referencias = execFileSync(
-    "bash",
-    ["-lc", "grep -rl crm_lead_scores lib workers app components hooks 2>/dev/null | wc -l"],
-    { encoding: "utf8" },
-  ).trim();
-  const ninguemLe = referencias === "0";
-
-  const { rows } = await pool.query<{ id: string; title: string }>(
-    `select l.id, l.title from crm_leads l
-      where l.organization_id = $1 and l.pipeline_id = $2 and l.status = 'open'
-      order by l.created_at limit 1`,
-    [ORG, (CREDS.crm_vivo as { pipeline_id: string }).pipeline_id],
-  );
-  const alvo = rows[0];
-  if (!alvo) throw new Error("board da demo sem lead aberto — os cenários 15/17 não se montam");
-
-  // Score PERSISTIDO de propósito: o cenário 15 é sobre o card LER o score. Um
-  // score dentro de transação desfeita não chegaria à tela nenhuma.
-  await pool.query(
-    `insert into crm_lead_scores (lead_id, organization_id, ai_probability, ai_probability_reason,
-                                  ai_probability_evidence, ai_probability_at, ai_probability_band)
-     values ($1, $2, 72, 'dois compromissos e nenhuma objeção aberta', $3::jsonb, now(), 'quente')
-       on conflict (lead_id) do update set ai_probability = excluded.ai_probability,
-            ai_probability_reason = excluded.ai_probability_reason,
-            ai_probability_evidence = excluded.ai_probability_evidence,
-            ai_probability_band = excluded.ai_probability_band`,
-    [alvo.id, ORG, JSON.stringify(LASTRO)],
-  );
-
-  const browser = await chromium.launch();
-  try {
-    const page = await browser
-      .newContext({ viewport: { width: 1440, height: 900 } })
-      .then((c) => c.newPage());
-    page.setDefaultTimeout(60_000);
-    await login(page, "manager");
-    await gotoBoard(page);
-
-    const { card } = await cardLocator(page, alvo.title);
-    const texto = ((await card.innerText()) ?? "").replace(/\s+/g, " ");
-    const mostraNumero = /\b72\s*%/.test(texto);
-    const mostraMedidor = (await card.locator("[class*='bg-accent'][style*='width']").count()) > 0;
-    await shotCard(page, alvo.title, `wave-5-cenario15-card-com-score-no-banco${sufixo}.png`);
-
-    record(
-      "S15",
-      "CENÁRIO 15 do briefing: card mostra medidor + número",
-      mostraNumero && mostraMedidor,
-      `lead com score 72 GRAVADO no banco → card diz "${texto.slice(0, 80)}" ` +
-        `(número=${mostraNumero} medidor=${mostraMedidor})` +
-        (ninguemLe ? " — nenhum arquivo de app lê crm_lead_scores: não começou" : ""),
-      mostraNumero && mostraMedidor ? "PASS" : ninguemLe ? "BLOQUEADO" : "FALHA",
-    );
-    record(
-      "S15.hover",
-      "CENÁRIO 15: hover revela as 3 evidências e leva ao momento da conversa",
-      false,
-      "sem medidor na tela não há o que revelar — preso ao S15",
-      "BLOQUEADO",
-    );
-    record(
-      "S17",
-      "CENÁRIO 17: lead sem sinal NÃO mostra score inventado",
-      false,
-      mostraNumero
-        ? "o S15 existe — este critério pode passar a valer"
-        : "VERDE VAZIO se medido agora: nenhum card mostra score algum, então 'não mostra score inventado' " +
-          "é verdade por ausência. Só significa alguma coisa depois do S15.",
-      "BLOQUEADO",
-    );
-  } finally {
-    await browser.close();
-    const r = await pool.query(`delete from crm_lead_scores where lead_id = $1`, [alvo.id]);
-    console.info(`[limpeza] linha de score de teste removida (${r.rowCount})`);
-  }
-}
+// Os cenários 15 e 17 do briefing viviam aqui como marcadores BLOQUEADOS,
+// enquanto ninguém os media. Agora existe aparato de verdade para eles em
+// `tests/capture-wave-5-tela.ts`, e manter os marcadores criaria dois
+// instrumentos afirmando o mesmo cenário com vereditos diferentes — que é
+// exatamente o que eu reprovaria em qualquer outro lugar.
 
 async function main(): Promise<void> {
-  const sufixo = carimbar([
+  carimbar([
     "supabase/migrations/20260725040000_0074_lead_score_com_evidencia.sql",
     "supabase/migrations/20260725050000_0075_score_sai_do_lead_para_tabela_propria.sql",
     "lib/kanban/score-band.ts",
@@ -759,7 +680,6 @@ async function main(): Promise<void> {
     await coerenciaFaixaScore();
     await caminhadaContraATrava();
     histerese();
-    await cenariosQueFaltam(sufixo);
   } finally {
     await pool.end().catch(() => null);
   }
