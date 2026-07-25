@@ -298,6 +298,72 @@ export async function shotPage(page: Page, arquivo: string, fullPage = true): Pr
 }
 
 /**
+ * PLACAR QUE COBRA A LISTA — o critério que nunca é avaliado deixa de sumir.
+ *
+ * Hoje eu construí um helper para a LISTA VAZIA não passar em silêncio e caí no
+ * vizinho: acrescentei dois critérios e esqueci de incluí-los no caminho de
+ * retorno antecipado, então eles simplesmente NÃO APARECERAM — sem vermelho para
+ * investigar e com o placar de pé. São duas ausências diferentes: o ALVO que não
+ * existe e o CRITÉRIO que não chega a ser avaliado. A primeira virou mecanismo
+ * de manhã; esta é a segunda.
+ *
+ * A lista dos critérios é declarada ANTES de medir. No fim, quem foi declarado e
+ * nunca registrado sai como **AUSENTE** — e ausente é falha do INSTRUMENTO, não
+ * do produto: ninguém precisa caçar defeito, alguém precisa consertar o teste.
+ */
+export type EstadoCriterio = "PASS" | "FALHA" | "BLOQUEADO" | "AUSENTE";
+
+export function criarPlacar(nome: string, esperados: string[]) {
+  const vistos = new Map<string, EstadoCriterio>();
+  const linhas: { n: string; titulo: string; estado: EstadoCriterio; detalhe: string }[] = [];
+
+  function record(
+    n: string,
+    titulo: string,
+    ok: boolean,
+    detalhe: string,
+    estado?: EstadoCriterio,
+  ): void {
+    const e: EstadoCriterio = estado ?? (ok ? "PASS" : "FALHA");
+    if (!esperados.includes(n)) {
+      throw new Error(
+        `[placar] critério "${n}" foi registrado sem estar na lista declarada. ` +
+          `A lista é o contrato do placar: critério fora dela não é cobrado se sumir.`,
+      );
+    }
+    vistos.set(n, e);
+    linhas.push({ n, titulo, estado: e, detalhe });
+    console.info(`${e.padEnd(9)} [${n}] ${titulo} — ${detalhe}`);
+  }
+
+  function fechar(): number {
+    for (const n of esperados) {
+      if (vistos.has(n)) continue;
+      linhas.push({
+        n,
+        titulo: "(declarado e nunca avaliado)",
+        estado: "AUSENTE",
+        detalhe:
+          "este critério estava na lista e nenhum caminho do aparato chegou a ele — " +
+          "falha do INSTRUMENTO, não do produto",
+      });
+    }
+    const conta = (e: EstadoCriterio) => linhas.filter((l) => l.estado === e).length;
+    const ausentes = conta("AUSENTE");
+    console.info(
+      `\n=== ${nome}: ${conta("PASS")} verdes · ${conta("FALHA")} vermelhos · ` +
+        `${conta("BLOQUEADO")} bloqueados${ausentes > 0 ? ` · ${ausentes} AUSENTES` : ""} ===`,
+    );
+    for (const l of linhas.filter((x) => x.estado !== "PASS")) {
+      console.info(`  ${l.estado} [${l.n}] ${l.titulo}: ${l.detalhe}`);
+    }
+    return conta("FALHA") + ausentes;
+  }
+
+  return { record, fechar };
+}
+
+/**
  * CARIMBO DE PROCEDÊNCIA — mecaniza a lei do §7.3/§7.11 em vez de confiar nela.
  *
  * Proposta do `@Arquiteto`, e o argumento dele é o que decide: o regente caiu na

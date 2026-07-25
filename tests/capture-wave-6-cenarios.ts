@@ -43,7 +43,17 @@ import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 
 import { ACTIVITY_LABELS, actorShape, type ActivityType } from "@/lib/leads/activity-vocabulary";
-import { CREDS, EVIDENCE, cardLocator, carimbar, casoConstruido, gotoBoard, login, shotPage } from "./qa-helpers";
+import {
+  CREDS,
+  EVIDENCE,
+  cardLocator,
+  carimbar,
+  casoConstruido,
+  criarPlacar,
+  gotoBoard,
+  login,
+  shotPage,
+} from "./qa-helpers";
 
 const envFile = fs.readFileSync(".env.local", "utf8");
 const envVars: Record<string, string> = {};
@@ -62,13 +72,24 @@ const DONO = (CREDS.users as Record<string, { id: string }>).manager!.id;
 const PREFIXO = "QA-W6";
 const RUN = randomUUID().slice(0, 8);
 
-type Estado = "PASS" | "FALHA" | "BLOQUEADO";
-const resultados: { n: string; nome: string; estado: Estado; detalhe: string }[] = [];
-function record(n: string, nome: string, ok: boolean, detalhe: string, estado?: Estado): void {
-  const e: Estado = estado ?? (ok ? "PASS" : "FALHA");
-  resultados.push({ n, nome, estado: e, detalhe });
-  console.info(`${e.padEnd(9)} [${n}] ${nome} — ${detalhe}`);
-}
+/**
+ * A LISTA É DECLARADA AQUI, e é o contrato do placar: critério que estiver nela
+ * e não for avaliado sai como AUSENTE no fim. Foi assim que o D19.rotulo e o D25
+ * sumiram — acrescentados no meio e esquecidos no caminho de retorno antecipado.
+ */
+const CRITERIOS = [
+  "D20.contrato",
+  "D22.formas",
+  "D18",
+  "D19",
+  "D19.rotulo",
+  "D20",
+  "D21",
+  "D23",
+  "D24",
+  "D25",
+];
+const { record, fechar } = criarPlacar("WAVE 6", CRITERIOS);
 
 /**
  * O cenário 20 é IMPOSSÍVEL pelo vocabulário, e isso se verifica sem tocar em
@@ -451,16 +472,12 @@ async function main(): Promise<void> {
   } finally {
     await browser.close();
     console.info(`[limpeza] ${await limpar()} lead(s) de teste removidos`);
+    // O FECHAMENTO VIVE NO `finally`, e a razão é o próprio defeito que este
+    // placar existe para pegar: o caminho "dossiê não existe" usa `return`, que
+    // sai da função inteira — com o fechamento depois do `try`, ele seria
+    // PULADO. O mecanismo contra critério pulado estava, ele mesmo, sendo pulado.
+    if (fechar() > 0) process.exitCode = 1;
   }
-
-  const pass = resultados.filter((r) => r.estado === "PASS").length;
-  const falha = resultados.filter((r) => r.estado === "FALHA").length;
-  const bloq = resultados.filter((r) => r.estado === "BLOQUEADO").length;
-  console.info(`\n=== WAVE 6: ${pass} verdes · ${falha} vermelhos · ${bloq} bloqueados ===`);
-  for (const r of resultados.filter((x) => x.estado !== "PASS")) {
-    console.info(`  ${r.estado} [${r.n}] ${r.nome}: ${r.detalhe}`);
-  }
-  if (falha > 0) process.exit(1);
 }
 
 main().catch(async (err) => {
