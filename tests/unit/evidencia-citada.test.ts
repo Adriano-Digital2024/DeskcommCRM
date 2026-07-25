@@ -23,6 +23,14 @@ import { describe, expect, it } from "vitest";
 
 const RAIZ = process.cwd();
 
+/** Subpastas reais de `evidence/` — o discriminador do caminho relativo. */
+const SUBPASTAS = new Set(
+  fs
+    .readdirSync(path.join(RAIZ, "evidence"), { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name),
+);
+
 /** Tudo que o git ENTREGA — não o que o disco tem. */
 function versionados(padrao: string): string[] {
   return execFileSync("git", ["ls-files", padrao], { cwd: RAIZ, encoding: "utf8" })
@@ -88,7 +96,18 @@ function referenciasBrutas(texto: string): string[] {
     //
     // Exigir o prefixo derrubaria a cobertura dos documentos desta entrega, que
     // citam por nome puro — trocaria capturar demais por capturar de menos.
-    if (r.startsWith("evidence/") || !r.includes("/")) achados.push(r);
+    // Terceira forma: caminho relativo para SUBPASTA real de `evidence/`.
+    // `evidence/wave3-pulso/` nasceu nesta wave, e sem esta linha uma citação
+    // como `wave3-pulso/pulso-claro-2-durante.png` teria barra, não começaria
+    // com `evidence/`, e o guarda a trataria como MENÇÃO — ignorando em
+    // silêncio. Prova em subpasta era o único lugar onde a citação podia morrer
+    // sem ninguém ver.
+    //
+    // O primeiro segmento tem que ser subpasta REAL: é o que separa
+    // `wave3-pulso/x.png` de `org1/conv1/msg1.jpg`, que estruturalmente são
+    // idênticos.
+    if (r.startsWith("evidence/") || !r.includes("/") || SUBPASTAS.has(r.split("/")[0]!))
+      achados.push(r);
   }
   return achados.filter(
     (r) =>
@@ -150,7 +169,7 @@ const LEGADO = new Set([
  * que ele mesmo inventou**. Reprovar por motivo errado é tão ruim quanto passar
  * por motivo errado.
  */
-function citadas(doc: string): string[] {
+function refsNormalizadas(doc: string): string[] {
   const texto = fs.readFileSync(path.join(RAIZ, doc), "utf8");
   const dir = path.posix.dirname(doc);
   const refs = referenciasBrutas(texto);
@@ -158,8 +177,16 @@ function citadas(doc: string): string[] {
     ...new Set(
       refs.map((ref) => {
         const limpa = ref.replace(/^\.\//, "");
-        // Tem diretório próprio? Respeita. Senão, resolve contra a pasta do doc.
-        return limpa.includes("/") ? limpa : path.posix.join(dir === "." ? "evidence" : dir, limpa);
+        const base = dir === "." ? "evidence" : dir;
+        // Sem diretório → resolve contra a pasta do documento.
+        if (!limpa.includes("/")) return path.posix.join(base, limpa);
+        // Subpasta REAL de evidence/ → também resolve. Aceitar a referência sem
+        // normalizá-la deixaria `wave3-pulso/x.png` procurando na raiz do repo:
+        // o guarda aceitaria a citação e depois não acharia o arquivo — mudei um
+        // lado e o outro não acompanhou, que é o defeito desta wave inteira.
+        if (SUBPASTAS.has(limpa.split("/")[0]!)) return path.posix.join("evidence", limpa);
+        // Caminho próprio (fora de evidence/): respeita como está.
+        return limpa;
       }),
     ),
   ];
@@ -180,6 +207,25 @@ describe("evidência citada", () => {
     ).toEqual([]);
   });
 
+  it("nenhuma imagem versionada fica sem documento que a justifique", () => {
+    // O SEGUNDO LADO DA REGRA. Achado 7 do @MaestroConexoes: o guarda cobrava
+    // "citada → versionada" e não o inverso, embora a regra tenha os dois lados
+    // ("imagem citada é lastro; imagem não citada é artefato de build").
+    //
+    // Sem esta asserção, imagem podia entrar antes do documento que a justifica
+    // e ficar lá para sempre — corroendo por dentro o argumento de peso que
+    // sustentou a decisão de manter o `evidence/` inteiro fora do repositório.
+    const citadas = new Set(DOCS.flatMap((d) => refsNormalizadas(d)));
+    const orfas = versionados("evidence/")
+      .filter((f) => EXT.test(f))
+      .filter((f) => !citadas.has(f));
+    expect(
+      orfas,
+      "estas imagens estão versionadas e nenhum documento as cita — ou cite, ou não versione:\n" +
+        orfas.map((o) => `  ${o}`).join("\n"),
+    ).toEqual([]);
+  });
+
   it("a descoberta de documentos não pode vir vazia", () => {
     // Sem esta guarda, um erro no `git ls-files` ou no filtro faria a suíte
     // inteira passar sem verificar nada — verde vácuo no nível do arquivo.
@@ -197,7 +243,7 @@ describe("evidência citada", () => {
       expect(fs.existsSync(caminho), `${doc} está em git ls-files e não existe no disco`).toBe(true);
 
       const entregues = new Set(versionados("."));
-      const mortas = citadas(doc).filter((ref) => !entregues.has(ref));
+      const mortas = refsNormalizadas(doc).filter((ref) => !entregues.has(ref));
 
       if (LEGADO.has(doc)) {
         // Quarentena auto-limpante: se este documento ficou limpo, ele PRECISA

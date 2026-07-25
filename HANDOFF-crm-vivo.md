@@ -3044,3 +3044,40 @@ segundo teste exige que **todo item da quarentena continue alcançável**; item 
 
 Ambos provados por mutação: documento limpo posto na lista acusa *"REMOVA-O"*; documento fora da
 cobertura acusa *"REMOVA-OS"*.
+
+### As provas desta wave, apontadas — e a regra fechando o segundo lado
+
+Achado 7 do `@MaestroConexoes`: o guarda cobrava *citada → versionada* e **não** o inverso, embora
+a regra tenha os dois lados (*"imagem citada é lastro; imagem não citada é artefato de build"*).
+Ele mediu: **34 versionadas, 22 citadas, 12 órfãs** — incluindo o print apresentado como prova do
+cenário 11.
+
+E o enunciado dele é mais justo que "12 desperdiçadas": são **12 imagens que entraram antes do
+documento que as justifica**. O risco não é o estado de hoje — é a regra **não ter como perceber
+se o documento nunca vier**, e o argumento dos 6,7 MB ser corroído por dentro.
+
+**A correção não foi uma lista de pendência: foi citá-las.** Elas provam exatamente o que este
+handoff descreve; faltava o handoff apontar.
+
+| prova | o que ela mostra |
+|---|---|
+| `evidence/wave-3-c11-veto-na-tela.png` | *"Envio bloqueado · Bot Padrão E2E — Não enviei: limite de ritmo de envio atingido"* |
+| `evidence/wave-3-2.8-painel-ok.png` | o painel do inbox mostrando lead e atividade, com motivo humano |
+| `evidence/wave-3-2.8-painel-falha.png` | as três seções dizendo *"Não consegui ler estes dados"* com "Tentar de novo" |
+| `evidence/sonda-pulso-durante.png` · `evidence/sonda-pulso-depois.png` | o par que provou o pulso **no pixel**, e o retorno byte a byte ao repouso |
+| `wave3-pulso/pulso-claro-2-durante.png` · `wave3-pulso/pulso-claro-3-cessou.png` | o pulso no tema claro: aparece e cessa |
+| `wave3-pulso/pulso-escuro-1-antes.png` · `wave3-pulso/pulso-escuro-2-durante.png` | o mesmo no tema escuro |
+| `wave3-pulso/pulso-reduce-1-antes.png` · `wave3-pulso/pulso-reduce-2-durante.png` | movimento reduzido: sem animação, estado ainda legível |
+| `wave3-pulso/pulso-claro-1-antes.png` | o repouso, referência das comparações acima |
+
+**Achado 8, e a subpasta nasceu nesta wave:** `evidence/wave3-pulso/` só podia ser citada por
+caminho relativo — que tem barra e não começa com `evidence/`, então o guarda a trataria como
+**menção**, ignorando em silêncio. **Prova em subpasta era o único lugar onde a citação podia
+morrer sem ninguém ver.** Corrigido: caminho cujo primeiro segmento é **subpasta real** de
+`evidence/` conta — é o que separa `wave3-pulso/<arquivo>.png` de `org1/conv1/<arquivo>.jpg`, que
+estruturalmente são idênticos.
+
+> Os exemplos acima estão escritos como **template** (`<arquivo>`) de propósito: ao redigir este
+> parágrafo, o exemplo virou citação e o guarda reprovou o handoff — **quarta vez que documentar o
+> problema cria o problema**. A saída foi usar a regra do próprio guarda, que descarta template por
+> não nomear arquivo nenhum.
