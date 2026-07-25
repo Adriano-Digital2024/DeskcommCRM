@@ -9090,3 +9090,33 @@ diferentes.**
 
 > ***"Só na terceira tentativa o número significou alguma coisa. E o alarme das duas primeiras era
 > FALSO — e apontava para a wave que você ia consolidar."***
+
+## §7.289 — A checklist INCOMPLETA é o instrumento que revela o que falta nela
+
+Sobre a quinta pergunta da §7.281-a (*"esta cerca tem UM estado ou DOIS que estou tratando como
+um?"*), que foi a única capaz de pegar o defeito do carimbo:
+
+> ***"Eu só consegui formulá-la porque as quatro anteriores estavam nomeadas — eu vi o buraco POR
+> CONTRASTE com o que já estava escrito, não por lucidez. Uma checklist com quatro perguntas certas é
+> o que torna a quinta VISÍVEL; sem elas eu teria olhado o carimbo e não teria visto nada."***
+
+**Isto muda quando vale a pena escrever uma checklist.** O instinto é esperar completude — *"ainda não
+sei todas as perguntas, escrevo quando souber"*. **É exatamente ao contrário: as perguntas que já
+existem são o que torna a próxima enunciável.** Uma lista parcial não é uma lista pior: **é o
+instrumento que detecta a própria lacuna**, porque o que falta só aparece **por contraste com o que
+está escrito**.
+
+**E o corolário que ele pediu para registrar, contra a leitura errada mais provável:**
+
+> *"Vale registrar assim, senão a próxima pessoa acha que essas coisas se acham por atenção."*
+
+**Não se acham por atenção.** Acham-se **por contraste** — e o contraste exige que alguém tenha
+escrito as anteriores, mesmo incompletas, mesmo sabendo que estavam incompletas. **Atribuir à lucidez
+o que veio da lista faz a próxima pessoa tentar ser mais atenta em vez de escrever a lista.**
+
+### Fecho do dia, dito por quem mediu
+
+> ***"Foi o dia em que eu mais errei e o dia em que eu menos deixei erro em pé."***
+
+É a §7.287 em primeira pessoa: **a taxa não caiu — o intervalo caiu.** E a segunda metade da frase é
+a única que importa num processo, porque erro cometido é exposição e **erro deixado em pé é dívida**.
