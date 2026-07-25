@@ -6376,3 +6376,37 @@ quem mede anuncia início e fim, e quem escreve espera.
 **Corolário sobre o resultado em curso:** medição que se sobrepôs à mudança de disco **não é
 inválida por suposição nem válida por otimismo** — é indeterminada até alguém comparar os horários.
 A pergunta certa não é "deu certo?", é "a sua janela cruzou a escrita?".
+
+## §7.195 — Defeito que vive em ESTADO ACUMULADO morre com a higiene do experimento
+
+A segunda sonda injetava o 401 **e dava reload** — e deu `authenticated` **nos dois lados**. O reload
+reinicializa o módulo e **zera a memo**: o experimento destruía exatamente o estado de que o defeito
+depende.
+
+**O instinto de "começar limpo" é o correto para quase tudo e é fatal aqui.** Quando o defeito vive
+em estado acumulado — memo de módulo, cache de processo, sessão, conexão, tabela de assinaturas —
+qualquer higiene que zere o estado **apaga o defeito antes da medição**, e o resultado limpo é lido
+como ausência de defeito.
+
+**Regra:** antes de higienizar entre rodadas, pergunte **onde o defeito mora**. Se mora em estado que
+sobrevive à ação e não ao reset, o reset é parte do problema, não do método. O roteiro que funcionou
+foi o único que preservava o substrato: 401, **sem reload**, e um SEGUNDO canal no mesmo
+carregamento.
+
+## §7.196 — Medir OS DOIS LADOS é o que torna visível que o experimento não discrimina
+
+A primeira sonda mediu sem injetar falha e deu `authenticated`. Parecia prova — mas **a versão antiga
+produziria o mesmo**: sem falha não há memo envenenada. A observação era compatível com *"consertei"*
+e com *"não havia defeito agora"*.
+
+E a frase que fecha: ***"um par que dá o mesmo resultado dos dois lados não é prova de nada — e a
+primeira vez eu tinha só um lado, que é como o empate passa despercebido."***
+
+**Com um lado só, o empate é invisível.** Sempre sai um número plausível, e nada sinaliza que ele não
+distingue nada. Medir com e sem o conserto não é rigor extra nem cinto de segurança: **é o único
+mecanismo que revela um experimento que não discrimina** — o resto é confiar no próprio desenho, que
+é o que falha primeiro.
+
+**Regra:** todo conserto é reportado como PAR (com/sem), lado a lado. Par empatado é o veredito
+"não medi nada", e é um veredito legítimo — o perigoso é o lado único, que nunca empata porque nunca
+compara.
