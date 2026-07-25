@@ -7361,3 +7361,30 @@ regeneração produz uma imagem em que **a legenda afirma o que a captura não m
 **Decisão sobre estas 15: não restaurar e não reverter.** A regeneração é legítima e o conteúdo
 melhorou (mais história real). O que falta é **declarar** — e a declaração vira parte do fechamento
 da wave 7, não uma tarefa avulsa.
+
+## §7.237 — O custo de ADIAR inclui todos que passam a carregar o item aberto
+
+A instrução foi *"anote como item, não como intenção — intenção adiada some, item adiado espera"*. A
+correção é justa: **"item adiado espera" vale quando o item é CARO.**
+
+> *"Anotar custava mais que fazer, porque o item era um grep — e o custo de anotar incluía **você e eu
+> carregarmos a dívida na cabeça** até alguém executar."*
+
+**O limiar do "faça agora" não é "é barato para mim": é "é mais barato que N pessoas lembrarem".**
+Anotação tem custo distribuído e invisível — cada participante passa a manter um laço aberto, e o
+laço custa atenção em toda decisão seguinte, não só no momento de executar.
+
+**Resultado da varredura, que cabia numa linha:** em produção há **um único** chamador de `setAuth` —
+e já tem o `await`. **A janela existia num lugar só e está fechada.** As demais ocorrências são
+instrumentos, e lá a janela morde de outro jeito: *sonda que assina antes de o token valer mede canal
+anônimo e devolve "nada chega" — laudo falso com cara de resultado.*
+
+### E o reforço da §7.227, com a formulação de quem quase escreveu o comentário
+
+> *"Eu tinha o comentário JÁ REDIGIDO na cabeça quando fui conferir a API por via das dúvidas. Se
+> tivesse escrito primeiro, aquele 'limite conhecido' estaria no arquivo hoje — **verdadeiro na
+> aparência e falso no fato, e sobreviveria a todas as leituras futuras**."*
+
+É a razão exata de o limite declarado ser dívida permanente: ele **não tem mecanismo de expiração**.
+Um teste quebra quando o mundo muda; um comentário que diz *"não dá para"* permanece plausível para
+sempre, e cada leitor novo o herda como fato verificado por alguém.
