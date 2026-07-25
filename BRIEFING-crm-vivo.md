@@ -5197,3 +5197,37 @@ zero, porque a consulta já existia.
 **A confusão `undefined`/`null` não é um erro de teste nem um erro de handler — é um buraco do
 idioma**, e ele aparece em qualquer camada onde algo é lido parcialmente. Onde houver projeção,
 pergunte se "não veio" e "não tem" estão separados.
+
+## §7.143 — Exigir dados representativos para provar propriedade do ALGORITMO é um portão que nunca abre
+
+Eu condicionei o conserto da densidade da timeline a uma medição: *"ataque quando a mediana passar
+de ~30"*. **A regra estava errada, e de dois jeitos.**
+
+**Primeiro, a conversão que eu não medi.** Li "mediana 9 atividades" e concluí "um punhado de
+blocos" — supondo taxa de colapso que ninguém apurou. Medido depois: um lead com **26 itens produz
+26 blocos, zero colapsáveis**. Nove atividades espalhadas dão nove blocos. Minha inferência
+carregava uma premissa escondida sobre o comportamento que eu estava justamente avaliando.
+
+**Segundo, e é o erro de método:** o defeito é **propriedade do algoritmo**, não previsão sobre
+dados. O agrupamento junta dentro de 60s e **não tem mecanismo de escala nenhum** — o número de
+blocos cresce linearmente com episódios distintos, sem teto. Isso se prova lendo o algoritmo. Exigir
+dado representativo para aceitá-lo adia indefinidamente um conserto por falta de uma evidência que
+**este ambiente não pode produzir** — e o portão parece rigor.
+
+**E o agravante, que só apareceu porque ele foi medir:** os dados disponíveis eram artefato das
+próprias sondas (116 de 116 atividades do alvo eram `stage_changed` das últimas 24h, geradas pelo
+time). O intervalo mediano entre elas é 99s e a janela é 60s. **Calibrar a janela ali seria calibrar
+contra a cadência das próprias sondas** — e teria FUNCIONADO, produzindo um número sobre nós mesmos
+com aparência de resultado sobre o produto.
+
+**A distinção, e ela decide qual pergunta merece medição:**
+
+| a afirmação é sobre… | prova-se por |
+|---|---|
+| o que o ALGORITMO faz para qualquer entrada | ler o algoritmo — dado não acrescenta |
+| o que os DADOS REAIS fazem hoje | medição, e só vale com amostra não fabricada por você |
+
+Pedir a segunda para decidir a primeira não é cautela: é **um veto disfarçado de critério**.
+
+**Corolário do parâmetro:** quando um limiar for inevitável, ancore-o no que o ambiente não
+falsifica. Aqui: **tamanho da lista**, nunca tempo — tempo é o eixo que este banco mente.
