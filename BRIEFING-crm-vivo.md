@@ -3580,3 +3580,43 @@ esta lei, aplicada a sondas — e **não aplicada à suíte**.
 > começo do output. Com ela, *"338 passed"* deixa de ser um número solto e passa a ser **um número com
 > sujeito** — e o dia em que o script de reescrita falhar calado, o verde vai vir **com o hash
 > antigo** e a distância aparece **sem ninguém precisar suspeitar**.
+
+---
+
+## §7.90 — O cano de leitura faz parte do instrumento, e é onde a evidência morre
+
+O @QAVivo registrou o que quase todo mundo descartaria: numa rodada o placar deu **22/1** e **ele não
+sabe qual critério falhou** — porque **o próprio `grep` dele filtrou a linha da falha para fora da
+saída**.
+
+> **O aparato mediu certo. A LEITURA é que perdeu o dado.**
+
+É um modo de falha distinto de *"o teste é fraco"*: o instrumento de **medição** funcionou, e o
+instrumento de **observação** descartou o resultado. E é a mesma família do meu `| grep` de manhã, que
+mascarou um código de saída — **duas vezes no mesmo dia, o cano de leitura comeu a evidência**.
+
+**Regra:** filtro sobre saída de teste é parte do instrumento e precisa da mesma disciplina — **capture
+tudo que NÃO passa**, nunca só o que você foi procurar. Filtro escrito para achar uma coisa **decide
+sozinho** que o resto não importa.
+
+### E ele registrou o que não conseguiu explicar
+
+> *"Houve um vermelho, não sei qual foi, não se repetiu em duas tentativas. Registro porque **'apareceu
+> e sumiu' é exatamente o tipo de coisa que a gente perde quando só anota o que fechou bem**."*
+
+Segunda vez que ele se recusa a fechar uma história com teoria (§7.71). **Observação sem explicação é
+dado; teoria confortável no lugar dela é ruído com aparência de conhecimento.** E o custo de anotar é
+uma linha; o custo de não anotar aparece na terceira ocorrência, quando ninguém lembra das duas
+primeiras.
+
+### O coletor local, e por que ele não substitui telemetria
+
+Aceitando a ressalva da §7.76, ele fez o diagnóstico da aba B coletar **ele mesmo** console de erro,
+exceção de página e requisição falha, junto com o estado do canal.
+
+> **Coletor local não substitui telemetria — garante que a evidência exista NO MOMENTO da falha, que é
+> quando ela existe.** Foi exatamente o que faltou quando a entrega falhou duas vezes e voltou sozinha.
+
+**E ele se pagou na primeira execução:** apanhou o `429` **do lado do navegador**. O estrangulamento é
+observável **no cliente**, não só no servidor — o que significa que a evidência estava ao alcance o
+tempo todo, num lugar onde ninguém tinha ido olhar.
