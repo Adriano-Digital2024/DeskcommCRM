@@ -638,6 +638,24 @@ async function main(): Promise<void> {
       // NOMES têm de estar; os VALORES não podem estar. Critério que só cobra a
       // presença empurra para o excesso — foi o mesmo raciocínio da evidência
       // "até três, nunca cota".
+      // NÃO PEDIDO ≠ VAZIO, e a diferença me custou um vermelho falso reportado.
+      //
+      // A primeira versão selecionava só `type,actor_kind` e afirmava sobre
+      // `reason`. O campo vinha `undefined` — ausente da RESPOSTA, não ausente do
+      // BANCO — e eu reportei "grava sem dizer o que mudou" sobre uma coluna que
+      // eu nunca tinha pedido. O instrumento afirmava sobre um dado que ele não
+      // buscou.
+      //
+      // `undefined` e `null` são estados diferentes e o JavaScript os confunde no
+      // `??`. Aqui eles se separam: undefined acusa o INSTRUMENTO, null acusa o
+      // produto.
+      if (humana && !("reason" in humana)) {
+        throw new Error(
+          "[D20] a consulta não trouxe `reason` — o critério afirma sobre um campo que não foi " +
+            "pedido. Não-pedido não é vazio, e reportar isso como defeito acusa o produto por " +
+            "uma coluna ausente da minha própria query.",
+        );
+      }
       const registro = `${humana?.reason ?? ""} ${JSON.stringify(humana?.payload ?? {})}`;
       const dizOQueMudou = /t[íi]tulo|title|valor|value|est[áa]gio|stage|dono|owner|descri/i.test(registro);
       record(
