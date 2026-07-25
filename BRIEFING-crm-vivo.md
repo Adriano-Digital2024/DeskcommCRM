@@ -5908,3 +5908,49 @@ por acidente de índice, o critério não é `+N −0` — é **provar que a sub
 cada caso em transação revertida, em vez de org compartilhada com limpeza no fim) **e que a nova
 versão morde** (falha quando o filtro do trigger é removido). Autorização concedida sob essas duas
 provas, citadas no corpo do commit.
+
+## §7.172 — Decisão que vira no TERCEIRO DECIMAL não é decisão, é sorteio
+
+O invariante afirmava que o planner escolhe um índice específico. Com estatística fresca, ele ainda
+escolhia Bitmap Heap Scan por outro índice: **custo 7.06 contra 7.07**. A tabela é pequena demais
+para o índice parcial compensar — **a escolha virava no terceiro decimal**.
+
+Um invariante que afirma sobre uma decisão decidida por 0.01 **não mede propriedade do schema, mede
+ruído** — e passou tempo verde por sorte, o que é pior do que ter falhado desde o início.
+
+**E a consequência tem de ir para a documentação do teste, não só para o código.** Com
+`enable_bitmapscan = off` somado ao `seqscan`, o que o teste prova mudou: não é mais *"o planner
+escolhe este índice"* — é *"forçado a usar índice, ele escolhe ESTE"*. Continua sendo garantia real
+(a sabotagem confirma que discrimina), mas é **mais estreita**, e quem ler daqui a três meses vai
+acreditar na frase antiga se ela não for reescrita.
+
+**Regra para toda a classe:** invariante de escolha de plano em tabela pequena é frágil por
+construção. O que normalmente se quer garantir é que **o índice existe e é utilizável** — e isso se
+mede sem depender do planner desempatar.
+
+## §7.173 — Sabotagem que reprova TUDO prova pouco; a que reprova o SUBCONJUNTO CERTO prova discriminação
+
+Removido o filtro do trigger, ficaram vermelhos **exatamente os 5 casos "não anda" mais o teste de
+ciclo**, e os 5 casos **"anda" seguiram verdes**.
+
+**É a assimetria que prova.** Sabotagem que derruba a suíte inteira demonstra apenas que algo
+quebrou — compatível com "o instrumento discrimina" e com "o instrumento explodiu". A que derruba
+**só o subconjunto que deveria cair** demonstra que ele **separa**, que é a única propriedade que
+importa numa guarda.
+
+**Ao sabotar, preveja quais casos devem cair — e confira os que NÃO caíram.** O verde que sobrevive
+à sabotagem é metade da prova, e é a metade que quase ninguém olha.
+
+## §7.174 — Histórico torna a inferência confortável, e conforto suprime a verificação
+
+A autoria do commit que capturou o arquivo foi **inferida**, não conferida: *"ele já tinha feito
+duas vezes, então a terceira devia ser dele."* Era um terceiro, que nem sabia que aquele trabalho
+existia.
+
+**A inferência razoável sobre autoria é a forma mais educada de acusação sem prova** — e o mecanismo
+é perverso: o histórico **aumenta a confiança** e por isso **reduz a checagem**, exatamente ao
+contrário do que deveria. Quanto mais plausível o suspeito, mais barato conferir parece
+desnecessário.
+
+**Regra:** atribuição de autoria é fato verificável em um comando. Onde houver um comando, não há
+lugar para inferência — e a existência de histórico é motivo para conferir, não para dispensar.
