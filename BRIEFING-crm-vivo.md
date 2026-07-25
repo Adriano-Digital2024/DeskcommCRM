@@ -3890,3 +3890,56 @@ mesmo**, sobre código intacto — devolvendo verde que eu quase li como *"o tes
 **E o fecho, que é dele:** a proposta do hash fica **melhor acompanhada desta nota** — senão alguém lê
 *"338 passed, baseline `X`"* e ainda assim rodou sobre preparação quebrada. **O hash diria a verdade
 sobre um estado que ninguém queria.**
+
+---
+
+## §7.99 — Corrigir é tirar a instância; tornar inescrevível é tirar a possibilidade
+
+Formulação do @QAVivo sobre a tríplice final, e ela separa duas coisas que eu vinha tratando como uma:
+
+> **"O defeito não foi corrigido, foi tornado INESCREVÍVEL."**
+
+Verificado: a constraint não exige duas chaves irmãs — exige `factors` não-vazio **com a âncora
+DENTRO** (`evidence @? '$."factors"[*]."ancora"'`). Os dois vocabulários viraram **um**, e a âncora
+deixa de **poder** existir sem a frase que a explica.
+
+| abordagem | efeito |
+|---|---|
+| a minha (exigir as **duas** chaves) | **corrige**: o estado ruim continua escrevível, só que mais difícil |
+| a dele (**uma** fonte, âncora dentro) | **elimina**: não há payload que o banco aceite e a tela não leia |
+
+> **Teste para distinguir:** depois do conserto, **alguém ainda consegue escrever o estado ruim?** Se
+> sim, foi corrigido. Se não, foi eliminado. E só o segundo dispensa vigilância.
+
+## §7.100 — Instrumento que perde a pergunta original mas ganha uma guarda vale mais que apagado
+
+O par de controle da tela nasceu para separar duas hipóteses: *"a tela não sabe mostrar evidência"* ×
+*"a tela lê outra chave"*. Com a §7.99, **a segunda hipótese deixou de existir**.
+
+> **Ele não virou inútil — virou CERCA.** Se alguém reintroduzir a divergência, ele volta a acusar.
+
+**E isto NÃO contradiz a §7.45** (apagar o verde que não prova nada) — a distinção é limpa:
+
+| caso | destino |
+|---|---|
+| a perna do `grep` no fonte | **nunca** provou nada → **apagar** |
+| o par de controle | provou algo **real** que deixou de ser possível → **manter como cerca** |
+
+> O critério não é *"ainda responde à pergunta original?"* — é **"ainda fica vermelho se algo
+> regredir?"**. Instrumento cujo alvo foi eliminado **guarda a eliminação**.
+
+### E duas coisas menores que ele fez certo, e que só aparecem quando alguém as declara
+
+**1. Critério que sobrevive à mudança de contrato com o nome antigo MENTE.** O `C16.k` afirmava que
+lastro só em `factors` é recusado — **verdade no contrato antigo, e exatamente o defeito**; virou o
+payload **canônico**. Ele renomeou e inverteu. É a §7.63 outra vez, agora disparada por **mudança de
+contrato** em vez de por descuido de escrita.
+
+**2. Ele declarou a NÃO-ação.** Não renomeou retroativamente as imagens já citadas pelas narrativas —
+*"renomear quebraria as citações por um ganho de rótulo"* — e disse isso **explicitamente**, *"para não
+parecer que esqueci"*. **Não-ação declarada é decisão; não-ação silenciosa é indistinguível de
+esquecimento** — e quem lê depois não tem como saber a diferença.
+
+**E o carimbo do caso fabricado virou mecanismo:** `-CASO-CONSTRUIDO` no nome do arquivo, como o
+`-ARVORE-SUJA`. Antes, que a prova usava caso construído só se percebia pelo **título do lead dentro do
+print** — **acidente, não declaração**.
