@@ -530,7 +530,7 @@ function compartilhadosNaoDeclarados(): string[] {
  * errados voltando, e não existe caminho de produto que ande para trás.
  */
 export async function atividadeDeTeste(
-  admin: { from: (t: string) => any },
+  admin: SupabaseClient,
   leadId: string,
   campos: Record<string, unknown>,
 ): Promise<{ desfazer: () => Promise<void> }> {
@@ -540,12 +540,17 @@ export async function atividadeDeTeste(
     .eq("id", leadId)
     .single();
   const relogio = (antes as { last_activity_at: string | null } | null)?.last_activity_at ?? null;
-  const { error } = await admin.from("crm_lead_activities").insert({ lead_id: leadId, ...campos });
-  if (error) throw new Error(`[atividadeDeTeste] ${(error as { message: string }).message}`);
+  const { error } = await admin
+    .from("crm_lead_activities")
+    .insert({ lead_id: leadId, ...campos } as never);
+  if (error) throw new Error(`[atividadeDeTeste] ${error.message}`);
   return {
     desfazer: async () => {
-      await admin.from("crm_lead_activities").delete().match({ lead_id: leadId, reason: campos.reason });
-      await admin.from("crm_leads").update({ last_activity_at: relogio }).eq("id", leadId);
+      await admin
+        .from("crm_lead_activities")
+        .delete()
+        .match({ lead_id: leadId, reason: String(campos.reason ?? "") });
+      await admin.from("crm_leads").update({ last_activity_at: relogio } as never).eq("id", leadId);
     },
   };
 }
