@@ -7296,3 +7296,39 @@ inconclusivos) existe no `fechar()` e **não aparece no título**.
 **O veredito de uma wave passa a começar pelo que a invalida.** E vale contra mim: passei o dia
 celebrando "13/0/0" e "23/0/0" — lendo o número que sobe quando está tudo bem, que é o que a §7.230
 refinada acabou de proibir.
+
+## §7.234 — Invalidação PARCIAL de cache: conte as chaves que LEEM, não as que você lembra
+
+O servidor respondia `accepted` e **o card seguia oferecendo o botão**: foi invalidada só a query do
+board, e a lista de propostas vive em outra chave. **Um lado mudou, o outro não acompanhou, e nada
+reclamou** — o defeito de costura do dia inteiro, agora **no cache do cliente**.
+
+E o custo para o usuário é o pior tipo: clicar de novo dá 409, e ele conclui que **o sistema não
+obedeceu**, não que ele já tinha obedecido. **Nenhum teste de servidor pega isso — a rota estava
+certa nos dois casos**, que é a definição de defeito de junção.
+
+**A versão contável (§7.230 refinada), porque "lembrar de invalidar tudo" é regra de autoavaliação:**
+não conte as chaves que você invalidou — **conte as chaves que LEEM a entidade mutada e que você
+NÃO invalidou**. O número que protege é o das esquecidas, e ele sobe exatamente quando você está
+errado.
+
+## §7.235 — Entre INFORMAR e PERMITIR AGIR, ganha agir
+
+A precedência do slot ficou `awaiting > reactivation > cooling > medidor`, e a regra que a sustenta
+vale além deste caso: *"cooling diz **este negócio parou**; a proposta diz **parou E aqui está o que
+fazer**"*.
+
+> **"O card cujo propósito é provocar decisão passaria a só descrever o problema."**
+
+Mostrar o estado quando existe ação disponível **esconde a ação** — e um card que descreve sem
+oferecer é exatamente o "dado que não muda decisão" que a doutrina proíbe, com aparência de
+informação útil.
+
+**E o prazo aparece no card, o que completa a lei do Arquiteto na superfície visual:** *"proposta com
+prazo que não mostra o prazo é a mesma simulação de atenção que o prazo existe para evitar — sem ver
+a janela fechando, 'decido depois' é indistinguível de 'decidi não'."* O botão diz **ENCERRAR** e não
+"Ignorar", porque **ignorar não é decisão** e aqui a recusa é decisão registrada.
+
+**E a altura foi medida contra o card VIZINHO**, não contra um número escolhido: 144px com proposta,
+144px sem. Comparação com padrão conhecido em vez de medida absoluta — o card não cresce quando o
+sistema tem algo a propor.
