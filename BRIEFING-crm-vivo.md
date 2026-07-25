@@ -5797,3 +5797,28 @@ não é sortear melhor; é **desenhar o corte**.
 de replicação (§7.165). Assinatura viva na hora de um `alter publication` é explicação chata e
 verificável — **reconectar e repetir** custa um minuto e não foi feito. Hipótese ausente da lista não
 é hipótese descartada.
+
+## §7.167 — Medir NÍVEL quando a pergunta é DIFERENÇA
+
+Três consertos de instrumento precederam o achado valer, e os três são o mesmo defeito com máscaras
+diferentes:
+
+1. **O coletor foi anexado tarde** — perdeu o join e a confirmação do servidor, e produziu o laudo
+   "o canal não foi confirmado", que era falso.
+2. **A contagem não era janelada** — "7 quadros" incluía os do próprio seed. *Quase virou o laudo
+   oposto: "os quadros chegam".*
+3. **A pré-condição não distinguia o novo do antigo** — procurava QUALQUER `lead_edited` no lead, e
+   um critério anterior já havia criado um. *"A ação persistiu"* podia ser verdade sobre uma ação de
+   dez minutos atrás.
+
+**Uma dimensão faltando nos três: o TEMPO relativo à ação.** Medição de EFEITO é intrinsecamente uma
+**diferença**, e o instrumento media **níveis**. Nível responde *"quantos existem"*; diferença
+responde *"esta ação produziu um"*. São perguntas distintas e só uma delas era a do critério.
+
+**E repare no que torna isso especialmente traiçoeiro: não há direção de viés.** O mesmo instrumento
+sem fronteira temporal produziu quase-falso-positivo (7 quadros "chegando") e falso-negativo (canal
+"não confirmado"). **Não dá para compensar sendo cético para um lado** — só corrigindo a medida.
+
+**Checklist de toda medição de efeito:** a observação começou ANTES da ação? a contagem tem janela
+com início e fim? o predicado de existência pode ser satisfeito por RESÍDUO de rodada anterior?
+Qualquer "não" invalida o veredito nas duas direções.
