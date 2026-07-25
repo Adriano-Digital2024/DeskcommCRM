@@ -6031,3 +6031,57 @@ construção"* descreve a INTENÇÃO de quem montou o caso; medir descreve o cas
 
 **Onde a verificação custa um comando, a construção não é argumento.** E aqui pagou duas vezes: a
 verificação confirmou a org E revelou o co-variante do dono, que ninguém procurava.
+
+## §7.177 — Regência que prescreve o VALOR em vez do SIGNIFICADO trava a solução melhor
+
+A decisão sobre o acervo dizia `since = last_activity_at`. A intenção era impedir a MENTIRA de
+gravar `now()` — um negócio que esfriou há dias não esfriou agora. **Mas o que foi escrito não foi a
+intenção: foi uma fórmula.**
+
+E a fórmula está errada para a coluna: `last_activity_at` responde *"há quanto tempo em SILÊNCIO"*,
+e a coluna promete *"há quanto tempo NESTE ESTADO"*. Um negócio com janela de 72h e 100h de silêncio
+está em risco **há 28h**, não há 100h — e é a primeira resposta que alguém quer ao triar. O valor
+certo é o **instante do cruzamento do limiar**; o silêncio não se perde (segue em `last_activity_at`)
+e o contrário não valeria: de `last_activity_at` sozinho não se reconstrói quando a janela mudou.
+
+**Regra para quem decide:** enuncie o INVARIANTE (*"`since` responde há quanto tempo neste estado, e
+nunca pode ser `now()` no seed"*) e deixe o valor para quem implementa. Prescrever o valor congela o
+entendimento de quem decidiu — que é justamente quem não está com o código aberto. **Quando a
+fórmula prescrita e a intenção divergirem, vale a intenção — e quem notar deve dizer, não obedecer.**
+
+## §7.178 — Idempotência PARCIAL lê-se como total
+
+O seed era idempotente nos **estados** (upsert por lead) e **não** no item de caixa: rodar duas vezes
+criava dois agregados. E o item que se duplica ao ser reprocessado é **exatamente a praga que ele
+existe para evitar** — a caixa vira lista de avisos repetidos e o operador para de abrir.
+
+**O perigo é o disfarce:** a parte idempotente é a principal e a mais visível, então reprocessar
+"parece" limpo. Ninguém conclui "metade duplicou" — conclui "não duplicou".
+
+**Regra:** idempotência se prova **executando de novo**, e a prova cobre **cada escrita**, não a
+principal. Aqui: três execuções seguidas, mesmo id nas três. E a regra fina que veio junto — item já
+resolvido **não** bloqueia um novo, senão acervo novo nasce sem convite.
+
+## §7.179 — O invariante virou a TERCEIRA lista
+
+O invariante `vocabulario-banco-x-typescript` existe para impedir que a lista do banco e a do
+TypeScript divirjam. **Ele não lê o TypeScript.** A lista "do TS" dentro dele é transcrita à mão —
+então ele compara o banco com **uma cópia manual de si mesmo**, e é ele próprio a terceira lista que
+pode divergir das outras duas.
+
+Provado por sabotagem: removido um valor do union type **de verdade**, o invariante passou **VERDE**.
+Quem pegou a divergência foi o `tsc`, e só porque existe um `Record<InboxKind, string>` em outro
+arquivo — **acidente feliz, não desenho**.
+
+**É a doença que ele guarda, uma camada acima** — e é pior que não ter invariante, porque um
+invariante presumido consome a atenção que iria para uma checagem de verdade.
+
+**Conserto autorizado: extrair a lista do ARQUIVO em vez de transcrevê-la.** Com duas condições, e a
+segunda não é opcional:
+
+1. **Refazer a MESMA sabotagem depois do conserto e exigir VERMELHO.** Sem isso, troca-se um
+   invariante presumido por outro.
+2. **Extração vazia tem de ESTOURAR.** Se o regex deixar de casar (o type é reformatado, ganha
+   comentário, muda de arquivo), a lista extraída vira `[]` e a comparação passa **por vacuidade** —
+   §7.161 exatamente, dentro do conserto dela. Zero valores extraídos é erro do instrumento, nunca
+   um conjunto vazio legítimo.
