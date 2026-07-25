@@ -4497,3 +4497,46 @@ registrado sai como `AUSENTE`, e critério registrado **fora** da lista **estour
 **Consertar uma classe não prova nada sobre as vizinhas** — e a última frase é a postura certa: não
 declarar cobertura que não se mediu. É a §7.115 (*a próxima falha entra pela forma que falta*) dita do
 lado de quem conserta.
+
+---
+
+## §7.119 — O teste de conservação: some o que entrou e compare com o que saiu
+
+O @DevVivo escreveu um teste **que ninguém pediu** e registrou o porquê:
+
+> *"'Nenhum item se perde no agrupamento'. É chato e óbvio, e é **exatamente o tipo de bug que esta
+> wave existe para eliminar** — um erro de índice ali **ESCONDERIA ATIVIDADE sem nada acusar**, e a
+> timeline continuaria parecendo completa."*
+
+**Custo: quatro linhas.** Cobertura: a família inteira de *"agrupamento que come linha"*.
+
+> **Onde uma transformação reorganiza uma coleção, some o que entrou e compare com o que saiu.** Não
+> importa **como** o erro aconteceu — índice, filtro, borda de bloco: **conservação quebra em todos
+> eles**, e a asserção não precisa antecipar a forma (§7.115).
+
+E o motivo de valer particularmente **aqui**: a timeline é a superfície onde **"faltar" é invisível**.
+Uma linha a menos não deixa buraco — o conteúdo simplesmente **fecha por cima**. É o mesmo formato de
+*"aparece menos linha também é o que se vê quando a timeline perdeu eventos"* (§7.80), agora com um
+guarda barato.
+
+**E ele começou pela REGRA, não pela tela:** `agrupaTimeline` como função pura, *"porque a regra é o
+que pode estar errado — o Sheet é só onde ela aparece"*. Mesmo movimento da Wave 5 (schema antes da
+UI), e pelo mesmo motivo: **a superfície não é onde mora o defeito, é onde ele aparece.**
+
+## §7.120 — Aviso que está no CAMINHO protege; aviso que depende de procura, não
+
+A nota mais afiada do dia sobre a §7.56, e ela acrescenta o mecanismo que faltava:
+
+> *"O comentário do `role='group'` me poupou de desfazer a decisão da Wave 2 — mas repare que ele só
+> funcionou porque estava **NO ELEMENTO**. Se estivesse no handoff, eu não teria lido: **eu não fui
+> procurar 'por que este div é group', eu ESBARREI no comentário ao abrir o arquivo para outra
+> coisa**."*
+
+> **Aviso que depende de a pessoa ir procurar não protege nada. Aviso que está no caminho protege.**
+
+A §7.56 dizia *"escreva onde a decisão é tomada"*. Isto refina: **onde a pessoa VAI PASSAR**, e não
+onde o assunto pertence. São coisas diferentes — um comentário no cabeçalho do **mesmo arquivo** já
+teria falhado, porque ninguém lê cabeçalho ao editar a linha 84.
+
+> **Proteção por proximidade ao CAMINHO, não ao TÓPICO.** Quem vai errar não está estudando o assunto
+> — está passando por ele para fazer outra coisa.
