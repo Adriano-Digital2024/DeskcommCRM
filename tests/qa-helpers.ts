@@ -152,31 +152,36 @@ export async function cardLocator(
  *                  do que havia ali. É imutável por natureza; tratá-la como saída
  *                  de script é erro de categoria.
  */
-const EVIDENCIA_HISTORICA = new Set([
-  "wave-0-board-antes.png",
-  "wave-0-board-antes-full.png",
-  "wave-0-card-antes.png",
-  "wave-0-card-titulo-longo-antes.png",
-  "wave-0-navegacao.png",
-]);
-
 /**
- * Recusa sobrescrever evidência histórica — e diz QUAL arquivo e POR QUÊ.
+ * Recusa sobrescrever evidência que o REPOSITÓRIO já entrega — e diz qual e por quê.
+ *
+ * O discriminador não é uma lista mantida à mão: é **estar versionada**. Só se
+ * versiona evidência CITADA (a que sustenta afirmação escrita em documento), e
+ * regenerá-la em silêncio troca a prova por baixo de um texto já publicado.
+ * Captura nova, ainda não rastreada, é livre para ser refeita à vontade.
+ *
+ * A versão anterior era uma lista com quatro nomes da wave 0 — e não cobriu o par
+ * `prova-canal-agent-runs-*`, que era a única cópia do "antes" do canal morto.
+ * Rodar a sonda de novo apagou o lado que dava sentido ao par: exatamente a linha
+ * *"evidência histórica destruível sem aviso"* da tabela da doença.
+ *
  * Recusar em silêncio seria a mesma falha silenciosa que este projeto caça.
  */
 function guardaEvidencia(file: string): void {
-  if (!EVIDENCIA_HISTORICA.has(file)) return;
-  const alvo = path.join(EVIDENCE, file);
-  if (!fs.existsSync(alvo)) return;
+  const rel = path.posix.join("evidence", file);
+  const rastreada =
+    execFileSync("git", ["ls-files", rel], { cwd: process.cwd(), encoding: "utf8" }).trim()
+      .length > 0;
+  if (!rastreada) return;
   if (process.env.FORCE === "1") {
-    console.info(`[evidencia] FORCE=1 — sobrescrevendo evidência histórica ${file}`);
+    console.info(`[evidencia] FORCE=1 — sobrescrevendo evidência versionada ${file}`);
     return;
   }
   throw new Error(
-    `[evidencia] RECUSADO sobrescrever "${file}": é evidência HISTÓRICA — o código que ` +
-      `produziu aquele estado não existe mais, então este PNG é a única cópia e não ` +
-      `pode ser regenerado.\n` +
-      `Se você realmente quer perder o "antes", rode com FORCE=1.`,
+    `[evidencia] RECUSADO sobrescrever "${file}": está VERSIONADA, então algum documento a ` +
+      `cita como prova — trocá-la em silêncio muda o lastro de uma afirmação já escrita.\n` +
+      `Se a intenção é atualizar a prova, rode com FORCE=1; se é capturar um estado NOVO, ` +
+      `use um nome novo.`,
   );
 }
 

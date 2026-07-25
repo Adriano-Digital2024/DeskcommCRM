@@ -3114,3 +3114,23 @@ se apressa a afirmar o oposto é instrumento bem feito.**
 *"nova execução iniciada"* / *"execução concluída"*. Esses avisos **nunca apareceram**. Quem abria
 para acompanhar um agente trabalhando via lista parada e concluía que nada estava acontecendo —
 enquanto o agente rodava.
+
+Prova do estado curado em `evidence/canal-curado-antes.png` e `evidence/canal-curado-depois.png`.
+O par do estado **morto** (`evidence/prova-canal-agent-runs-antes.png` e
+`evidence/prova-canal-agent-runs-depois.png`) fica intacto — é a única cópia do "antes", e sem ele
+o par perde o sentido.
+
+### E a guarda de evidência passou a ser mecânica
+
+Ao rodar a sonda, o regente **sobrescreveu a prova histórica do canal morto** — literalmente a
+linha *"evidência histórica destruível sem aviso"* da tabela da doença.
+
+A guarda existia e não pegou: era uma **lista mantida à mão** com quatro nomes da wave 0.
+
+> **O discriminador real não é uma lista — é estar VERSIONADA.** Só se versiona evidência
+> **citada**, ou seja, a que sustenta afirmação escrita; regenerá-la em silêncio troca a prova por
+> baixo de um texto já publicado. Captura ainda não rastreada é livre.
+
+Provado nos dois sentidos: a sonda agora **recusa**, nomeando o arquivo e o motivo, e `FORCE=1`
+libera com log visível. Terceira lista mantida à mão desta entrega que virou critério mecânico —
+depois do vocabulário de atividades e da quarentena.
