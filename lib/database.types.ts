@@ -938,6 +938,189 @@ export type Database = {
           },
         ]
       }
+      ai_router_decisions: {
+        Row: {
+          agent_id: string | null
+          confidence: number | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          intent_name: string | null
+          job_id: string | null
+          organization_id: string
+          outcome: string
+          router_id: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          confidence?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          intent_name?: string | null
+          job_id?: string | null
+          organization_id: string
+          outcome: string
+          router_id?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          confidence?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          intent_name?: string | null
+          job_id?: string | null
+          organization_id?: string
+          outcome?: string
+          router_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_router_decisions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_router_decisions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_router_decisions_router_id_fkey"
+            columns: ["router_id"]
+            isOneToOne: false
+            referencedRelation: "ai_routers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_router_members: {
+        Row: {
+          agent_id: string
+          created_at: string
+          examples: string[]
+          id: string
+          intent_description: string
+          intent_name: string
+          organization_id: string
+          position: number
+          router_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          examples?: string[]
+          id?: string
+          intent_description: string
+          intent_name: string
+          organization_id: string
+          position?: number
+          router_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          examples?: string[]
+          id?: string
+          intent_description?: string
+          intent_name?: string
+          organization_id?: string
+          position?: number
+          router_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_router_members_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_router_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_router_members_router_id_fkey"
+            columns: ["router_id"]
+            isOneToOne: false
+            referencedRelation: "ai_routers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_routers: {
+        Row: {
+          channel_session_id: string
+          config: Json
+          created_at: string
+          created_by: string | null
+          fallback_agent_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel_session_id: string
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          fallback_agent_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel_session_id?: string
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          fallback_agent_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_routers_channel_session_id_fkey"
+            columns: ["channel_session_id"]
+            isOneToOne: false
+            referencedRelation: "channel_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_routers_fallback_agent_id_fkey"
+            columns: ["fallback_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_routers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_audit_log: {
         Row: {
           acting_as_platform_admin: boolean
@@ -1680,6 +1863,9 @@ export type Database = {
       }
       conversations: {
         Row: {
+          active_agent_set_at: string | null
+          active_ai_agent_id: string | null
+          active_intent: string | null
           assigned_at: string | null
           assigned_to_user_id: string | null
           assignee_kind: string | null
@@ -1710,6 +1896,9 @@ export type Database = {
           usable_for_rag_marked_by: string | null
         }
         Insert: {
+          active_agent_set_at?: string | null
+          active_ai_agent_id?: string | null
+          active_intent?: string | null
           assigned_at?: string | null
           assigned_to_user_id?: string | null
           assignee_kind?: string | null
@@ -1740,6 +1929,9 @@ export type Database = {
           usable_for_rag_marked_by?: string | null
         }
         Update: {
+          active_agent_set_at?: string | null
+          active_ai_agent_id?: string | null
+          active_intent?: string | null
           assigned_at?: string | null
           assigned_to_user_id?: string | null
           assignee_kind?: string | null
@@ -1770,6 +1962,13 @@ export type Database = {
           usable_for_rag_marked_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conversations_active_ai_agent_id_fkey"
+            columns: ["active_ai_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversations_channel_session_id_fkey"
             columns: ["channel_session_id"]

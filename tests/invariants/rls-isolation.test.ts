@@ -155,6 +155,16 @@ beforeAll(() => {
           insert into public.skill_activations (organization_id, skill_name, trigger)
             values (v_org, 's', 'hard');
         end if;
+
+        if not exists (select 1 from public.ai_routers where organization_id = v_org) then
+          insert into public.ai_routers (organization_id, name, channel_session_id)
+            values (v_org, 'RLS Invariant Router', v_sess);
+        end if;
+
+        if not exists (select 1 from public.ai_router_decisions where organization_id = v_org) then
+          insert into public.ai_router_decisions (organization_id, outcome)
+            values (v_org, 'no_match');
+        end if;
       end loop;
     end
     $seed$;
@@ -169,6 +179,8 @@ const TABLES = [
   "org_memory_versions",
   "org_memory_entries",
   "skill_activations",
+  "ai_routers",
+  "ai_router_decisions",
 ] as const;
 
 describe("RLS tenant isolation (fn_user_org_ids pattern)", () => {
