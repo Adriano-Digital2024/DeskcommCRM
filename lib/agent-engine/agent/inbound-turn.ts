@@ -71,7 +71,8 @@ import {
 } from './stage-classifier';
 import { loadPlaybook } from './playbook';
 import { composeSystemPrompt, loadOrgMemory, renderOrgMemory } from './org-memory';
-import { loadPublishedAgentConfig, matchesHandoffKeyword } from './agent-config';
+import { matchesHandoffKeyword } from './agent-config';
+import { resolveTurnAgent } from './resolve-turn-agent';
 import { buildMcpTurnTools } from '../edge/crm/mcp-tools';
 import { cancelPendingCronsForLead } from '../cron/scheduler';
 import {
@@ -532,16 +533,72 @@ export async function runAgentTurn(
     return;
   }
 
-  // Fase 2B: config do agente por PONTEIRO PUBLICADO (tela ai/agents) — lida a
-  // cada turno, zero cache; org/sessão da row do job (fonte confiável). null =
-  // sem agente publicado p/ esta sessão → fallback (playbook + settings + env).
-  const agentConfig = await loadPublishedAgentConfig(pool, tenantId, input.channelSessionId);
+  // Fase 3: stickiness do router — qual agente já atende esta conversa.
+  const { rows: convRows } = await pool.query<{ active_ai_agent_id: string | null; active_intent: string | null }>(
+    'select active_ai_agent_id, active_intent from conversations where organization_id = $1 and id = $2',
+    [tenantId, input.conversationId],
+  );
+  const sticky = convRows[0] ?? { active_ai_agent_id: null, active_intent: null };
+  // O sinal de roteamento (última inbound) ainda não está disponível aqui — getLeadContext
+  // só roda mais abaixo. Leitura direta e barata, só pra alimentar o classificador.
+  const { rows: sigRows } = await pool.query<{ body: string | null }>(
+    `select body from messages
+     where organization_id = $1 and conversation_id = $2 and direction = 'inbound'
+     order by created_at desc limit 1`,
+    [tenantId, input.conversationId],
+  );
+  const routingSignal = sigRows[0]?.body ?? null;
+
+  // Fase 2B/3: config do agente por PONTEIRO PUBLICADO (tela ai/agents) — lida a
+  // cada turno, zero cache; org/sessão da row do job (fonte confiável). Sem router
+  // ativo pra sessão, o resolver devolve o mesmo fluxo de hoje (outcome 'no_router').
+  // null = sem agente publicado p/ esta sessão → fallback (playbook + settings + env).
+  const routed = await resolveTurnAgent(
+    pool,
+    deps.llmCfg,
+    {
+      tenantId,
+      leadId,
+      jobId: job.id,
+      channelSessionId: input.channelSessionId,
+      conversationId: input.conversationId,
+      signal: routingSignal,
+      stickyAgentId: sticky.active_ai_agent_id,
+      stickyIntent: sticky.active_intent,
+    },
+    { log: runLog },
+  );
+  const agentConfig = routed.config;
   if (agentConfig !== null) {
     runLog.info('config do agente publicada em uso', {
       agent_id: agentConfig.agentId,
       agent_version_id: agentConfig.versionId,
       model: agentConfig.model,
+      router_outcome: routed.outcome,
+      intent: routed.intentName,
     });
+  }
+  // Fase 3: grava a decisão de roteamento e a aderência da conversa ao agente.
+  // Fire-and-forget — falha de telemetria nunca derruba a resposta ao lead.
+  if (routed.routerId !== null) {
+    try {
+      if (agentConfig !== null) {
+        await pool.query(
+          `update conversations
+           set active_ai_agent_id = $3, active_intent = $4, active_agent_set_at = now()
+           where organization_id = $1 and id = $2`,
+          [tenantId, input.conversationId, agentConfig.agentId, routed.intentName],
+        );
+      }
+      await pool.query(
+        `insert into ai_router_decisions
+           (organization_id, router_id, conversation_id, intent_name, confidence, agent_id, outcome, job_id)
+         values ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [tenantId, routed.routerId, input.conversationId, routed.intentName, routed.confidence, agentConfig?.agentId ?? null, routed.outcome, job.id],
+      );
+    } catch (err) {
+      runLog.warn('decisão do router não gravada', { error: (err instanceof Error ? err.message : String(err)).slice(0, 120) });
+    }
   }
   // Knobs por-turno: a versão publicada vence o env; sem ela, env (main.ts).
   const maxSteps = agentConfig?.maxSteps ?? deps.knobs.maxSteps;

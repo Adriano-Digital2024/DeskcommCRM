@@ -170,6 +170,15 @@ export async function performHumanHandoff(
     [ids.tenantId, ids.conversationId, SILENCE_INFINITY, opts.reason],
   );
 
+  // (b2) Fase 3: quem foi para humano perde a aderência ao agente do router — se o bot
+  // for reativado, o router decide de novo (não reassume o mesmo agente por inércia).
+  await db.query(
+    `update conversations
+        set active_ai_agent_id = null, active_intent = null, active_agent_set_at = null
+      where organization_id = $1 and id = $2`,
+    [ids.tenantId, ids.conversationId],
+  );
+
   // (c) Cancela os crons PENDENTES do lead (follow-ups agendados — F3-01/02). Idempotente,
   // via o cancel compartilhado (mesma garantia que o opt-out irrevogável usa — F4-07).
   await cancelPendingCronsForLead(db, ids.tenantId, ids.leadId);
