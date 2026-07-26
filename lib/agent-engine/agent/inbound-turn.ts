@@ -533,21 +533,42 @@ export async function runAgentTurn(
     return;
   }
 
-  // Fase 3: stickiness do router — qual agente já atende esta conversa.
-  const { rows: convRows } = await pool.query<{ active_ai_agent_id: string | null; active_intent: string | null }>(
-    'select active_ai_agent_id, active_intent from conversations where organization_id = $1 and id = $2',
-    [tenantId, input.conversationId],
-  );
-  const sticky = convRows[0] ?? { active_ai_agent_id: null, active_intent: null };
-  // O sinal de roteamento (última inbound) ainda não está disponível aqui — getLeadContext
-  // só roda mais abaixo. Leitura direta e barata, só pra alimentar o classificador.
-  const { rows: sigRows } = await pool.query<{ body: string | null }>(
-    `select body from messages
-     where organization_id = $1 and conversation_id = $2 and direction = 'inbound'
-     order by created_at desc limit 1`,
-    [tenantId, input.conversationId],
-  );
-  const routingSignal = sigRows[0]?.body ?? null;
+  // Fase 3: stickiness do router — qual agente já atende esta conversa. Leituras
+  // tolerantes a falha (ex.: clone self-host ainda sem a migration 0085 aplicada) —
+  // um erro aqui degrada pro fluxo sem router, nunca derruba o turno (review T5).
+  let sticky: { active_ai_agent_id: string | null; active_intent: string | null } = {
+    active_ai_agent_id: null,
+    active_intent: null,
+  };
+  // Regra 6 do resolver (nunca classifica em follow-up): só busca o sinal em turno
+  // inbound de verdade — um follow-up de dias depois não pode reclassificar sobre a
+  // mensagem antiga que originou a promessa (review T5, finding 1).
+  let routingSignal: string | null = null;
+  try {
+    const { rows: convRows } = await pool.query<{ active_ai_agent_id: string | null; active_intent: string | null }>(
+      'select active_ai_agent_id, active_intent from conversations where organization_id = $1 and id = $2',
+      [tenantId, input.conversationId],
+    );
+    sticky = convRows[0] ?? sticky;
+    if (job.kind === 'inbound_turn') {
+      // O sinal de roteamento (última inbound) ainda não está disponível aqui —
+      // getLeadContext só roda mais abaixo. Leitura direta e barata, só pra alimentar
+      // o classificador. Mesma régua de "última inbound" do resto do turno
+      // (get-lead-context.ts): sent_at (relógio do WhatsApp), não created_at (now() do
+      // insert) — os dois relógios podem divergir (review T5, finding 3).
+      const { rows: sigRows } = await pool.query<{ body: string | null }>(
+        `select body from messages
+         where organization_id = $1 and conversation_id = $2 and direction = 'inbound'
+         order by sent_at desc, id desc limit 1`,
+        [tenantId, input.conversationId],
+      );
+      routingSignal = sigRows[0]?.body ?? null;
+    }
+  } catch (err) {
+    runLog.warn('leitura de sticky/sinal do router falhou — turno segue sem router', {
+      error: (err instanceof Error ? err.message : String(err)).slice(0, 120),
+    });
+  }
 
   // Fase 2B/3: config do agente por PONTEIRO PUBLICADO (tela ai/agents) — lida a
   // cada turno, zero cache; org/sessão da row do job (fonte confiável). Sem router
