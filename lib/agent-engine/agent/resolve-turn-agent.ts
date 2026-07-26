@@ -12,14 +12,24 @@
  *      senão mantém o agente sticky.
  *   3. sem sticky: classifica; intenção não-nula + confiança >= min ⇒ agente
  *      do membro.
- *   4. classificador falhou (null) ⇒ fallback se houver, outcome sempre
- *      'classifier_failed' (falha de classificação é uma categoria própria,
- *      distinta de "classificou e não bateu" — ver task-4-report.md).
+ *   4. classificador falhou (null) COM sticky elegível ⇒ mantém o sticky
+ *      (outcome 'sticky') — um `null` do classificador é informação MAIS
+ *      pobre que "sem sinal" (regra 6), nunca deve derrubar a stickiness.
+ *      Sem sticky ⇒ fallback se houver, outcome sempre 'classifier_failed'
+ *      (categoria própria, distinta de "classificou e não bateu" — ver
+ *      task-4-report.md, review T4 finding 1).
  *   5. sem match / confiança baixa ⇒ fallback se houver (outcome 'fallback'),
  *      senão config:null + outcome 'no_match' ⇒ turno responde com o agente
  *      GENÉRICO (decisão do Rafael — não é silêncio).
  *   6. signal null (follow-up, sem mensagem inbound) ⇒ nunca classifica:
  *      sticky se houver, senão fallback, senão genérico.
+ *   7. o agente casado (sticky, classificado ou fallback) pode não ter
+ *      versão publicada (`loadPublishedAgentConfigById` devolve null) — isso
+ *      NUNCA vira outcome de sucesso com config:null (mentira de telemetria,
+ *      review T4 finding 4): cai no fallback do router com log.warn, com o
+ *      outcome reclassificado honestamente ('fallback'/'no_match'). Se o
+ *      PRÓPRIO fallback também não tiver versão publicada, config:null é o
+ *      fim legítimo da linha — outcome permanece o que já descrevia a causa.
  *
  * Robustez: qualquer erro inesperado no branch do router (DB fora do ar,
  * shape quebrado) NUNCA derruba o turno — cai no `loadPublishedAgentConfig`
@@ -86,7 +96,7 @@ export async function resolveTurnAgent(
       };
     }
 
-    // fallback do router ou genérico — usado pelas regras 4, 5 e 6.
+    // fallback do router ou genérico — usado pelas regras 4, 5, 6 e 7.
     const resolveFallback = async (
       outcome: 'no_match' | 'classifier_failed',
       confidence: number | null,
@@ -94,13 +104,46 @@ export async function resolveTurnAgent(
       if (router.fallbackAgentId === null) {
         return { config: null, routerId: router.id, intentName: null, confidence, outcome };
       }
+      const config = await _loadAgentById(db, input.tenantId, router.fallbackAgentId);
+      if (config === null) {
+        // regra 7: fallback também sem versão publicada — fim legítimo da
+        // linha, mas o outcome que já explicava a causa (classifier_failed)
+        // não vira 'no_match' por engano; só rebaixa quando o motivo era
+        // genuinamente "sem match", pra não mentir sobre o que aconteceu.
+        deps.log.warn('resolve-turn-agent: fallbackAgentId sem versão publicada — turno cai no genérico', {
+          routerId: router.id,
+          fallbackAgentId: router.fallbackAgentId,
+        });
+      }
       return {
-        config: await _loadAgentById(db, input.tenantId, router.fallbackAgentId),
+        config,
         routerId: router.id,
         intentName: null,
         confidence,
-        outcome: outcome === 'classifier_failed' ? 'classifier_failed' : 'fallback',
+        outcome: outcome === 'classifier_failed' ? 'classifier_failed' : config === null ? 'no_match' : 'fallback',
       };
+    };
+
+    // carrega o agente casado (sticky/classificado/reclassificado); se ele não
+    // tiver versão publicada, NUNCA devolve outcome de sucesso com config:null
+    // (mentiria pra telemetria — review T4 finding 4) — cai no fallback do
+    // router com log.warn, honesto sobre a causa real.
+    const loadMatchedOrFallback = async (
+      outcome: 'sticky' | 'classified' | 'reclassified',
+      agentId: string,
+      intentName: string | null,
+      confidence: number | null,
+    ): Promise<TurnAgentResolution> => {
+      const config = await _loadAgentById(db, input.tenantId, agentId);
+      if (config === null) {
+        deps.log.warn('resolve-turn-agent: agente casado sem versão publicada — tentando fallback do router', {
+          routerId: router.id,
+          matchedOutcome: outcome,
+          agentId,
+        });
+        return resolveFallback('no_match', confidence);
+      }
+      return { config, routerId: router.id, intentName, confidence, outcome };
     };
 
     // sticky elegível: config liga sticky E o agente ainda é membro do router
@@ -113,13 +156,7 @@ export async function resolveTurnAgent(
     // regra 6: sem mensagem inbound (follow-up) — nunca classifica.
     if (input.signal === null) {
       if (stickyMember !== undefined) {
-        return {
-          config: await _loadAgentById(db, input.tenantId, stickyMember.agentId),
-          routerId: router.id,
-          intentName: input.stickyIntent,
-          confidence: null,
-          outcome: 'sticky',
-        };
+        return loadMatchedOrFallback('sticky', stickyMember.agentId, input.stickyIntent, null);
       }
       return resolveFallback('no_match', null);
     }
@@ -132,7 +169,12 @@ export async function resolveTurnAgent(
       { log: deps.log },
     );
 
+    // regra 4: classificador falhou — um `null` é informação mais pobre que
+    // "sem sinal", nunca deve derrubar a stickiness (review T4 finding 1).
     if (verdict === null) {
+      if (stickyMember !== undefined) {
+        return loadMatchedOrFallback('sticky', stickyMember.agentId, input.stickyIntent, null);
+      }
       return resolveFallback('classifier_failed', null);
     }
 
@@ -140,35 +182,17 @@ export async function resolveTurnAgent(
       const changedSubject =
         verdict.intentName !== null && verdict.intentName !== input.stickyIntent && verdict.confidence >= router.minConfidence;
       if (!changedSubject) {
-        return {
-          config: await _loadAgentById(db, input.tenantId, stickyMember.agentId),
-          routerId: router.id,
-          intentName: input.stickyIntent,
-          confidence: verdict.confidence,
-          outcome: 'sticky',
-        };
+        return loadMatchedOrFallback('sticky', stickyMember.agentId, input.stickyIntent, verdict.confidence);
       }
       const newMember = router.members.find((m) => m.intentName === verdict.intentName);
       // newMember sempre definido: classifyIntent só devolve intentName que bateu em router.members.
-      return {
-        config: await _loadAgentById(db, input.tenantId, newMember!.agentId),
-        routerId: router.id,
-        intentName: verdict.intentName,
-        confidence: verdict.confidence,
-        outcome: 'reclassified',
-      };
+      return loadMatchedOrFallback('reclassified', newMember!.agentId, verdict.intentName, verdict.confidence);
     }
 
     // sem sticky (regra 3).
     if (verdict.intentName !== null && verdict.confidence >= router.minConfidence) {
       const member = router.members.find((m) => m.intentName === verdict.intentName);
-      return {
-        config: await _loadAgentById(db, input.tenantId, member!.agentId),
-        routerId: router.id,
-        intentName: verdict.intentName,
-        confidence: verdict.confidence,
-        outcome: 'classified',
-      };
+      return loadMatchedOrFallback('classified', member!.agentId, verdict.intentName, verdict.confidence);
     }
 
     return resolveFallback('no_match', verdict.confidence);

@@ -46,6 +46,11 @@ function router(overrides: Partial<LoadedRouter> = {}): LoadedRouter {
   };
 }
 
+/** Mock que devolve o config do ID pedido — id fixo mascararia bug de "carregou o agente errado" (review T4 finding 2). */
+function idAwareLoader() {
+  return vi.fn(async (_db: unknown, _org: unknown, id: string) => fakeConfig(id));
+}
+
 const baseInput = {
   tenantId: 'org-1',
   leadId: 'lead-1',
@@ -87,7 +92,7 @@ describe('resolveTurnAgent', () => {
     const r = router({ sticky: false });
     const loadActiveRouter = vi.fn().mockResolvedValue(r);
     const classifyIntent = vi.fn().mockResolvedValue({ intentName: 'vendas', confidence: 0.9 });
-    const loadPublishedAgentConfigById = vi.fn().mockResolvedValue(fakeConfig('agent-vendas'));
+    const loadPublishedAgentConfigById = idAwareLoader();
     const out = await resolveTurnAgent({} as never, {} as never,
       { ...baseInput, signal: 'quanto custa?', stickyAgentId: null, stickyIntent: null },
       makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
@@ -101,7 +106,7 @@ describe('resolveTurnAgent', () => {
     const r = router();
     const loadActiveRouter = vi.fn().mockResolvedValue(r);
     const classifyIntent = vi.fn().mockResolvedValue({ intentName: 'vendas', confidence: 0.9 });
-    const loadPublishedAgentConfigById = vi.fn().mockResolvedValue(fakeConfig('agent-vendas'));
+    const loadPublishedAgentConfigById = idAwareLoader();
     const out = await resolveTurnAgent({} as never, {} as never,
       { ...baseInput, signal: 'mais uma pergunta sobre preço', stickyAgentId: 'agent-vendas', stickyIntent: 'vendas' },
       makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
@@ -114,7 +119,7 @@ describe('resolveTurnAgent', () => {
     const r = router();
     const loadActiveRouter = vi.fn().mockResolvedValue(r);
     const classifyIntent = vi.fn().mockResolvedValue({ intentName: 'suporte', confidence: 0.8 });
-    const loadPublishedAgentConfigById = vi.fn().mockResolvedValue(fakeConfig('agent-suporte'));
+    const loadPublishedAgentConfigById = idAwareLoader();
     const out = await resolveTurnAgent({} as never, {} as never,
       { ...baseInput, signal: 'na verdade tenho um problema técnico', stickyAgentId: 'agent-vendas', stickyIntent: 'vendas' },
       makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
@@ -127,7 +132,7 @@ describe('resolveTurnAgent', () => {
     const r = router();
     const loadActiveRouter = vi.fn().mockResolvedValue(r);
     const classifyIntent = vi.fn().mockResolvedValue({ intentName: 'suporte', confidence: 0.4 });
-    const loadPublishedAgentConfigById = vi.fn().mockResolvedValue(fakeConfig('agent-vendas'));
+    const loadPublishedAgentConfigById = idAwareLoader();
     const out = await resolveTurnAgent({} as never, {} as never,
       { ...baseInput, signal: 'hmm será que...', stickyAgentId: 'agent-vendas', stickyIntent: 'vendas' },
       makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
@@ -139,7 +144,7 @@ describe('resolveTurnAgent', () => {
     const r = router({ sticky: false, fallbackAgentId: 'agent-fallback' });
     const loadActiveRouter = vi.fn().mockResolvedValue(r);
     const classifyIntent = vi.fn().mockResolvedValue(null);
-    const loadPublishedAgentConfigById = vi.fn().mockResolvedValue(fakeConfig('agent-fallback'));
+    const loadPublishedAgentConfigById = idAwareLoader();
     const out = await resolveTurnAgent({} as never, {} as never,
       { ...baseInput, signal: 'algo incompreensível', stickyAgentId: null, stickyIntent: null },
       makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
@@ -164,7 +169,7 @@ describe('resolveTurnAgent', () => {
     const r = router();
     const loadActiveRouter = vi.fn().mockResolvedValue(r);
     const classifyIntent = vi.fn();
-    const loadPublishedAgentConfigById = vi.fn().mockResolvedValue(fakeConfig('agent-vendas'));
+    const loadPublishedAgentConfigById = idAwareLoader();
     const out = await resolveTurnAgent({} as never, {} as never,
       { ...baseInput, signal: null, stickyAgentId: 'agent-vendas', stickyIntent: 'vendas' },
       makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
@@ -181,5 +186,71 @@ describe('resolveTurnAgent', () => {
       makeDeps({ loadActiveRouter, loadPublishedAgentConfig }));
     expect(out.outcome).toBe('classifier_failed');
     expect(out.config?.agentId).toBe('agent-sessao');
+  });
+
+  it('10. sticky + classificador devolve null → mantém o agente sticky (review T4 finding 1)', async () => {
+    const r = router();
+    const loadActiveRouter = vi.fn().mockResolvedValue(r);
+    const classifyIntent = vi.fn().mockResolvedValue(null);
+    const loadPublishedAgentConfigById = idAwareLoader();
+    const out = await resolveTurnAgent({} as never, {} as never,
+      { ...baseInput, signal: 'timeout do classificador não pode trocar quem atende', stickyAgentId: 'agent-vendas', stickyIntent: 'vendas' },
+      makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
+    expect(out.outcome).toBe('sticky');
+    expect(out.config?.agentId).toBe('agent-vendas');
+  });
+
+  it('11. classificou, confiança baixa, MAS existe fallback → outcome fallback (sem cobertura antes — finding 3)', async () => {
+    const r = router({ sticky: false, fallbackAgentId: 'agent-fallback' });
+    const loadActiveRouter = vi.fn().mockResolvedValue(r);
+    const classifyIntent = vi.fn().mockResolvedValue({ intentName: 'vendas', confidence: 0.2 });
+    const loadPublishedAgentConfigById = idAwareLoader();
+    const out = await resolveTurnAgent({} as never, {} as never,
+      { ...baseInput, signal: 'talvez eu queira comprar', stickyAgentId: null, stickyIntent: null },
+      makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
+    expect(out.outcome).toBe('fallback');
+    expect(out.config?.agentId).toBe('agent-fallback');
+  });
+
+  it('12. signal null, SEM sticky, COM fallback → outcome fallback (regra 6, ramo sem cobertura)', async () => {
+    const r = router({ sticky: false, fallbackAgentId: 'agent-fallback' });
+    const loadActiveRouter = vi.fn().mockResolvedValue(r);
+    const classifyIntent = vi.fn();
+    const loadPublishedAgentConfigById = idAwareLoader();
+    const out = await resolveTurnAgent({} as never, {} as never,
+      { ...baseInput, signal: null, stickyAgentId: null, stickyIntent: null },
+      makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
+    expect(classifyIntent).not.toHaveBeenCalled();
+    expect(out.outcome).toBe('fallback');
+    expect(out.config?.agentId).toBe('agent-fallback');
+  });
+
+  it('13. agente casado (classificado) sem versão publicada → cai no fallback do router, outcome honesto (finding 4)', async () => {
+    const r = router({ sticky: false, fallbackAgentId: 'agent-fallback' });
+    const loadActiveRouter = vi.fn().mockResolvedValue(r);
+    const classifyIntent = vi.fn().mockResolvedValue({ intentName: 'vendas', confidence: 0.9 });
+    // agent-vendas (o casado) não tem versão publicada; agent-fallback tem.
+    const loadPublishedAgentConfigById = vi.fn(async (_db: unknown, _org: unknown, id: string) =>
+      id === 'agent-vendas' ? null : fakeConfig(id));
+    const warn = vi.fn();
+    const out = await resolveTurnAgent({} as never, {} as never,
+      { ...baseInput, signal: 'quanto custa?', stickyAgentId: null, stickyIntent: null },
+      { log: { info: vi.fn(), warn, error: vi.fn() }, loadActiveRouter, classifyIntent, loadPublishedAgentConfigById } as never);
+    // NUNCA outcome 'classified' com config null — telemetria não pode mentir.
+    expect(out.outcome).toBe('fallback');
+    expect(out.config?.agentId).toBe('agent-fallback');
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('14. agente casado E o fallback também sem versão publicada → config null, outcome honesto no_match (fim legítimo da linha)', async () => {
+    const r = router({ sticky: false, fallbackAgentId: 'agent-fallback' });
+    const loadActiveRouter = vi.fn().mockResolvedValue(r);
+    const classifyIntent = vi.fn().mockResolvedValue({ intentName: 'vendas', confidence: 0.9 });
+    const loadPublishedAgentConfigById = vi.fn().mockResolvedValue(null);
+    const out = await resolveTurnAgent({} as never, {} as never,
+      { ...baseInput, signal: 'quanto custa?', stickyAgentId: null, stickyIntent: null },
+      makeDeps({ loadActiveRouter, classifyIntent, loadPublishedAgentConfigById }));
+    expect(out.outcome).toBe('no_match');
+    expect(out.config).toBeNull();
   });
 });
