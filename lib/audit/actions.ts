@@ -146,4 +146,8 @@ export type AuditAction =
   | "automation.run_resent"
   | "ai.skill_imported"
   | "ai.skill_installed"
-  | "ai.skill_uninstalled";
+  | "ai.skill_uninstalled"
+  | "ai.router_created"
+  | "ai.router_updated"
+  | "ai.router_deleted"
+  | "ai.router_members_updated";

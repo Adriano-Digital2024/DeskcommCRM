@@ -90,7 +90,15 @@ export interface ClassifyIntentDeps {
 export async function classifyIntent(
   db: pg.Pool,
   llmCfg: LlmEdgeConfig,
-  input: { tenantId: string; leadId: string; jobId: string; router: LoadedRouter; signal: string },
+  input: {
+    tenantId: string;
+    /** null quando não há contact_id real (ex.: classificação de teste na UI) — vira contact_id null em llm_calls, nunca um uuid inventado (violaria a FK). */
+    leadId: string | null;
+    /** null quando não há job_queue real por trás da chamada (mesma razão de leadId). */
+    jobId: string | null;
+    router: LoadedRouter;
+    signal: string;
+  },
   deps: ClassifyIntentDeps,
 ): Promise<IntentVerdict | null> {
   const call = deps.runModelCall ?? runModelCall;
