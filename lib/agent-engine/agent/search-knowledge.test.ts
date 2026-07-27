@@ -186,6 +186,37 @@ describe('searchKnowledge', () => {
     expect(registro!.params[4]).toBeNull();
   });
 
+  it('uma linha NaN NÃO anula o top_score das linhas boas da mesma busca', async () => {
+    const queries: Array<{ sql: string; params: unknown[] }> = [];
+    const pool = {
+      query: async (sql: string, params: unknown[] = []) => {
+        queries.push({ sql, params });
+        if (sql.includes('retrieve_top_k_chunks')) {
+          // KB pequena (chunks <= topK) com UM chunk defeituoso: sem o filtro, o
+          // NaN contamina o Math.max e TODA busca dessa base grava top_score
+          // null — o painel cego justamente na KB nova, que é a primeira
+          // impressão do produto.
+          return {
+            rows: [
+              { chunk_id: 'c1', knowledge_source_id: null, content: 'bom', similarity: 0.91, metadata: null },
+              { chunk_id: 'c2', knowledge_source_id: null, content: 'lixo', similarity: NaN, metadata: null },
+            ],
+          };
+        }
+        return { rows: [] };
+      },
+    };
+
+    await searchKnowledge(
+      pool as never,
+      { organizationId: 'org-1', kbVersionId: 'kb-1', query: 'oi', topK: 5, threshold: 0.72 },
+      { embed: async () => ({ embedding: [0.1] }) } as never,
+    );
+
+    const registro = queries.find((q) => q.sql.includes('knowledge_searches'));
+    expect(registro!.params[4]).toBe(0.91);
+  });
+
   it('top_score não depende da ordem das linhas da RPC', async () => {
     const queries: Array<{ sql: string; params: unknown[] }> = [];
     const pool = {

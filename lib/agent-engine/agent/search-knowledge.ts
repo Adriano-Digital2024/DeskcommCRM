@@ -51,8 +51,10 @@ export async function searchKnowledge(
     // já são os K melhores acima do limiar sempre que existirem K deles.
     // (Não é teorema: o corte antigo comparava o float8 cru contra o limiar e
     // este compara o float4 já arredondado da RPC. Na janela de ~3e-8 entre os
-    // dois, o caminho novo ADMITE um chunk que o antigo rejeitava — mais
-    // permissivo, nunca mais restritivo.)
+    // dois os caminhos divergem, e a direção depende de para que lado o limiar
+    // arredonda ao virar `real` — `p_threshold` é real, e 0.72 arredonda para
+    // cima enquanto 0.7 e 0.9 arredondam para baixo. Não é "mais permissivo":
+    // é divergência nas duas direções, conforme o limiar configurado.)
     //
     // O que ganhamos é o `top_score`: a similaridade do melhor candidato mesmo
     // quando ela não passa. Sem isso, "a base não tem essa informação" e "a base
@@ -65,11 +67,14 @@ export async function searchKnowledge(
     );
 
     const results = rows.filter((r) => r.similarity >= args.threshold);
-    // Sem depender da ordem das linhas. `Math.max()` de array vazio é -Infinity e
-    // NaN contamina o máximo — o teste de finitude cobre os dois: nenhuma linha,
-    // e o chunk de embedding zerado (pgvector devolve NaN na distância), que
-    // `numeric` aceitaria como 'NaN' e envenenaria o painel em silêncio.
-    const maiorScore = Math.max(...rows.map((r) => r.similarity));
+    // Sem depender da ordem das linhas. O `filter` descarta o NaN que o pgvector
+    // devolve para chunk de embedding zerado — ele contaminaria o `Math.max` e
+    // anularia o top_score de linhas BOAS na mesma busca (numa KB com poucos
+    // chunks, um único chunk defeituoso cegaria o painel para toda busca dela).
+    // Sobra o array vazio, cujo `Math.max()` é -Infinity: é o `Number.isFinite`
+    // abaixo que o transforma em `null` — `numeric` aceitaria 'NaN' e envenenaria
+    // a coluna em silêncio.
+    const maiorScore = Math.max(...rows.map((r) => r.similarity).filter(Number.isFinite));
     const topScore = Number.isFinite(maiorScore) ? maiorScore : null;
 
     // Fire-and-forget: perder telemetria é infinitamente melhor que perder a
