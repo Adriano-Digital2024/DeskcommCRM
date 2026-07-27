@@ -671,6 +671,26 @@ describe('aggregateEvolution', () => {
     expect(p.gaps.knowledge_empty).toBe(3);
   });
 
+  it('conta certo mesmo quando o driver entrega numeric como STRING', () => {
+    // Este teste não é paranoia: a prova real da Task 2 mediu `top_score` voltando
+    // como '0.910667' — `numeric` não tem parser default no node-postgres. Sem
+    // coerção, a comparação vira string×string, não lança, e acerta metade dos
+    // casos por acidente. Os tipos declarados são `number`, então o TypeScript
+    // não protege: é o defeito que passa no verde.
+    const p = aggregateEvolution({
+      ...base(),
+      knowledgeSearches: [
+        // '0.703' está a 0.017 do limiar => quase acertou.
+        { created_at: '2026-07-01T10:00:00Z', hits: 0, top_score: '0.703' as never, threshold: '0.72' as never },
+        // '0.12' está longe => a base não tem.
+        { created_at: '2026-07-01T11:00:00Z', hits: 0, top_score: '0.12' as never, threshold: '0.72' as never },
+      ],
+    });
+
+    expect(p.gaps.knowledge_near_misses).toBe(1);
+    expect(p.gaps.knowledge_empty).toBe(2);
+  });
+
   it('aponta os passos do agente que nenhum estágio do pipeline recebe', () => {
     const p = aggregateEvolution({
       ...base(),
@@ -866,7 +886,16 @@ export function aggregateEvolution(input: EvolutionInput): EvolutionPayload {
   for (const k of input.knowledgeSearches) {
     if (k.hits > 0) continue;
     empty += 1;
-    if (k.top_score !== null && k.top_score >= k.threshold - PERTO) nearMisses += 1;
+    // ⚠️ COERÇÃO OBRIGATÓRIA. `top_score` e `threshold` são `numeric` no Postgres,
+    // e `numeric` não tem parser default no node-postgres — chega como STRING
+    // ('0.910667'). A comparação string×string não lança e não erra sempre:
+    // `'0.144' >= '0.62'` dá false pelo motivo errado, e `'0.9' >= '0.72'` dá
+    // true também pelo motivo errado. O tipo declarado aqui é `number`, então o
+    // TypeScript não pega — é o pior formato de defeito, o que acerta por acaso.
+    // Medido na prova real da Task 2, contra o banco.
+    const nota = k.top_score === null ? null : Number(k.top_score);
+    const limiar = Number(k.threshold);
+    if (nota !== null && Number.isFinite(nota) && nota >= limiar - PERTO) nearMisses += 1;
   }
 
   const unmapped = input.pipelines
