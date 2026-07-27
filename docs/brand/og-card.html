@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Paleta lida de app/globals.css — a arte usa a identidade real do produto,
+     não uma inventada para o card. */
+  :root {
+    --bg: #faf9f6;
+    --surface: #ffffff;
+    --text: #1c1a16;
+    --muted: #5d594f;
+    --border: #e7e3da;
+    --accent: #506d48;
+    --accent-300: #a4ba9a;
+    --accent-100: #e4ebe0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px; height: 640px;
+    background: var(--bg);
+    font-family: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
+    color: var(--text);
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    overflow: hidden;
+  }
+
+  /* Faixa de acento no topo — âncora de marca sem ocupar área. */
+  .rule { position: absolute; top: 0; left: 0; right: 0; height: 6px; background: var(--accent); }
+
+  .left { padding: 74px 0 66px 78px; display: flex; flex-direction: column; justify-content: space-between; }
+
+  .wordmark {
+    font-size: 27px; font-weight: 700; letter-spacing: -.015em; margin-bottom: 26px;
+    display: inline-flex; align-items: center; gap: 11px;
+  }
+  .wordmark::before {
+    content: ""; width: 15px; height: 15px; border-radius: 4px;
+    background: var(--accent);
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 17px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    font-size: 63px; line-height: 1.06; font-weight: 700; letter-spacing: -.022em;
+    margin-top: 20px; max-width: 15ch;
+  }
+  h1 .accent { color: var(--accent); }
+  .sub {
+    margin-top: 22px; font-size: 25px; line-height: 1.42; color: var(--muted); max-width: 30ch;
+  }
+
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+  .chip {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 16px; padding: 9px 15px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+  }
+  .chip.on { border-color: var(--accent-300); background: var(--accent-100); color: var(--accent); }
+
+  /* Painel direito: o "rastro" que uma demanda deixa ao atravessar o sistema.
+     É a doutrina do sistema vivo virando imagem, em vez de adjetivo na copy. */
+  .right { position: relative; border-left: 1px solid var(--border); background: var(--surface);
+           padding: 56px; display: flex; flex-direction: column; justify-content: center; }
+  .right-title { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 14px;
+                 letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin-bottom: 26px; }
+  .trail { display: flex; flex-direction: column; gap: 0; }
+  .node { display: grid; grid-template-columns: 26px 1fr; gap: 16px; }
+  .rail { display: flex; flex-direction: column; align-items: center; }
+  .dot {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2.5px solid var(--accent); background: var(--surface); flex: none; margin-top: 5px;
+  }
+  .dot.fill { background: var(--accent); }
+  .line { width: 2px; flex: 1; background: var(--border); min-height: 34px; }
+  .label { font-size: 19px; line-height: 1.3; padding-bottom: 12px; }
+  .label small {
+    display: block; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 14px; color: var(--muted); margin-top: 3px;
+  }
+</style>
+</head>
+<body>
+  <div class="rule"></div>
+
+  <div class="left">
+    <div>
+      <div class="wordmark">DeskcommCRM</div>
+      <div class="eyebrow">open source · self-hosted · mit</div>
+      <h1>The open-source AI&nbsp;Sales&nbsp;OS for <span class="accent">WhatsApp</span></h1>
+      <p class="sub">AI agents that answer, qualify and move deals — on a server you own.</p>
+    </div>
+    <div class="chips">
+      <span class="chip on">No paid tier</span>
+      <span class="chip">Multi-tenant RLS</span>
+      <span class="chip">One-command install</span>
+      <span class="chip">2&nbsp;GB VPS</span>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="right-title">one lead, one trail</div>
+    <div class="trail">
+      <div class="node">
+        <div class="rail"><div class="dot fill"></div><div class="line"></div></div>
+        <div class="label">Lead arrives on WhatsApp<small>inbound · 09:41</small></div>
+      </div>
+      <div class="node">
+        <div class="rail"><div class="dot fill"></div><div class="line"></div></div>
+        <div class="label">Agent qualifies and replies<small>7 guardrails · audited</small></div>
+      </div>
+      <div class="node">
+        <div class="rail"><div class="dot fill"></div><div class="line"></div></div>
+        <div class="label">Moved down the pipeline<small>activity recorded</small></div>
+      </div>
+      <div class="node">
+        <div class="rail"><div class="dot"></div></div>
+        <div class="label">Follow-up scheduled<small>no lead dies unseen</small></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
