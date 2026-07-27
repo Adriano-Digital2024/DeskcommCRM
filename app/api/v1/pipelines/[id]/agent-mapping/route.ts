@@ -64,10 +64,6 @@ const bodySchema = z.object({
     .strict(),
 });
 
-interface EtapaComHint extends EtapaDoMapa {
-  position: number;
-}
-
 /**
  * Estado do funil como a tela precisa dele. Devolve `null` quando o pipeline não
  * é desta organização — para o chamador isso é 404, e é a MESMA resposta de um
@@ -76,12 +72,16 @@ interface EtapaComHint extends EtapaDoMapa {
  * `is_archived = false` porque o board não mostra etapa arquivada e o índice
  * único do banco a ignora: oferecê-la seria deixar o tenant configurar um
  * mapeamento invisível.
+ *
+ * A ordem por `position` é a ordem do funil na tela — a mesma do board. Sem ela
+ * o tenant escolheria etapas numa lista embaralhada. `position` não entra no
+ * `select` porque o PostgREST ordena por coluna que não foi projetada.
  */
 async function lerFunil(
   supabase: Awaited<ReturnType<typeof createClient>>,
   orgId: string,
   pipelineId: string,
-): Promise<{ etapas: EtapaComHint[] } | null> {
+): Promise<{ etapas: EtapaDoMapa[] } | null> {
   const { data: pipeline, error: pipeErr } = await supabase
     .from("crm_pipelines")
     .select("id")
@@ -93,14 +93,14 @@ async function lerFunil(
 
   const { data, error } = await supabase
     .from("crm_stages")
-    .select("id, name, position, is_won, is_lost, agent_stage_hint")
+    .select("id, name, is_won, is_lost, agent_stage_hint")
     .eq("organization_id", orgId)
     .eq("pipeline_id", pipelineId)
     .eq("is_archived", false)
     .order("position", { ascending: true });
   if (error) throw new Error(error.message);
 
-  return { etapas: (data ?? []) as unknown as EtapaComHint[] };
+  return { etapas: (data ?? []) as unknown as EtapaDoMapa[] };
 }
 
 /** Os sete passos sempre presentes: quem lê não precisa saber quais faltam. */
@@ -118,7 +118,7 @@ function mapaDeEtapas(etapas: EtapaDoMapa[]): Record<LeadStage, string | null> {
   return mapa;
 }
 
-function corpo(etapas: EtapaComHint[]) {
+function corpo(etapas: EtapaDoMapa[]) {
   return {
     etapas: etapas.map((e) => ({
       id: e.id,
@@ -218,14 +218,21 @@ export async function PUT(req: NextRequest, ctx: RouteCtx): Promise<Response> {
       .eq("pipeline_id", pipelineId);
     if (!error) continue;
 
+    // As duas recusas do banco significam a mesma coisa para o usuário: o funil
+    // mudou entre a leitura e a gravação. Nenhuma das duas pode chegar à tela
+    // como texto do Postgres — `violates check constraint
+    // crm_stages_hint_coerente_com_won_lost` é exatamente a mensagem que a
+    // camada pura existe para evitar, e devolvê-la no 500 a traria de volta.
     const nome = funil.etapas.find((e) => e.id === u.stageId)?.name ?? "escolhida";
-    if ((error as { code?: string }).code === "23505") {
-      return fail(
-        "state_conflict",
-        `A etapa «${nome}» já está representando esse passo do atendimento. Recarregue a página e tente de novo.`,
-        409,
-        { requestId },
-      );
+    const conflito: Record<string, string> = {
+      "23505": `A etapa «${nome}» já está representando esse passo do atendimento.`,
+      "23514": `A etapa «${nome}» mudou de papel neste funil (ganho ou perda) enquanto você editava.`,
+    };
+    const motivo = conflito[(error as { code?: string }).code ?? ""];
+    if (motivo) {
+      return fail("state_conflict", `${motivo} Recarregue a página e tente de novo.`, 409, {
+        requestId,
+      });
     }
     return fail("internal_error", error.message, 500, { requestId });
   }

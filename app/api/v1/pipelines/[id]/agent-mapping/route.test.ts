@@ -10,12 +10,14 @@ import type { AuthUser } from "@/lib/auth/types";
 /**
  * Task 2 — GET/PUT /api/v1/pipelines/[id]/agent-mapping.
  *
- * O banco aqui é um dublê que APLICA os filtros `eq` de verdade. Um stub que
- * devolve linha fixa faria o teste de outra organização passar mesmo com o
- * `eq("organization_id", …)` apagado da rota — ou seja, mediria o dublê, não o
- * handler. Ele também registra CADA update com seus filtros e com marcas de
- * início/fim, porque duas garantias desta task são sobre a emissão em si:
- * "nenhum UPDATE quando é 404" e "um de cada vez, em sequência".
+ * O banco aqui é um dublê que APLICA os filtros `eq`, a lista de colunas do
+ * `select()` e o `order()` de verdade. Um stub que devolve linha fixa faria o
+ * teste de outra organização passar mesmo com o `eq("organization_id", …)`
+ * apagado da rota — mediria o dublê, não o handler; e um `order()` no-op deixaria
+ * "apagar o `.order` da rota" verde enquanto o funil aparece embaralhado na tela.
+ * Ele também registra CADA update com seus filtros e com marcas de início/fim,
+ * porque duas garantias desta task são sobre a emissão em si: "nenhum UPDATE
+ * quando é 404" e "um de cada vez, em sequência".
  */
 
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
@@ -75,9 +77,19 @@ function makeDb(opts: DbOpts = {}) {
   function builder(table: string) {
     const filtros: Array<[string, unknown]> = [];
     let patch: Record<string, unknown> | null = null;
+    let colunas: string[] | null = null;
+    let ordem: string | null = null;
 
     const casam = () =>
       (tables[table] ?? []).filter((r) => filtros.every(([c, v]) => r[c] === v));
+
+    /** Ordena e projeta como o PostgREST faria: `order()` e a lista do `select()`. */
+    const lidos = () => {
+      const rows = [...casam()];
+      if (ordem) rows.sort((a, b) => Number(a[ordem!]) - Number(b[ordem!]));
+      if (!colunas) return rows;
+      return rows.map((r) => Object.fromEntries(colunas!.map((c) => [c, r[c]])));
+    };
 
     async function run(): Promise<{ data: unknown; error: unknown }> {
       if (patch) {
@@ -93,11 +105,14 @@ function makeDb(opts: DbOpts = {}) {
         for (const r of casam()) Object.assign(r, patch);
         return { data: null, error: null };
       }
-      return { data: casam(), error: null };
+      return { data: lidos(), error: null };
     }
 
     const b = {
-      select: () => b,
+      select: (cols?: string) => {
+        colunas = cols ? cols.split(",").map((c) => c.trim()) : null;
+        return b;
+      },
       update: (p: Record<string, unknown>) => {
         patch = p;
         return b;
@@ -106,7 +121,10 @@ function makeDb(opts: DbOpts = {}) {
         filtros.push([c, v]);
         return b;
       },
-      order: () => b,
+      order: (col: string) => {
+        ordem = col;
+        return b;
+      },
       maybeSingle: async () => {
         const r = await run();
         return { data: (r.data as unknown[] | null)?.[0] ?? null, error: r.error };
@@ -163,13 +181,19 @@ function mapa(over: Record<string, string | null> = {}): Record<string, string |
   };
 }
 
-/** Funil de trabalho: uma etapa livre, uma ocupada, ganho e perda já mapeados. */
+/**
+ * Funil de trabalho: uma etapa livre, uma ocupada, ganho e perda já mapeados.
+ *
+ * DE PROPÓSITO fora da ordem de `position` — se a tabela já viesse ordenada, o
+ * `.order("position")` da rota poderia sumir com a suíte verde e a tela mostraria
+ * as etapas embaralhadas.
+ */
 function funil(): StageRow[] {
   return [
-    etapa({ id: "e1", name: "Novo", position: 1 }),
-    etapa({ id: "e2", name: "Proposta", position: 2, agent_stage_hint: "negotiating" }),
     etapa({ id: "e3", name: "Fechado", position: 3, is_won: true, agent_stage_hint: "won" }),
+    etapa({ id: "e1", name: "Novo", position: 1 }),
     etapa({ id: "e4", name: "Perdido", position: 4, is_lost: true, agent_stage_hint: "lost" }),
+    etapa({ id: "e2", name: "Proposta", position: 2, agent_stage_hint: "negotiating" }),
   ];
 }
 
@@ -222,8 +246,10 @@ describe("GET /api/v1/pipelines/[id]/agent-mapping", () => {
       };
     };
 
-    // A etapa arquivada não pode ser oferecida: o board não a mostra, e o índice
-    // único do banco a ignora — escolhê-la seria um mapeamento invisível.
+    // Duas coisas de uma vez, e as duas são contrato de tela: a ORDEM é a do
+    // funil (a fixture chega embaralhada), e a etapa arquivada não pode ser
+    // oferecida — o board não a mostra e o índice único do banco a ignora, então
+    // escolhê-la seria um mapeamento invisível.
     expect(body.data.etapas.map((e) => e.id)).toEqual(["e1", "e2", "e3", "e4"]);
     expect(body.data.etapas[0]).toEqual({ id: "e1", name: "Novo", is_won: false, is_lost: false });
 
@@ -246,6 +272,18 @@ describe("PUT /api/v1/pipelines/[id]/agent-mapping", () => {
     const res = await PUT(reqPut({ mapeamento: mapa({ new: "e1" }) }), ctx);
     expect(res.status).toBe(403);
     expect(db.updates).toEqual([]);
+  });
+
+  /**
+   * O 403 acima mocka o `requireRole` para falhar SEMPRE — passaria igual se a
+   * escrita pedisse `agent`. Quem prova o papel da escrita é este.
+   */
+  it("exige manager para escrever", async () => {
+    authOk();
+    makeDb({ stages: funil() });
+    const { PUT } = await import("./route");
+    await PUT(reqPut({ mapeamento: mapa({ new: "e1", won: "e3", lost: "e4" }) }), ctx);
+    expect(vi.mocked(requireRole).mock.calls[0]?.[0]).toBe("manager");
   });
 
   /**
@@ -379,6 +417,35 @@ describe("PUT /api/v1/pipelines/[id]/agent-mapping", () => {
     expect(body.error.code).toBe("state_conflict");
     expect(body.error.message).toContain("Novo");
     expect(body.error.message).not.toContain("e1");
+  });
+
+  /**
+   * Alcançável se `is_won`/`is_lost` mudarem entre a leitura e a gravação. Raro,
+   * mas o texto do Postgres não pode ser o que o dono da clínica lê — é a mesma
+   * mensagem que a camada pura existe para evitar.
+   */
+  it("23514 do CHECK → 409 em português, sem texto do Postgres", async () => {
+    authOk();
+    makeDb({
+      stages: funil(),
+      updateError: (n) =>
+        n === 1
+          ? {
+              code: "23514",
+              message:
+                'new row for relation "crm_stages" violates check constraint "crm_stages_hint_coerente_com_won_lost"',
+            }
+          : null,
+    });
+    const { PUT } = await import("./route");
+    const res = await PUT(reqPut({ mapeamento: mapa({ new: "e1", won: "e3", lost: "e4" }) }), ctx);
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("state_conflict");
+    expect(body.error.message).toContain("Proposta");
+    expect(body.error.message).toContain("Recarregue a página");
+    expect(body.error.message).not.toContain("check constraint");
   });
 
   it("erro inesperado do banco → 500, sem inventar sucesso", async () => {
