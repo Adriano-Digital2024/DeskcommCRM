@@ -60,6 +60,20 @@ function ehPasso(valor: string): valor is LeadStage {
   return (LEAD_STAGES as readonly string[]).includes(valor);
 }
 
+/** Rótulo de tela. Hint fora do vocabulário (banco antigo) sai cru, mas nunca em branco. */
+function rotuloDoPasso(passo: string): string {
+  return ehPasso(passo) ? ROTULO_DO_PASSO[passo] : passo;
+}
+
+/** Passos que a entrada declara ter mexido — chave ausente ≠ chave com `null`. */
+function passosMencionados(entrada: EntradaDeMapeamento): Set<string> {
+  return new Set(
+    Object.entries(entrada)
+      .filter(([, stageId]) => stageId !== undefined)
+      .map(([passo]) => passo),
+  );
+}
+
 /** Recusa o que o banco recusaria — antes de tocar o banco, e em português. */
 export function validarMapeamento(
   entrada: EntradaDeMapeamento,
@@ -67,8 +81,10 @@ export function validarMapeamento(
 ): ResultadoValidacao {
   const erros: string[] = [];
   const etapaJaUsadaPor = new Map<string, LeadStage>();
+  const mencionados = passosMencionados(entrada);
 
   for (const [passo, stageId] of Object.entries(entrada)) {
+    const errosAntes = erros.length;
     // Chave ausente e chave com `undefined` são a mesma coisa: passo não mexido.
     if (stageId === undefined) continue;
 
@@ -120,6 +136,25 @@ export function validarMapeamento(
         `A etapa «${etapa.name}» é a etapa de perda deste funil, então só pode representar «${ROTULO_DO_PASSO.lost}».`,
       );
     }
+
+    // ⚠️ ETAPA OCUPADA POR UM PASSO QUE A ENTRADA NÃO MENCIONA.
+    //
+    // O banco aceitaria (é uma coluna, um valor) — e é justamente por isso que
+    // a recusa precisa morar aqui: aceitar DESMAPEARIA o passo antigo em
+    // silêncio, e o tenant só descobriria meses depois, quando o agente
+    // parasse de mover o card e ninguém soubesse dizer por quê.
+    //
+    // Se o passo antigo ESTÁ na entrada, é permuta ou liberação declarada — o
+    // tenant sabe o que está fazendo e `diffParaUpdates` sabe ordenar.
+    //
+    // Só acusa se este passo ainda não errou por outro motivo: a tela mostra os
+    // erros, e dois textos sobre a mesma escolha ensinam menos que um.
+    const hintAtual = etapa.agent_stage_hint;
+    if (erros.length === errosAntes && hintAtual && hintAtual !== passo && !mencionados.has(hintAtual)) {
+      erros.push(
+        `A etapa «${etapa.name}» já representa «${rotuloDoPasso(hintAtual)}». Libere-a antes de usá-la para «${rotulo}».`,
+      );
+    }
   }
 
   return erros.length === 0 ? { ok: true } : { ok: false, erros };
@@ -136,22 +171,22 @@ export interface UpdateDeEtapa {
  * Chame DEPOIS de `validarMapeamento` — aqui não há veredito, só diferença.
  *
  * ⚠️ SÓ OS PASSOS MENCIONADOS NA ENTRADA ENTRAM NA CONTA. Mapa parcial (a tela
- * mandando um passo só) não pode apagar o que o tenant configurou em outra
- * sessão — "ausente" significa "não mexi nisso", nunca "limpe". Para limpar, a
- * entrada diz `null` explicitamente.
+ * mandando um passo só) não apaga passo que a entrada não cita — "ausente"
+ * significa "não mexi nisso", nunca "limpe"; para limpar, a entrada diz `null`.
+ * O contrato só se fecha COM `validarMapeamento`: a etapa que é ALVO da entrada
+ * larga o hint que declarava, e é a validação que recusa isso quando o passo
+ * largado não foi mencionado. Chamar o diff sozinho perde configuração.
  *
- * ⚠️ OS UNSETs VÊM PRIMEIRO, e não é estética: `uniq_crm_stages_pipeline_hint`
- * recusaria o passo migrando para a etapa nova enquanto a antiga ainda o declara.
+ * ⚠️ TODOS OS UNSETs VÊM PRIMEIRO, e não é estética: o índice único
+ * `uniq_crm_stages_pipeline_hint` é imediato (não deferível), então qualquer
+ * estado intermediário com dois donos do mesmo passo é recusado pelo banco —
+ * tanto o passo que SAI do mapa quanto o que TROCA de dono numa permuta.
  */
 export function diffParaUpdates(
   atual: EtapaDoMapa[],
   desejado: EntradaDeMapeamento,
 ): UpdateDeEtapa[] {
-  const passosEmJogo = new Set(
-    Object.entries(desejado)
-      .filter(([, v]) => v !== undefined)
-      .map(([passo]) => passo),
-  );
+  const passosEmJogo = passosMencionados(desejado);
 
   const limpar: UpdateDeEtapa[] = [];
   const ocupar: UpdateDeEtapa[] = [];
@@ -161,8 +196,17 @@ export function diffParaUpdates(
       ([, stageId]) => stageId === etapa.id,
     )?.[0];
 
-    if (alvoDaEtapa) {
+    // `!== undefined` e não veracidade: `find` devolve ausência como undefined,
+    // e o contrato deste arquivo é "chame depois de validar" — não é papel do
+    // diff decidir que uma chave vazia não conta.
+    if (alvoDaEtapa !== undefined) {
       if (etapa.agent_stage_hint !== alvoDaEtapa && ehPasso(alvoDaEtapa)) {
+        // A etapa alvo LARGA o passo que declarava — e esse unset precisa sair
+        // na primeira leva também. Numa PERMUTA (dois passos trocando de etapa)
+        // nenhuma das duas cai no ramo `else`, então sem esta linha saem dois
+        // SETs e nenhum UNSET: o primeiro colide com o hint que a outra etapa
+        // ainda declara, e o índice único devolve 23505 cru na tela.
+        if (etapa.agent_stage_hint) limpar.push({ stageId: etapa.id, hint: null });
         ocupar.push({ stageId: etapa.id, hint: alvoDaEtapa });
       }
       continue;

@@ -9,6 +9,12 @@ const etapas = [
   { id: 'e4', name: 'Perdido', is_won: false, is_lost: true, agent_stage_hint: null },
 ];
 
+/** Duas etapas que JÁ declaram passos — é onde permuta e conflito existem. */
+const permutaveis = [
+  { id: 'p1', name: 'Avaliação', is_won: false, is_lost: false, agent_stage_hint: 'qualified' },
+  { id: 'p2', name: 'Proposta', is_won: false, is_lost: false, agent_stage_hint: 'qualifying' },
+];
+
 describe('validarMapeamento', () => {
   it('aceita passo sem etapa — é decisão legítima, não pendência', () => {
     const r = validarMapeamento({ new: 'e1', contacted: null }, etapas);
@@ -53,11 +59,64 @@ describe('validarMapeamento', () => {
     expect(r.ok).toBe(true);
   });
 
-  it('nenhuma mensagem de erro vaza id de etapa — elas vão direto para a tela', () => {
-    const r = validarMapeamento({ won: 'e2', new: 'e1', contacted: 'e1' }, etapas);
+  it('recusa "perdido" apontando para etapa que não é de perda, citando a etapa', () => {
+    // Espelho do caso 'won'. Sem ele, as duas linhas do `lost` podem ser
+    // APAGADAS INTEIRAS e a suíte segue verde — metade da regra sem rede.
+    //
+    // ⚠️ e1 (sem hint) e não e2: e2 declara 'negotiating', então a regra de
+    // conflito TAMBÉM recusaria — e o teste passaria mesmo com a coerência
+    // apagada. O caso do brief (`{won:'e2'}`) tem exatamente essa ambiguidade;
+    // por isso os dois testes abaixo, em etapa livre, é que seguram a regra.
+    const r = validarMapeamento({ lost: 'e1' }, etapas);
     expect(r.ok).toBe(false);
-    // 'e1'/'e2' como palavra inteira: o nome «Proposta» não contém isso.
-    expect(r.ok === false && r.erros.join(' | ')).not.toMatch(/\be\d\b/);
+    expect(r.ok === false && r.erros[0]).toMatch(/Novo/);
+  });
+
+  it('recusa "ganho" em etapa livre — a mesma regra sem o conflito por perto', () => {
+    const r = validarMapeamento({ won: 'e1' }, etapas);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.erros[0]).toMatch(/Novo/);
+  });
+
+  it('recusa etapa de perda recebendo passo que não é "perdido"', () => {
+    const r = validarMapeamento({ qualifying: 'e4' }, etapas);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.erros[0]).toMatch(/Perdido/);
+  });
+
+  it('recusa ocupar etapa que já representa um passo que a entrada nem menciona', () => {
+    // Aceitar desmaparia 'qualified' EM SILÊNCIO — o banco não reclama (uma
+    // coluna, um valor) e o tenant só descobriria quando o agente parasse.
+    const r = validarMapeamento({ negotiating: 'p1' }, permutaveis);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.erros[0]).toMatch(/Avaliação/);
+    expect(r.ok === false && r.erros[0]).toMatch(/Qualificado/);
+  });
+
+  it('aceita permuta — o passo largado está na entrada, ninguém perde configuração', () => {
+    // Troca de verdade: p1 larga 'qualified' e pega 'qualifying'; p2 o inverso.
+    const r = validarMapeamento({ qualifying: 'p1', qualified: 'p2' }, permutaveis);
+    expect(r.ok).toBe(true);
+  });
+
+  it('nenhuma mensagem de erro vaza id de etapa — elas vão direto para a tela', () => {
+    // Uma entrada por FORMA de mensagem: passo inválido, etapa fora do funil,
+    // etapa repetida, os quatro ramos de coerência e o conflito. Antes só duas
+    // formas eram exercidas, e as outras podiam vazar id sem ninguém notar.
+    const erros = [
+      validarMapeamento({ churned: 'e1' }, etapas),
+      validarMapeamento({ new: 'etapa-de-outro-funil' }, etapas),
+      validarMapeamento({ new: 'e1', contacted: 'e1' }, etapas),
+      validarMapeamento({ won: 'e1' }, etapas),
+      validarMapeamento({ lost: 'e1' }, etapas),
+      validarMapeamento({ qualifying: 'e3' }, etapas),
+      validarMapeamento({ qualifying: 'e4' }, etapas),
+      validarMapeamento({ negotiating: 'p1' }, permutaveis),
+    ].flatMap((r) => (r.ok ? [] : r.erros));
+
+    expect(erros).toHaveLength(8); // as 8 formas dispararam mesmo
+    // 'e1'/'p2' como palavra inteira: nenhum nome de etapa da fixture contém isso.
+    expect(erros.join(' | ')).not.toMatch(/\b[ep]\d\b/);
   });
 });
 
@@ -94,6 +153,27 @@ describe('diffParaUpdates', () => {
     expect(diffParaUpdates(comGanho, { negotiating: 'e1' })).toEqual(
       expect.not.arrayContaining([{ stageId: 'e5', hint: null }]),
     );
+  });
+
+  it('permuta libera AS DUAS etapas antes de ocupar qualquer uma', () => {
+    // p1 e p2 trocam de passo. As duas são ALVO da entrada, então nenhuma cai no
+    // ramo que limpa "o que saiu do mapa": sem unset explícito no ramo do alvo,
+    // saem dois SETs e o primeiro colide com o hint que a outra ainda declara —
+    // 23505 cru na tela, e a transação não salva (o índice é imediato).
+    const ups = diffParaUpdates(permutaveis, { qualifying: 'p1', qualified: 'p2' });
+    expect(ups.slice(0, 2)).toEqual(
+      expect.arrayContaining([
+        { stageId: 'p1', hint: null },
+        { stageId: 'p2', hint: null },
+      ]),
+    );
+    expect(ups.slice(2)).toEqual(
+      expect.arrayContaining([
+        { stageId: 'p1', hint: 'qualifying' },
+        { stageId: 'p2', hint: 'qualified' },
+      ]),
+    );
+    expect(ups).toHaveLength(4);
   });
 
   it('limpa ANTES de ocupar — senão o índice único recusa a troca no meio', () => {
