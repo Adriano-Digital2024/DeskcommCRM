@@ -6,7 +6,8 @@
 **Plano da fase atual:** docs/superpowers/plans/2026-07-23-harness-fase0-convergencia.md
 
 ## Estado atual
-- **Fases 0 → 4 concluídas.** A Fase 4 (Painel de Evolução) fechou em 2026-07-27 na branch `feat/operacao-visivel`. O que falta do épico é a Fase 5 (ainda sem plano).
+- **ÉPICO COMPLETO.** A spec tem cinco fases, numeradas **0 a 4**, e todas fecharam — a última (Painel de Evolução) em 2026-07-27, na branch `feat/operacao-visivel`. *(Correção: uma versão anterior desta linha dizia "falta a Fase 5". Não existe Fase 5 — a contagem "5 fases" virou um número de fase que a spec nunca teve. Confira em `docs/superpowers/specs/2026-07-23-harness-evolution-design.md`: os cabeçalhos vão de "Fase 0" a "Fase 4".)*
+- **Continuação natural do épico, já planejada:** `docs/superpowers/plans/2026-07-27-mapeamento-funil-agente.md` — a tela que permite ao tenant dizer em qual etapa do funil o agente coloca o cliente. É a única lacuna que o Painel de Evolução relata e o produto não oferece onde consertar (`crm_stages.agent_stage_hint` existe desde a 0084 e **nenhuma interface a escreve**).
 - **Uma prova continua em aberto, e é do Rafael:** ninguém mandou uma mensagem real de WhatsApp fechando o ciclo completo. A receita de 1 minuto está no fim deste arquivo.
 
 ## Log
@@ -59,12 +60,32 @@
 
 ## Prova de ponta a ponta que falta — receita de 1 minuto (Rafael)
 
-O painel já foi provado da telemetria para a frente. O que ninguém fez é o ciclo completo com uma mensagem de verdade. Para fechar:
+O painel já foi provado da telemetria para a frente. O que falta é o ciclo completo com uma mensagem de verdade — e **todos os bloqueios foram removidos em 2026-07-27**. Restou só o que exige um humano: mandar a mensagem.
 
-1. **Antes de mandar qualquer coisa, ligue a base ao agente.** Hoje **nenhum** agente da org `e2e-test-org` tem KB ativa, e sem `active_kb_version_id` a ferramenta `search_knowledge` nem é montada no turno — o agente responde sem nunca buscar, e a tabela fica vazia por motivo nenhum. Na tela: *Agentes IA → o agente do seu número → base de conhecimento → a versão publicada*. A KB pronta da org é `df9810c7-3e5c-4449-a6cd-f70852173c86` (2 verbetes: frete grátis acima de R$ 199 e garantia de 12 meses).
-2. **Mande duas mensagens do seu WhatsApp** para o número conectado: uma que a base responde — *"qual o prazo de garantia dos produtos?"* — e uma que ela não responde — *"vocês patrocinam torneios de xadrez na Islândia?"*.
-3. **Confira no banco** (`psql "$SUPABASE_DB_URL"`):
-   `select hits, top_score, threshold, job_id, created_at from knowledge_searches order by created_at desc limit 2;`
-   Esperado: a primeira com `hits >= 1`, a segunda com `hits = 0` e `top_score` preenchido (baixo). **O `job_id` é o que distingue a prova real:** turno de verdade preenche; a prova de bancada desta fase gravou `job_id` nulo de propósito.
-4. **Olhe a tela**: `/app/ai/evolution`, período incluindo hoje. "Consultas aos seus materiais" sobe 2, e em "O que está travando" aparece *"1 pergunta de cliente não encontrou resposta nos seus materiais"* com o botão para a base de conhecimento.
-5. **Se a resposta do agente sair sem citar a base**, olhe o log do worker antes de suspeitar do código: o AI Gateway estava no teto do free tier em 2026-07-27, e o embedding falhando derruba a busca inteira (o turno segue, a tabela não recebe linha).
+**Ambiente já preparado (não precisa configurar nada):**
+- Base de conhecimento **ligada** na `Lia — AgendaPlus` (KB `df9810c7`, 2 verbetes: garantia de 12 meses e frete grátis acima de R$ 199), limiar de semelhança em **0,5** — o padrão 0,72 cortaria acertos legítimos, já medido em sessão anterior.
+- Worker rodando o código atual (`npm run worker`, healthz na 8787). **Isto importa:** um worker antigo processa o turno e **não grava** a telemetria, e a prova falharia em silêncio.
+- App em produção na **porta 3000**, health `healthy` nos três (Supabase, Redis, WAHA).
+- Redis local no ar (`docker start deskcomm-redis-local deskcomm-srh-local` se tiver reiniciado a máquina).
+- Embedding indo **direto na OpenAI**, sem passar pelo gateway (commit `e5d702d`) — era o teto do plano anônimo que derrubava a busca inteira.
+
+**Os dois passos que são seus:**
+
+1. **Mande duas mensagens do seu WhatsApp** para o número conectado: uma que a base responde — *"qual o prazo de garantia dos produtos?"* — e uma que ela não responde — *"vocês patrocinam torneios de xadrez na Islândia?"*.
+2. **Olhe a tela**: `/app/ai/evolution`, período incluindo hoje. "Consultas aos seus materiais" sobe 2, e em "O que está travando" aparece *"1 pergunta de cliente não encontrou resposta nos seus materiais"*, com o botão para a base.
+
+**Como conferir por baixo, se quiser:**
+```sql
+select hits, top_score, threshold, job_id, created_at
+  from knowledge_searches order by created_at desc limit 2;
+```
+A primeira com `hits >= 1`, a segunda com `hits = 0` e `top_score` preenchido (baixo). **O `job_id` é o que distingue a prova real:** turno de verdade preenche; a prova de bancada desta fase gravou nulo de propósito.
+
+**Se não gravar nada**, a ordem de suspeita mudou: worker velho (confira que o processo é posterior ao último commit) → agente errado respondendo (a KB está na Lia, não em outro) → só então o código.
+
+## Ambiente consertado em 2026-07-27 (o que era "achado" virou conserto)
+
+- **AI Gateway no teto: RESOLVIDO na causa raiz, sem mexer em cobrança.** `lib/ai/embed.ts` prometia no cabeçalho usar o provider OpenAI direto quando não há `AI_GATEWAY_API_KEY`, e esse caminho **não existia no código** — passava a string `openai/text-embedding-3-small` para `embed()`, e no AI SDK id com barra é resolvido pelo gateway da Vercel **mesmo sem chave**, caindo no plano anônimo. Commit `e5d702d` + teste que assere o TIPO do que chega em `embed({model})` (string = gateway; objeto = provider explícito), sabotado e vermelho. Prova real: 1536 dimensões / 8 tokens direto na OpenAI. O caminho de CONVERSA já estava certo (`lib/agent-engine/edge/llm/providers.ts` usa providers explícitos com endpoint contido) — o defeito era exclusivo do embedding.
+- **Upstash morto: substituído por Redis local.** A instância da nuvem dá NXDOMAIN (foi removida). Subi o mesmo par do `docker-compose.prod.yml` — `deskcomm-redis-local` (redis:7-alpine) + `deskcomm-srh-local` (serverless-redis-http na porta 8079, que fala o protocolo REST do Upstash sobre o redis normal). `.env.local` aponta para lá, com os valores da nuvem **comentados logo acima** para reverter. Backup em `.env.local.bak-*`. Health voltou a `healthy`.
+- **Servidor da porta 3000:** o processo antigo (quebrado porque o `pnpm install` do merge trocou o `node_modules` por baixo dele) morreu sozinho; subi um `next start` novo do build atual.
+- **Worker reiniciado** para pegar o código da fase — o anterior era das 07:54 e não tinha a telemetria nem a ponte do funil.
