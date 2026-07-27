@@ -14,8 +14,9 @@ import type { EvolutionPayload } from "@/lib/ai/evolution/aggregate";
  *     acerto dentro do mesmo laço das buscas sem resultado. Somar os dois como se
  *     fossem problemas separados infla a lacuna; por isso o segundo item começa
  *     com "Destas".
- *  2. "nada travando" só é boa notícia se houve movimento. Sem atividade nenhuma,
- *     a lista vazia significa "não deu para saber", e é isso que ela diz.
+ *  2. lista vazia NÃO é boa notícia por si. Cada frase de elogio é uma afirmação
+ *     sobre uma fonte diferente e só sai com a evidência daquela fonte — ver o
+ *     docblock de `boaNoticia`, que é onde a regra vive.
  */
 
 /** Os passos do atendimento em português de dono de negócio — o enum é interno. */
@@ -124,29 +125,35 @@ function montaLacunas(gaps: EvolutionPayload["gaps"]): Lacuna[] {
  * sua própria evidência:
  *   • "toda pergunta encontrou resposta"  ← só vale se houve busca na base;
  *   • "toda conversa achou para onde ir"  ← só vale se houve decisão de rota;
- *   • "todo passo tem etapa que o recebe" ← sempre vale: é o estado ATUAL do
- *     funil, não um evento do período, então independe de ter havido movimento.
+ *   • "todo passo tem etapa que o recebe" ← só vale se EXISTE funil. A lacuna
+ *     deriva das linhas de `crm_stages`: zero funis ⇒ zero lacunas, e o elogio
+ *     seria sobre funis que não existem. E como o instalador não provisiona
+ *     funil nenhum, esse é justamente o estado de instalação fresca.
  *
- * Um booleano "houveAtividade" para as três autorizaria todas com a evidência de
- * uma: um tenant com roteador configurado e base VAZIA tem decisões > 0 e a tela
- * afirmaria "toda pergunta encontrou resposta nos seus materiais" tendo havido
- * ZERO perguntas. O guarda tem que ter o tamanho da afirmação.
+ * Um guarda único autorizaria as três com a evidência de uma: um tenant com
+ * roteador configurado e base VAZIA tem decisões > 0 e a tela afirmaria "toda
+ * pergunta encontrou resposta nos seus materiais" tendo havido ZERO perguntas.
+ * O guarda tem que ter o tamanho da afirmação.
  */
-export function boaNoticia(buscas: number, decisoes: number): string {
+export function boaNoticia(buscas: number, decisoes: number, funis: number): string {
   const partes: string[] = [];
   if (buscas > 0) partes.push("toda pergunta encontrou resposta nos seus materiais");
   if (decisoes > 0) partes.push("toda conversa achou para onde ir");
-  partes.push("todo passo do atendimento tem uma etapa do funil que o recebe");
+  if (funis > 0) partes.push("todo passo do atendimento tem uma etapa do funil que o recebe");
 
+  const faltando: string[] = [];
+  if (buscas === 0) faltando.push("ninguém consultou sua base de conhecimento");
+  if (decisoes === 0) faltando.push("nenhuma conversa foi encaminhada");
+  if (funis === 0) faltando.push("você ainda não tem nenhum funil montado");
+
+  // Nenhuma evidência: a tela não tem o que elogiar, e dizer "nada travando"
+  // seco seria elogio. Abre pelo motivo, não pela boa notícia.
+  if (partes.length === 0) {
+    return `Ainda não dá para dizer se algo está travando: ${faltando.join(", ")}. Volte aqui depois que seu agente tiver atendido.`;
+  }
   const frase = `Nada travando neste período: ${partes.join(", ")}.`;
-  if (buscas > 0 && decisoes > 0) return frase;
-  return `${frase} Vale a ressalva de que ${
-    buscas === 0 && decisoes === 0
-      ? "não houve consulta à sua base nem encaminhamento de conversa"
-      : buscas === 0
-        ? "ninguém consultou sua base de conhecimento"
-        : "nenhuma conversa foi encaminhada"
-  } no período — sobre isso a lista está calada, não elogiosa.`;
+  if (faltando.length === 0) return frase;
+  return `${frase} Uma ressalva: ${faltando.join(", ")} — sobre isso não dá para dizer nem que está bem nem que está mal.`;
 }
 
 export function EvolutionGaps({
@@ -166,7 +173,9 @@ export function EvolutionGaps({
     return (
       <Card className="flex items-start gap-3 p-5" data-testid="gaps-vazio">
         <CheckCircle size={20} className="mt-0.5 shrink-0 text-success-fg" aria-hidden />
-        <p className="text-sm leading-relaxed">{boaNoticia(buscas, decisoes)}</p>
+        <p className="text-sm leading-relaxed">
+          {boaNoticia(buscas, decisoes, gaps.pipelines_evaluated)}
+        </p>
       </Card>
     );
   }

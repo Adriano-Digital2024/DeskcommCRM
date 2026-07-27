@@ -61,18 +61,35 @@ const DESCRICAO_RESULTADO =
  * andaram e que os cartões não andam.
  */
 const SIGNIFICA_GANHOS =
-  "Clientes que o AGENTE marcou como fechados. Negócio que a sua equipe fechou na mão, movendo o cartão no quadro, não entra aqui.";
+  "Clientes que o agente marcou como fechados. Negócio que a sua equipe fechou na mão, movendo o cartão no quadro, não entra aqui.";
 const SIGNIFICA_PERDIDOS =
-  "Clientes que o AGENTE marcou como perdidos — contraponto necessário, porque ganhos sem perdidos ao lado enganam. Também não conta o que a sua equipe marcou na mão.";
-const SIGNIFICA_AVANCOS =
-  "Quantas vezes o AGENTE registrou que um cliente avançou um passo do atendimento — o sinal de que a conversa andou, e não só aconteceu. Cartão movido à mão no quadro não entra aqui.";
+  "Clientes que o agente marcou como perdidos — contraponto necessário, porque ganhos sem perdidos ao lado enganam. Também não conta o que a sua equipe marcou na mão.";
+/**
+ * "Avanço" prometeria DIREÇÃO, e o dado não tem: `stage_transitions` é o total
+ * de transições, e o grafo do funil do agente permite `qualquer → lost`. Num mês
+ * de 1 ganho e 5 perdas, 6 das transições seriam justamente os desfechos — e 5
+ * delas, perdas contadas como avanço. A redação neutra é a única fiel.
+ */
+const SIGNIFICA_MUDANCAS =
+  "Quantas vezes o agente registrou que um cliente mudou de passo no atendimento — o sinal de que a conversa andou, e não só aconteceu. Inclui as mudanças para fechado e para perdido, então não leia como só progresso. Cartão movido à mão no quadro não entra aqui.";
+
+/**
+ * O numerador soma DUAS fontes com garantias diferentes: o runtime atual
+ * deduplica por episódio aberto; o antigo só ignora repetição dentro de 5s com a
+ * mesma razão. "Conta uma vez só" seria verdade para metade do número, e "modo
+ * antigo do sistema" seria jargão que o dono da clínica não sabe se o afeta — a
+ * frase entrega a CONSEQUÊNCIA (leia como estimativa) e para por aí.
+ */
+const SIGNIFICA_AJUDA =
+  "Conversas que o agente passou para um atendente humano, a cada 100 mensagens recebidas. Leia como estimativa: no geral o mesmo caso conta uma vez só, mesmo que o cliente peça ajuda várias vezes, mas em parte dos atendimentos ele pode contar mais de uma.";
 
 /**
  * Uma ajuda em 5.000 mensagens é 0,02 a cada 100 — com uma casa decimal isso
  * vira "0", que lê como "nunca precisou de gente". É o mesmo zero lisonjeiro
- * dos outros números do bloco, só que produzido pelo formatador.
+ * dos outros números do bloco, só que produzido pelo formatador. Exportada por
+ * ser o único jeito de alcançar o ramo `< 0,1`: a org de prova não o produz.
  */
-function taxaDeAjuda(rate: number): string {
+export function taxaDeAjuda(rate: number): string {
   if (rate <= 0) return "0";
   const porCem = rate * 100;
   if (porCem < 0.1) return "menos de 0,1 a cada 100";
@@ -364,8 +381,20 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
   // com a evidência de uma. Ver o comentário em EvolutionGaps.
   const buscas = soma(activity.series.knowledge_searches);
   const decisoes = soma(activity.series.router_decisions);
+  // ⚠️ Custo e ajuda humana entram no guarda, e são a parte que importa. As
+  // outras quatro fontes não provam "houve atendimento": decisão de roteador só
+  // existe se há roteador, busca só se o agente usou a ferramenta, skill só se
+  // ativou. Uma instalação nova — sem roteador, base vazia — que atendeu 200
+  // clientes zera as quatro, e a tela diria "não houve atendimento" logo acima
+  // de "Custo da IA: R$ 12,00". É o mesmo defeito do guarda grosso da lista de
+  // lacunas, um andar acima: guarda menor do que a afirmação que ele autoriza.
   const houveAtividade =
-    buscas + decisoes + soma(activity.series.skill_activations) + outcome.stage_transitions > 0;
+    buscas +
+      decisoes +
+      soma(activity.series.skill_activations) +
+      outcome.stage_transitions +
+      outcome.cost_cents >
+      0 || outcome.handoff_rate > 0;
 
   return (
     <>
@@ -503,14 +532,14 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
             significa={SIGNIFICA_PERDIDOS}
           />
           <StatCard
-            rotulo="Avanços no atendimento"
+            rotulo="Mudanças de passo no atendimento"
             valor={num(outcome.stage_transitions)}
-            significa={SIGNIFICA_AVANCOS}
+            significa={SIGNIFICA_MUDANCAS}
           />
           <StatCard
             rotulo="Casos que precisaram de uma pessoa"
             valor={taxaDeAjuda(outcome.handoff_rate)}
-            significa="Conversas que o agente passou para um atendente humano, a cada 100 mensagens recebidas. Conta casos, não pedidos: pedir ajuda três vezes com o mesmo caso aberto conta uma vez só. É um número aproximado — atendimentos feitos pelo modo antigo do sistema podem contar o mesmo caso mais de uma vez."
+            significa={SIGNIFICA_AJUDA}
           />
           <StatCard
             rotulo="Custo da IA no período"

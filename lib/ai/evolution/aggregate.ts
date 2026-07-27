@@ -69,6 +69,14 @@ export interface EvolutionPayload {
   };
   gaps: {
     unmapped_agent_steps: Array<{ pipeline_name: string; steps: string[] }>;
+    /**
+     * Quantos funis foram EXAMINADOS para produzir `unmapped_agent_steps`.
+     * Sem isto, lista vazia é ambígua: pode ser "todo passo tem etapa" ou
+     * "não existe funil nenhum" — e a segunda é o estado de instalação fresca
+     * (não há provisionamento de pipeline padrão no install). A tela usaria a
+     * ausência de lacuna como elogio a funis que não existem.
+     */
+    pipelines_evaluated: number;
     knowledge_near_misses: number;
     knowledge_empty: number;
     router_no_match: number;
@@ -200,6 +208,7 @@ export function aggregateEvolution(input: EvolutionInput): EvolutionPayload {
     },
     gaps: {
       unmapped_agent_steps: unmapped,
+      pipelines_evaluated: input.pipelines.length,
       knowledge_near_misses: nearMisses,
       knowledge_empty: empty,
       router_no_match: input.routerDecisions.filter((r) => r.outcome === 'no_match').length,
