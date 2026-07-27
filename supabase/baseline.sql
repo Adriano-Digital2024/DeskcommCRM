@@ -8340,3 +8340,9 @@ create policy tenant_isolation_knowledge_searches_all on knowledge_searches
   for all
   using (organization_id in (select fn_user_org_ids()))
   with check (organization_id in (select fn_user_org_ids()));
+
+-- Defesa em profundidade, mesmo contrato da 0085: a policy já devolve zero linha
+-- para JWT anônimo (auth.uid() null => fn_user_org_ids() vazio), mas o grant que
+-- o Supabase concede por default privilege não tem razão de existir aqui — esta
+-- tabela nunca é lida sem sessão. Idempotente: revogar o que não está lá é no-op.
+revoke all on public.knowledge_searches from anon;
