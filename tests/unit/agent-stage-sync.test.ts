@@ -128,13 +128,25 @@ function cenario(over: Partial<Cenario> = {}): Cenario {
   };
 }
 
-/** Fake do query builder: thenable, e distingue SELECT de UPDATE pela chamada. */
+/**
+ * Fake do query builder: thenable, e distingue SELECT de UPDATE pela chamada.
+ *
+ * ⚠️ UPDATE **sem** `.select()` devolve `data: null`, como o supabase-js real —
+ * é o que faz este fake exigir o `.select("id")` do código de produção. Sem essa
+ * regra, remover só o `.select("id")` (mantendo o check de comprimento) passaria
+ * verde aqui e, no banco de verdade, faria TODO movimento virar `conflito_humano`:
+ * o card nunca mais andaria e o painel mostraria conflito onde não há.
+ */
 function fakeAdmin(c: Cenario) {
   return {
     from(tabela: string) {
       const b = {
         _update: false,
-        select: () => b,
+        _select: false,
+        select: () => {
+          b._select = true;
+          return b;
+        },
         update: () => {
           b._update = true;
           return b;
@@ -142,7 +154,13 @@ function fakeAdmin(c: Cenario) {
         eq: () => b,
         maybeSingle: () => Promise.resolve({ data: { name: "Primeiro contato" }, error: null }),
         then(onF: (v: unknown) => unknown, onR?: (e: unknown) => unknown) {
-          const r = b._update ? c.update : tabela === "crm_leads" ? c.leads : c.stages;
+          const r = b._update
+            ? b._select
+              ? c.update
+              : { ...c.update, data: null } // UPDATE sem .select() não devolve linha nenhuma
+            : tabela === "crm_leads"
+              ? c.leads
+              : c.stages;
           return Promise.resolve(r).then(onF, onR);
         },
       };

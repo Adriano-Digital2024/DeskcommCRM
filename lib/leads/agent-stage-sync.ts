@@ -178,6 +178,11 @@ export async function sincronizaEstagioDoAgente(
   );
   if (!destino.move) return { moveu: false, motivo: destino.motivo, leadId: lead.id };
 
+  // O erro DESTE select é descartado de propósito — e a diferença para os dois de
+  // cima (onde descartar produziu o defeito de tratar banco fora como rotina) é
+  // que aqui nenhuma DECISÃO depende do resultado: o nome da origem só enfeita o
+  // texto da timeline, que degrada de "Movido de A para X" para "Movido para X".
+  // Abortar por causa dele desfaria um movimento que já aconteceu no banco.
   const { data: origem } = await admin
     .from("crm_stages")
     .select("name")
