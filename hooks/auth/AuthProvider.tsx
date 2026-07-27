@@ -107,6 +107,8 @@ const ACTION_MIN_ROLE: Record<string, Role> = {
   "ai.memory.publish": "admin",
   "ai.skills.view": "manager",
   "ai.skills.manage": "manager",
+  "ai.routers.view": "manager",
+  "ai.routers.manage": "admin",
   "ai.credentials.view": "manager",
   "ai.credentials.write": "admin",
   "webhooks.manage": "manager",

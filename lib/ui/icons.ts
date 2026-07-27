@@ -89,4 +89,5 @@ export {
   PuzzlePiece,
   UploadSimple,
   DownloadSimple,
+  Signpost,
 } from "@phosphor-icons/react/dist/ssr";
