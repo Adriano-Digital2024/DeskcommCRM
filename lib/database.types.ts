@@ -2525,6 +2525,7 @@ export type Database = {
       }
       crm_stages: {
         Row: {
+          agent_stage_hint: string | null
           color: string | null
           created_at: string
           description: string | null
@@ -2542,6 +2543,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agent_stage_hint?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -2559,6 +2561,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agent_stage_hint?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -3351,6 +3354,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "judge_alignment_pool_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_searches: {
+        Row: {
+          created_at: string
+          hits: number
+          id: string
+          job_id: string | null
+          kb_version_id: string | null
+          organization_id: string
+          threshold: number
+          top_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          hits?: number
+          id?: string
+          job_id?: string | null
+          kb_version_id?: string | null
+          organization_id: string
+          threshold: number
+          top_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          hits?: number
+          id?: string
+          job_id?: string | null
+          kb_version_id?: string | null
+          organization_id?: string
+          threshold?: number
+          top_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_searches_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
