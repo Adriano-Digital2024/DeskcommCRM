@@ -33,14 +33,18 @@ export const ApiErrorCodes = {
   // 409 — conflito
   idempotency_conflict: "idempotency_conflict",
   state_conflict: "state_conflict",
+  invalid_state: "invalid_state", // resposta a um agent_case que saiu de awaiting_human (spec 15 §7)
   tenant_already_exists: "tenant_already_exists",
   duplicate_external_id: "duplicate_external_id",
   event_gone: "event_gone", // resend de run cujo event_log original foi apagado (on delete set null)
+  next_action_absent: "next_action_absent", // decisão sobre proposta que não existe (mais) [wave 4]
+  next_action_changed: "next_action_changed", // o agente reescreveu a proposta entre o render e o clique
 
   // 422 — semântica
   unprocessable_entity: "unprocessable_entity",
   invalid_state_transition: "invalid_state_transition",
   invalid_owner: "invalid_owner", // novo dono não é membro ativo agent+ da org (bulk assign, G3-04)
+  trigger_kind_not_implemented: "trigger_kind_not_implemented", // publish de followup-flow com kind sem motor de enrollment (stage_change/conversation_end)
 
   // 429
   rate_limited: "rate_limited",
@@ -48,6 +52,7 @@ export const ApiErrorCodes = {
   // 500 / upstream
   internal_error: "internal_error",
   upstream_unavailable: "upstream_unavailable",
+  unavailable: "unavailable", // 503: dependência de config ausente (ex.: pool do engine sem SUPABASE_DB_URL)
   waha_error: "waha_error",
   ai_provider_error: "ai_provider_error",
   nuvemshop_error: "nuvemshop_error",

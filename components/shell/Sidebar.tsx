@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, Brain, PuzzlePiece, PlugsConnected, ChartBar, WebhooksLogo, ClockCountdown, Signpost } from "@/lib/ui/icons";
+import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, Brain, PlugsConnected, ChartBar, WebhooksLogo, FlowArrow, FileText, ClockCountdown, PuzzlePiece, Signpost } from "@/lib/ui/icons";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -25,9 +25,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/contacts", label: "Contatos", icon: Users },
   { href: "/app/team", label: "Equipe", icon: UsersThree },
   { href: "/app/metrics", label: "Desempenho", icon: ChartBar },
+  { href: "/app/templates", label: "Templates", icon: FileText },
   { href: "/app/lgpd/requests", label: "LGPD", icon: ScalesSimple, permission: "lgpd.execute_redact" },
   { href: "/app/ai/agents", label: "Agentes IA", icon: Robot, permission: "ai.agents.view" },
   { href: "/app/ai/routers", label: "Roteadores", icon: Signpost, permission: "ai.routers.view" },
+  { href: "/app/ai/followups", label: "Follow-ups", icon: FlowArrow, permission: "ai.agents.view" },
   { href: "/app/ai/memory", label: "Memória da IA", icon: Brain, permission: "ai.memory.view" },
   { href: "/app/ai/skills", label: "Skills da IA", icon: PuzzlePiece, permission: "ai.skills.view" },
   { href: "/app/webhooks", label: "Webhooks", icon: WebhooksLogo, permission: "webhooks.manage" },

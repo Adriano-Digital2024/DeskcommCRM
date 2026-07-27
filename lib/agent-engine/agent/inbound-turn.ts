@@ -49,6 +49,7 @@ import {
 import type { ProviderRegistry } from '../edge/llm/providers';
 import { mirrorLeadStageToCrm } from '../edge/crm/move-lead-stage';
 import { insertInboxItem } from '../db/repository';
+import { buildNativeMediaParts } from './media-parts';
 import type { JobRow, Queryable } from '../queue/queue';
 import { applyLeadStateUpdate, getLeadState, type LeadStage, type LeadStateRow } from './lead-state';
 import { applySaveLeadNote, buildNotesIndexBlock, getLeadNoteBody } from './lead-notes';
@@ -73,6 +74,14 @@ import { loadPlaybook } from './playbook';
 import { composeSystemPrompt, loadOrgMemory, renderOrgMemory } from './org-memory';
 import { matchesHandoffKeyword } from './agent-config';
 import { resolveTurnAgent } from './resolve-turn-agent';
+import {
+  hasOpenCaseForContact,
+  getCaseAwaitingLead,
+  openCase,
+  provideCaseUpdate,
+  openHumanCaseInputSchema,
+  provideCaseUpdateInputSchema,
+} from './human-cases';
 import { buildMcpTurnTools } from '../edge/crm/mcp-tools';
 import { cancelPendingCronsForLead } from '../cron/scheduler';
 import {
@@ -86,10 +95,13 @@ import {
 import { readSkillReference, skillHasReferences } from './skill-references';
 import { READ_ONLY_TOOLS, wrapToolsWithBreaker, type ToolBreakerThresholds } from './tool-breaker';
 import { runBeforeSend } from '../guardrails/before-send';
+import { sendInBubbles } from './split-message';
 import type { DisclosureMode } from '../guardrails/disclosure/template';
 import { decidePromise } from '../guardrails/promise/engine';
 import { loadPromiseTable } from '../guardrails/promise/table';
 import { classifyPromise } from '../guardrails/promise/semantic';
+import { diffCheckpoint } from '@/lib/leads/checkpoint-diff';
+import { emitAgentActivityForContact } from '@/lib/leads/agent-activity';
 import {
   JAILBREAK_ESCALATION_LEVEL,
   classifyJailbreak,
@@ -210,6 +222,32 @@ export const AGENT_TOOL_DEFS = {
       ref_path: z.string().min(1).describe('caminho da reference dentro do pacote da skill'),
     }).passthrough(),
   },
+  open_human_case: {
+    description:
+      'Abra um caso para um humano de retaguarda quando você NÃO conseguir resolver o pedido do lead ' +
+      'sozinho (liberar acesso, corrigir algo num sistema, uma decisão que exige uma pessoa). Você CONTINUA ' +
+      'conversando com o lead normalmente — não silencia. Use SEMPRE que for prometer ao lead que alguém vai ' +
+      'verificar/resolver: prometer sem abrir o caso é proibido.',
+    // Schema LARGO para o SDK (o modelo vê os campos); a validação REAL é a whitelist
+    // .strict() openHumanCaseInputSchema (human-cases.ts) — campo extra/forjado vira
+    // erro de ENSINO ao modelo, nunca exceção do SDK nem strip silencioso.
+    inputSchema: z.object({
+      title: z.string().describe('título curto, ex.: "Liberar acesso ao painel"'),
+      summary: z.string().describe('o que o lead precisa, em pt-br'),
+      blocker: z.string().describe('por que você não consegue resolver sozinho'),
+    }).passthrough(),
+  },
+  provide_case_update: {
+    description:
+      'Quando um caso está esperando informação do cliente e você já colheu essa informação na conversa, ' +
+      'use esta tool para devolver a informação ao humano responsável. Não invente — só o que o lead disse.',
+    // Schema LARGO para o SDK; a validação REAL é a whitelist .strict()
+    // provideCaseUpdateInputSchema (human-cases.ts).
+    inputSchema: z.object({
+      case_id: z.string().describe('id do caso aberto'),
+      info: z.string().describe('a informação colhida do lead'),
+    }).passthrough(),
+  },
 } as const;
 
 /**
@@ -257,6 +295,19 @@ export const CHECKPOINT_INSTRUCTION =
   '{"commitments": string[], "objections": string[], "next_action": string|null, "rolling_summary": string} ' +
   '— compromissos assumidos, objeções do lead, próxima ação e o resumo acumulado ' +
   'da conversa até aqui (inclua o que o resumo anterior já dizia). Sem texto fora do JSON.';
+
+/**
+ * Bloco de sistema RESIDENTE das tools de caso (spec 15 §5.2) — entra no prefixo
+ * cacheável junto do índice de skills quando `casesEnabled`, pra não sumir em
+ * conversa longa (ao contrário do índice de skills, este bloco não some).
+ */
+const CASES_SYSTEM_BLOCK =
+  '## Casos para um humano de retaguarda\n' +
+  'Quando você NÃO conseguir resolver o pedido do lead sozinho (liberar acesso, corrigir algo num ' +
+  'sistema, uma decisão que exige uma pessoa), use a tool open_human_case — você CONTINUA conversando ' +
+  'com o lead, não silencia. NUNCA prometa ao lead que um humano vai verificar/resolver sem antes chamar ' +
+  'open_human_case. Quando um caso estiver esperando informação do cliente e você já a obteve na ' +
+  'conversa, use provide_case_update para devolver ao responsável.';
 
 export interface InboundTurnKnobs {
   /** últimas N mensagens no contexto de abertura (LEAD_CONTEXT_HISTORY_LIMIT) */
@@ -323,6 +374,12 @@ export interface InboundTurnKnobs {
    * CUSTO: com enabled, é UMA chamada de modelo auxiliar POR TENTATIVA DE ENVIO (não por turno).
    */
   promiseSemantic?: { enabled: boolean; model?: string };
+  /**
+   * Onda 5 (Task 5.1) — modelo auxiliar dos turnos `classify`/`decide_timing` do
+   * sistema de fluxos de follow-up (lib/agent-engine/agent/followup-flow-classify.ts).
+   * Ausente = usa o defaultModel da org (mesma convenção de stageClassifier/jailbreak).
+   */
+  followupAi?: { model?: string };
 }
 
 export interface InboundTurnDeps {
@@ -648,13 +705,20 @@ export async function runAgentTurn(
   const skills = await loadSkills(pool, tenantId);
   const skillIndex = renderSkillIndex(skills);
   // Fase 1 (harness): memória geral da org — prefixo estável, resolvida a cada
-  // turno como o playbook (publicar ⇒ próximo turno vale).
+  // turno como o playbook (publicar ⇒ próximo turno vale). composeSystemPrompt já
+  // encaixa playbook + memória + índice de skills no prefixo cacheável.
   const orgMemory = await loadOrgMemory(pool, tenantId);
-  const system = composeSystemPrompt({
+  const systemWithMemory = composeSystemPrompt({
     playbookPrompt: playbook.prompt,
     orgMemoryBlock: renderOrgMemory(orgMemory),
     skillIndex,
   });
+  // Spec 15 §5.2: bloco das tools de caso SEMPRE residente (não invalida o prefixo
+  // cacheável — mesmo espírito do índice de skills) quando a tela habilita.
+  const system =
+    agentConfig !== null && agentConfig.casesEnabled
+      ? `${systemWithMemory}\n\n${CASES_SYSTEM_BLOCK}`
+      : systemWithMemory;
   const previous = await latestCheckpoint(pool, tenantId, leadId);
   const leadState = await getLeadState(pool, tenantId, leadId);
   const openingContext = await getLeadContext(
@@ -840,6 +904,13 @@ export async function runAgentTurn(
           )
       : undefined;
   let outOfTablePromiseAttempted = false;
+  // Spec 15 (Wave 4 lê este flag): true quando open_human_case abriu um caso NESTE
+  // turno — aqui só declara e seta; o consumo (ex.: guardrail de promessa) é da Wave 4.
+  let openedCaseThisTurn = false;
+  // Wave 4 — contador do fail-safe do guardrail anti-alucinação (case_promise_without_case):
+  // 1º veto no turno é erro-de-ensino (o modelo re-tenta); persistir uma 2ª vez aciona o
+  // auto-abre-caso (ver send_message.execute). Por turno (closure), nunca cross-turno.
+  let casePromiseVetoCount = 0;
   const outcomes: ChannelSendResult[] = [];
   // Citações acumuladas por buscas de conhecimento DESTE turno — anexadas à
   // próxima outbound enviada (shape de lib/ai/citations/types, que a UI já lê).
@@ -948,7 +1019,17 @@ export async function runAgentTurn(
         // seq só avança quando o envio é de fato tentado (gate veto não gasta seq
         // — preserva o alinhamento (job_id, seq) do ledger F2-06 entre re-runs).
         try {
-          const chain = await runBeforeSend({
+          // Wave 4 (spec 15 §10.2): estado de caso lido FRESCO a cada tentativa de envio
+          // (pode ter mudado dentro deste MESMO turno via open_human_case, chamado antes
+          // deste send_message). casesEnabled false (tela não habilita) → sempre false,
+          // sem query — o casePromiseGate já é no-op nesse caso de qualquer forma.
+          const hasOpenCase =
+            agentConfig?.casesEnabled === true
+              ? await hasOpenCaseForContact(pool, tenantId, input.conversationId)
+              : false;
+          // Args reusados EXATAMENTE (mesmo objeto) no re-run do fail-safe abaixo — só
+          // hasOpenCase/openedCaseThisTurn mudam depois do auto-abre-caso.
+          const beforeSendArgs = {
             pool,
             log: runLog,
             tenantId,
@@ -964,24 +1045,69 @@ export async function runAgentTurn(
             now: clock(),
             sleep: deps.sleep,
             lgpd,
+            casesEnabled: agentConfig?.casesEnabled ?? false,
+            hasOpenCase,
+            openedCaseThisTurn,
             ...(deps.knobs.disclosureMode !== undefined ? { disclosureMode: deps.knobs.disclosureMode } : {}),
             // Gate 5 (F4-02): classificador semântico roteado pelo MESMO seam agnóstico (budget
             // da org checado nele). Closure com tenant/lead/job da ROW fechados — nunca do payload.
             ...(semanticClassifier !== undefined ? { classifyPromiseSemantic: semanticClassifier } : {}),
             // `finalBody` = corpo após a cadeia (o disclosureGate F4-05 pode prependar o
             // disclosure via inject); é ELE que vai ao canal, não o `body` capturado da tool.
-            send: (finalBody) => {
-              seq += 1;
-              return channel.send({
-                tenantId,
-                leadId,
-                jobId: job.id,
-                seq,
-                conversationId: input.conversationId,
-                body: finalBody,
-              });
-            },
-          });
+            send: (finalBody: string) =>
+              sendInBubbles(finalBody, {
+                enabled: agentConfig?.splitMessages ?? false,
+                maxChars: agentConfig?.splitMaxChars ?? 600,
+                sleep: deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+                jitter: () => 1200 + Math.floor(Math.random() * 800), // piso no throttle anti-ban (1.2s) — bolhas são mensagens físicas
+                send: (bubble): Promise<ChannelSendResult> => {
+                  seq += 1;
+                  return channel.send({
+                    tenantId,
+                    leadId,
+                    jobId: job.id,
+                    seq,
+                    conversationId: input.conversationId,
+                    body: bubble,
+                  });
+                },
+              }),
+          };
+          let chain = await runBeforeSend(beforeSendArgs);
+          if (chain.status === 'vetoed' && chain.code === 'case_promise_without_case') {
+            // Wave 4 — fail-safe da invariante sagrada: o lead NUNCA recebe promessa-de-
+            // humano sem caso aberto. 1ª vez no turno: erro-de-ensino (o modelo re-tenta —
+            // abre o caso OU reformula sem prometer humano). Persistiu (2ª vez): o SISTEMA
+            // abre um caso mínimo e libera o envio — nunca deixa a promessa passar sem caso.
+            casePromiseVetoCount += 1;
+            if (casePromiseVetoCount < 2) {
+              return { ok: false, error: { code: chain.code, message: chain.message } };
+            }
+            const auto = await openCase(
+              pool,
+              { tenantId, conversationId: input.conversationId, agentId: agentConfig?.agentId ?? null },
+              {
+                title: 'Atendimento que precisa de um humano',
+                summary: body, // a mensagem-promessa que a IA tentou enviar
+                blocker:
+                  'Aberto automaticamente: a IA prometeu envolver um humano e não abriu o caso (fail-safe do guardrail).',
+                source: 'guardrail_autofallback',
+                contextSnapshot: buildCaseContextSnapshot(),
+              },
+            );
+            if (!auto.ok) {
+              // openCase falhou (ex.: já existe outro caso aberto por corrida) — NÃO envie
+              // prometendo humano sem caso; mantém a invariante com o erro de ensino original.
+              return { ok: false, error: { code: chain.code, message: chain.message } };
+            }
+            openedCaseThisTurn = true;
+            // Re-roda a cadeia INTEIRA agora que há caso aberto — o send real acontece
+            // DENTRO do runBeforeSend (via args.send); nunca chamamos o canal por fora
+            // (perderia pacing/lgpd/stop). ponytail: re-roda a cadeia inteira no fail-safe
+            // (raro) — pode reaplicar 1 espera de pacing; aceitável pelo caminho ser
+            // excepcional.
+            chain = await runBeforeSend({ ...beforeSendArgs, hasOpenCase: true, openedCaseThisTurn: true });
+          }
           if (chain.status === 'vetoed') {
             // Erro de ENSINO pt-br (mesmo shape de get_lead_context/breaker): o
             // modelo o vê no turno seguinte. NÃO é exceção — não derruba o run.
@@ -1244,6 +1370,83 @@ export async function runAgentTurn(
     delete rawTools.request_human_handoff;
   }
 
+  // Spec 15: snapshot mínimo do contexto disponível pro humano que for atender o
+  // caso — campo de CONVENIÊNCIA pra UI, não load-bearing (nada aqui é relido pelo
+  // agente). ponytail: snapshot mínimo; enriquecer se a UI precisar de mais.
+  const buildCaseContextSnapshot = (): Record<string, unknown> => ({
+    contact_name: effectiveContext.contact.name,
+    last_messages: effectiveContext.messages.slice(-5).map((m) => ({ direction: m.direction, body: m.body })),
+  });
+
+  // Spec 15 (Wave 3a): tools de caso humano (open_human_case/provide_case_update) só
+  // entram quando a tela habilita (cases_enabled) — mesmo padrão do handoff acima.
+  // Ids do closure (row do job), nunca do payload; payload inválido é erro de ENSINO
+  // ({ok:false}), exceção real vira internal_error (mesma disciplina dos irmãos).
+  if (agentConfig !== null && agentConfig.casesEnabled) {
+    rawTools.open_human_case = tool({
+      ...AGENT_TOOL_DEFS.open_human_case,
+      execute: async (raw) => {
+        const parsed = openHumanCaseInputSchema.safeParse(raw);
+        if (!parsed.success) {
+          return {
+            ok: false,
+            error: {
+              code: 'invalid_payload',
+              message: 'campos do caso inválidos — informe title, summary e blocker (texto).',
+            },
+          };
+        }
+        try {
+          const res = await openCase(
+            pool,
+            { tenantId, conversationId: input.conversationId, agentId: agentConfig.agentId },
+            { ...parsed.data, contextSnapshot: buildCaseContextSnapshot() },
+          );
+          if (!res.ok) return res;
+          openedCaseThisTurn = true;
+          return {
+            ok: true,
+            case_id: res.caseId,
+            message: 'caso aberto; continue a conversa com o lead normalmente.',
+          };
+        } catch (err) {
+          noteRunError(err instanceof Error ? err : new Error(String(err)));
+          return {
+            ok: false,
+            error: { code: 'internal_error', message: 'erro interno ao abrir o caso — encerre o turno.' },
+          };
+        }
+      },
+    });
+    rawTools.provide_case_update = tool({
+      ...AGENT_TOOL_DEFS.provide_case_update,
+      execute: async (raw) => {
+        const parsed = provideCaseUpdateInputSchema.safeParse(raw);
+        if (!parsed.success) {
+          return {
+            ok: false,
+            error: { code: 'invalid_payload', message: 'informe case_id e info (texto).' },
+          };
+        }
+        try {
+          const res = await provideCaseUpdate(
+            pool,
+            { tenantId, conversationId: input.conversationId },
+            { caseId: parsed.data.case_id, info: parsed.data.info },
+          );
+          if (!res.ok) return res;
+          return { ok: true, message: 'informação enviada ao responsável; aguarde o retorno pelo caso.' };
+        } catch (err) {
+          noteRunError(err instanceof Error ? err : new Error(String(err)));
+          return {
+            ok: false,
+            error: { code: 'internal_error', message: 'erro interno ao atualizar o caso — encerre o turno.' },
+          };
+        }
+      },
+    });
+  }
+
   // Fase 0 (convergência): a tool de conhecimento só entra quando o agente
   // publicado tem KB ativa — def estática permanece no AGENT_TOOL_DEFS (prefixo).
   if (agentConfig?.activeKbVersionId == null) {
@@ -1342,14 +1545,46 @@ export async function runAgentTurn(
     notesIndexBlock,
   });
   // Sufixos por-lead (situacionais, voláteis — depois do prefixo cacheável F2-17): corpos de
-  // skill casadas (F3-09) + hint do classificador (F3-11). Vazios são omitidos.
-  const openingSuffixes = [matchedSkillsBlock, stageHintBlock].filter((b) => b !== '');
-  const openingMessages: ModelMessage[] = [
-    {
-      role: 'user',
-      content: openingSuffixes.length === 0 ? openingBase : `${openingBase}\n\n${openingSuffixes.join('\n\n')}`,
-    },
-  ];
+  // skill casadas (F3-09) + hint do classificador (F3-11) + instrução de split (F4-xx, quando
+  // split_messages está on — Onda 4). Vazios são omitidos.
+  const splitHint = (agentConfig?.splitMessages ?? false)
+    ? 'Responda em mensagens curtas e naturais, uma ideia por mensagem — como uma pessoa digitando no WhatsApp. Prefira várias mensagens curtas a um texto único e longo.'
+    : '';
+  // Spec 15: o `case_id` real do caso 'awaiting_lead' desta conversa, se houver — sem
+  // isso o modelo nunca consegue chamar provide_case_update quando o lead simplesmente
+  // responde (o caminho comum; case_reply_turn só cobre a AÇÃO do humano). Sufixo
+  // por-lead (volátil) — nunca no prefixo cacheável (o case_id muda a cada caso).
+  const caseAwaitingLead =
+    agentConfig !== null && agentConfig.casesEnabled
+      ? await getCaseAwaitingLead(pool, tenantId, input.conversationId)
+      : null;
+  const caseAwaitingLeadBlock =
+    caseAwaitingLead !== null
+      ? `## Caso aguardando resposta deste cliente\n` +
+        `Há um caso aberto (case_id: ${caseAwaitingLead.id}) esperando uma informação dele: "${caseAwaitingLead.ask}". ` +
+        `Se a mensagem dele responde a isso, chame provide_case_update com este case_id e a informação recebida — ` +
+        `NÃO diga que já repassou/avisou o responsável sem chamar a tool.`
+      : '';
+  const openingSuffixes = [matchedSkillsBlock, stageHintBlock, splitHint, caseAwaitingLeadBlock].filter(
+    (b) => b !== '',
+  );
+  const openingText =
+    openingSuffixes.length === 0 ? openingBase : `${openingBase}\n\n${openingSuffixes.join('\n\n')}`;
+  // Onda 3 (aprimoramento): mídia inbound recente vira part nativa (image/file) SÓ para
+  // provider+modelo capazes (T2 modelCapabilities) — modelo incapaz/desconhecido → [] e o
+  // derivado textual (já embutido em openingText via LeadContextMessage) cobre sozinho.
+  const nativeParts = await buildNativeMediaParts({
+    messages: effectiveContext.messages,
+    provider: agentConfig?.provider ?? 'anthropic',
+    model: agentConfig?.model ?? '',
+    multimodalInput: agentConfig?.multimodalInput ?? false,
+    admin: deps.crmCfg.supabase,
+  });
+  const openingTextOnly: ModelMessage[] = [{ role: 'user', content: openingText }];
+  const openingMessages: ModelMessage[] =
+    nativeParts.length === 0
+      ? openingTextOnly
+      : [{ role: 'user', content: [{ type: 'text', text: openingText }, ...nativeParts] }];
 
   // O modelo decide tools livremente dentro do teto de steps (knob AGENT_MAX_STEPS).
   const turn = await runModelCall(
@@ -1424,7 +1659,9 @@ export async function runAgentTurn(
         : {}),
       system,
       messages: [
-        ...openingMessages,
+        // prune: o checkpoint reusa a abertura só como texto — a mídia nativa (cara) já
+        // fez seu trabalho na 1ª chamada e não precisa ir de novo.
+        ...openingTextOnly,
         ...responseMessages,
         { role: 'user', content: CHECKPOINT_INSTRUCTION },
       ],
@@ -1432,7 +1669,59 @@ export async function runAgentTurn(
     { registry: deps.registry, log: runLog },
   );
   const content = parseCheckpointText(closing.result.text);
+
+  // Wave 3 (2.4): o checkpoint anterior é lido ANTES de gravar o novo — a
+  // timeline recebe o DIFF, nunca o snapshot. Emitir a cada turno encheria a
+  // tela com "a IA pensou" e enterraria a única linha que muda o que alguém
+  // faria a seguir.
+  const checkpointAnterior = await latestCheckpoint(pool, tenantId, leadId);
   await insertCheckpoint(pool, { tenantId, leadId, jobId: job.id, content });
+
+  const mudanca = diffCheckpoint(
+    checkpointAnterior
+      ? {
+          commitments: (checkpointAnterior.commitments ?? []) as string[],
+          objections: (checkpointAnterior.objections ?? []) as string[],
+          next_action: checkpointAnterior.next_action ?? null,
+          rolling_summary: checkpointAnterior.rolling_summary ?? null,
+        }
+      : null,
+    content,
+  );
+
+  if (mudanca.emit) {
+    try {
+      const r = await emitAgentActivityForContact({
+        pool,
+        organizationId: tenantId,
+        contactId: leadId,
+        type: "ai_turn",
+        sourceModule: "agent",
+        sourceId: job.id,
+        // O lastro é a chamada de modelo que PRODUZIU este checkpoint
+        // (llm_calls.id). Sem ele a linha entraria como 'system' e perderia a
+        // autoria justamente no evento mais "de IA" que existe.
+        ...(closing.callId ? { evidence: { llm_call_ids: [closing.callId] } } : {}),
+        ...(agentConfig?.agentId ? { agentId: agentConfig.agentId } : {}),
+        reason: mudanca.reason,
+        payload: {
+          added_commitments: mudanca.addedCommitments,
+          added_objections: mudanca.addedObjections,
+          next_action_changed: mudanca.nextActionChanged,
+        },
+      });
+      if (!r.routed) {
+        runLog.info('checkpoint sem negócio para pendurar: registrado no event_log', {
+          reason: r.reason,
+        });
+      }
+    } catch (err) {
+      // A timeline do turno não pode derrubar o turno.
+      runLog.error('falha ao registrar atividade de checkpoint (segue)', {
+        error: err instanceof Error ? err.name : 'unknown',
+      });
+    }
+  }
 
   // F3-11: divergência classificador×modelo. O classificador sugeriu um estágio; se o
   // modelo confirmou (via update_lead_state — a máquina F2-10) um estágio DIFERENTE, o

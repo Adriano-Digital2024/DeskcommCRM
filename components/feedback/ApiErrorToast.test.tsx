@@ -58,6 +58,15 @@ describe("ApiErrorToast", () => {
     );
   });
 
+  it("calls toast.warning com mensagem humana para invalid_state (casos humanos, spec 15)", () => {
+    showApiError(new ApiError(409, "invalid_state", undefined, "req-3"));
+    expect(toast.warning).toHaveBeenCalledTimes(1);
+    expect(toast.warning).toHaveBeenCalledWith(
+      "Este caso já foi respondido ou fechado.",
+      expect.objectContaining({ description: "ID: req-3" }),
+    );
+  });
+
   it("falls back to toast.error for unknown ApiError code", () => {
     const err = new ApiError(418, "unknown_teapot_code", undefined, "req-2", "I'm a teapot");
     showApiError(err);

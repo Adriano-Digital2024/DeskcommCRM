@@ -20,7 +20,14 @@ import { inviteOnboardingSchema } from "@/lib/schemas/onboarding";
 import { requireOnboardingCtx, patchOnboardingState, OnboardingError } from "./_shared";
 
 export type SendInvitesResult =
-  | { ok: true; sent: number; failed: number }
+  | {
+      ok: true;
+      sent: number;
+      failed: number;
+      /** Convites cujo email NÃO saiu (ex.: Resend não configurado) — o link
+       * de aceite é devolvido para o admin enviar manualmente. */
+      undelivered?: { email: string; accept_url: string }[];
+    }
   | { ok: false; error: "auth_required" | "no_active_org" | "invalid_input"; details?: unknown };
 
 interface InvitePayload {
@@ -64,6 +71,7 @@ export async function sendOnboardingInvites(payload: InvitePayload): Promise<Sen
 
   let sent = 0;
   let failed = 0;
+  const undelivered: { email: string; accept_url: string }[] = [];
   for (const inv of input.invitations) {
     const email = inv.email.trim().toLowerCase();
     const inviteId = randomUUID();
@@ -96,7 +104,10 @@ export async function sendOnboardingInvites(payload: InvitePayload): Promise<Sen
       ],
     });
     if (result.ok) sent += 1;
-    else failed += 1;
+    else {
+      failed += 1;
+      undelivered.push({ email, accept_url: acceptUrl });
+    }
 
     await audit({
       action: "member.invited",
@@ -122,6 +133,13 @@ export async function sendOnboardingInvites(payload: InvitePayload): Promise<Sen
     organizationId: ctx.orgId,
     metadata: { count: sent + failed, sent, failed },
   });
+
+  // Email falhou (ex.: VPS sem RESEND_API_KEY): NÃO redireciona em silêncio —
+  // devolve os links de aceite pro admin enviar manualmente (mesmo contrato do
+  // fallback de /app/team/invite). Redirect só no caminho 100% entregue.
+  if (failed > 0) {
+    return { ok: true, sent, failed, undelivered };
+  }
 
   redirect("/onboarding/done");
 }

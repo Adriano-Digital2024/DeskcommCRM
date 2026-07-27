@@ -21,6 +21,7 @@ coverage/
 .nyc_output/
 playwright-report/
 test-results/
+e2e-artifacts/
 
 # IDE / OS
 .DS_Store
@@ -85,3 +86,8 @@ loop/run-session.sh
 # graphify (análise local de knowledge graph)
 graphify-out/
 package-lock.json
+.e2e-invite.json
+.e2e-owner.json
+.e2e-invite-url.json
+.superpowers/evidence/
+evidence/.sonda-score-residuo.json

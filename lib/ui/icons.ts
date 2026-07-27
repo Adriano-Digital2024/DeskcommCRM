@@ -17,11 +17,13 @@ export {
   UsersThree,
   Storefront,
   Robot,
+  Sparkle,
   ShieldCheck,
   Gear,
   House,
   // admin platform
   Buildings,
+  FlowArrow,
   ChatsCircle,
   ClipboardText,
   Scales,
@@ -36,6 +38,7 @@ export {
   // actions
   Bell,
   PaperPlaneTilt,
+  Smiley,
   Check,
   Checks,
   X,
@@ -47,6 +50,7 @@ export {
   Play,
   SkipForward,
   Copy,
+  DownloadSimple,
   Archive,
   // feedback
   CheckCircle,
@@ -67,14 +71,20 @@ export {
   ChatCircle,
   Phone,
   Paperclip,
+  Microphone,
   Image as ImageIcon,
+  ImageSquare,
   MusicNote,
+  Note,
   FileText,
   Lock,
   Receipt,
   Tag,
   Question,
   Keyboard,
+  // followup flow builder (Task 6.2)
+  GitBranch,
+  Flag,
   // misc
   DotsThree,
   CaretDown,
@@ -88,6 +98,5 @@ export {
   WebhooksLogo,
   PuzzlePiece,
   UploadSimple,
-  DownloadSimple,
   Signpost,
 } from "@phosphor-icons/react/dist/ssr";

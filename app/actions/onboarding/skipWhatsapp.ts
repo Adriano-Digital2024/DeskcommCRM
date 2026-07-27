@@ -14,7 +14,9 @@ export async function skipWhatsapp(): Promise<void> {
     actorUserId: ctx.userId,
     organizationId: ctx.orgId,
   });
-  redirect("/onboarding/connect-nuvemshop");
+  // O roteador do wizard decide o próximo step (Nuvemshop só existe com
+  // NUVEMSHOP_ENABLED) — hardcodar aqui mandava o usuário pra um step oculto.
+  redirect("/onboarding");
 }
 
 export async function markWhatsappConfigured(
@@ -34,7 +36,7 @@ export async function markWhatsappConfigured(
     resourceType: "channel_session",
     metadata: { session_name: sessionName, status },
   });
-  redirect("/onboarding/connect-nuvemshop");
+  redirect("/onboarding");
 }
 
 export async function skipNuvemshop(): Promise<void> {
