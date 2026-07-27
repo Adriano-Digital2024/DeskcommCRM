@@ -10,6 +10,7 @@ import type pg from 'pg';
 
 import { embedText } from '@/lib/ai/embed';
 import type { Citation } from '@/lib/ai/citations/types';
+import type { Logger } from '../obs/logger';
 
 export interface KnowledgeHit {
   chunk_id: string;
@@ -37,7 +38,7 @@ export async function searchKnowledge(
     /** Só para telemetria — opcional, os chamadores de hoje seguem válidos. */
     jobId?: string | null;
   },
-  deps?: { embed?: typeof embedText },
+  deps?: { embed?: typeof embedText; log?: Logger },
 ): Promise<SearchKnowledgeResult> {
   const embed = deps?.embed ?? embedText;
   try {
@@ -45,9 +46,13 @@ export async function searchKnowledge(
     const vec = `[${embedding.join(',')}]`;
 
     // Pedimos ao banco SEM limiar (piso da similaridade) e cortamos aqui. O
-    // conjunto entregue ao modelo é idêntico ao de antes — `order by` é por
+    // conjunto entregue ao modelo é o mesmo de antes — `order by` é por
     // distância e o `limit` vem depois do `where`, então os K melhores globais
     // já são os K melhores acima do limiar sempre que existirem K deles.
+    // (Não é teorema: o corte antigo comparava o float8 cru contra o limiar e
+    // este compara o float4 já arredondado da RPC. Na janela de ~3e-8 entre os
+    // dois, o caminho novo ADMITE um chunk que o antigo rejeitava — mais
+    // permissivo, nunca mais restritivo.)
     //
     // O que ganhamos é o `top_score`: a similaridade do melhor candidato mesmo
     // quando ela não passa. Sem isso, "a base não tem essa informação" e "a base
@@ -60,7 +65,12 @@ export async function searchKnowledge(
     );
 
     const results = rows.filter((r) => r.similarity >= args.threshold);
-    const topScore = rows.length > 0 ? rows[0]!.similarity : null;
+    // Sem depender da ordem das linhas. `Math.max()` de array vazio é -Infinity e
+    // NaN contamina o máximo — o teste de finitude cobre os dois: nenhuma linha,
+    // e o chunk de embedding zerado (pgvector devolve NaN na distância), que
+    // `numeric` aceitaria como 'NaN' e envenenaria o painel em silêncio.
+    const maiorScore = Math.max(...rows.map((r) => r.similarity));
+    const topScore = Number.isFinite(maiorScore) ? maiorScore : null;
 
     // Fire-and-forget: perder telemetria é infinitamente melhor que perder a
     // resposta ao cliente. O `threshold` gravado é o do CHAMADOR, nunca o piso
@@ -73,10 +83,15 @@ export async function searchKnowledge(
          values ($1, $2, $3, $4, $5, $6)`,
         [args.organizationId, args.jobId ?? null, args.kbVersionId, results.length, topScore, args.threshold],
       );
-    } catch {
-      // Silencioso de propósito: o `catch` externo transformaria isto em
-      // `knowledge_unavailable` e o modelo diria ao cliente que a base caiu —
-      // por causa de uma linha de telemetria.
+    } catch (err) {
+      // Engolido de propósito — o `catch` externo transformaria isto em
+      // `knowledge_unavailable` e o modelo diria ao cliente que a base caiu, por
+      // causa de uma linha de telemetria. Mas NÃO mudo (molde do irmão
+      // `ai_router_decisions` em inbound-turn): se o insert falhar sempre, o
+      // painel mostra zero buscas, que é indistinguível de "ninguém buscou".
+      deps?.log?.warn('busca de conhecimento não registrada', {
+        error: (err instanceof Error ? err.message : String(err)).slice(0, 120),
+      });
     }
 
     return { ok: true, results };

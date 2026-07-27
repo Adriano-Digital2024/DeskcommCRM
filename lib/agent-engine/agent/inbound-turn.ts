@@ -998,7 +998,7 @@ export async function runAgentTurn(
           topK: agentConfig.ragTopK,
           threshold: agentConfig.ragSimilarityThreshold,
           jobId: job.id,
-        });
+        }, { log: runLog });
         if (out.ok && out.results.length > 0) {
           pendingCitations = citationsFromHits(out.results);
         }

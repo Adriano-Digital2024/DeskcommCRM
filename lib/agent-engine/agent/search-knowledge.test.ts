@@ -136,13 +136,42 @@ describe('searchKnowledge', () => {
     expect(paramsRpc[4]).toBe(-1);
   });
 
-  it('falha ao registrar NUNCA derruba a busca', async () => {
+  it('falha ao registrar NUNCA derruba a busca — mas GRITA no log', async () => {
     const pool = {
       query: async (sql: string) => {
         if (sql.includes('knowledge_searches')) throw new Error('tabela não existe');
         return {
           rows: [{ chunk_id: 'c1', knowledge_source_id: null, content: 'texto', similarity: 0.9, metadata: null }],
         };
+      },
+    };
+    const warn = vi.fn();
+
+    const r = await searchKnowledge(
+      pool as never,
+      { organizationId: 'org-1', kbVersionId: 'kb-1', query: 'oi', topK: 5, threshold: 0.72 },
+      { embed: async () => ({ embedding: [0.1] }), log: { info: vi.fn(), warn, error: vi.fn() } } as never,
+    );
+
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.results).toHaveLength(1);
+    // Catch mudo é o pior caso do painel: insert falhando SEMPRE (grant, tipo,
+    // coluna) mostraria "zero buscas", indistinguível de "ninguém buscou".
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0]?.[1]).toMatchObject({ error: expect.stringContaining('tabela não existe') });
+  });
+
+  it('top_score NaN (chunk de embedding zerado) vira null, não envenena a coluna', async () => {
+    const queries: Array<{ sql: string; params: unknown[] }> = [];
+    const pool = {
+      query: async (sql: string, params: unknown[] = []) => {
+        queries.push({ sql, params });
+        if (sql.includes('retrieve_top_k_chunks')) {
+          // pgvector devolve NaN na distância de um vetor todo-zero; `numeric`
+          // ACEITA 'NaN', então sem guarda isto grava e o painel mente calado.
+          return { rows: [{ chunk_id: 'c1', knowledge_source_id: null, content: 'lixo', similarity: NaN, metadata: null }] };
+        }
+        return { rows: [] };
       },
     };
 
@@ -152,8 +181,36 @@ describe('searchKnowledge', () => {
       { embed: async () => ({ embedding: [0.1] }) } as never,
     );
 
-    expect(r.ok).toBe(true);
-    expect(r.ok && r.results).toHaveLength(1);
+    expect(r.ok && r.results).toHaveLength(0);
+    const registro = queries.find((q) => q.sql.includes('knowledge_searches'));
+    expect(registro!.params[4]).toBeNull();
+  });
+
+  it('top_score não depende da ordem das linhas da RPC', async () => {
+    const queries: Array<{ sql: string; params: unknown[] }> = [];
+    const pool = {
+      query: async (sql: string, params: unknown[] = []) => {
+        queries.push({ sql, params });
+        if (sql.includes('retrieve_top_k_chunks')) {
+          return {
+            rows: [
+              { chunk_id: 'c1', knowledge_source_id: null, content: 'a', similarity: 0.60, metadata: null },
+              { chunk_id: 'c2', knowledge_source_id: null, content: 'b', similarity: 0.71, metadata: null },
+            ],
+          };
+        }
+        return { rows: [] };
+      },
+    };
+
+    await searchKnowledge(
+      pool as never,
+      { organizationId: 'org-1', kbVersionId: 'kb-1', query: 'oi', topK: 5, threshold: 0.72 },
+      { embed: async () => ({ embedding: [0.1] }) } as never,
+    );
+
+    const registro = queries.find((q) => q.sql.includes('knowledge_searches'));
+    expect(registro!.params[4]).toBe(0.71);
   });
 });
 
