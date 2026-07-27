@@ -106,23 +106,24 @@ function contaPor<T>(rows: T[], chave: (r: T) => string | null): Record<string, 
 export function aggregateEvolution(input: EvolutionInput): EvolutionPayload {
   const days = daysBetween(input.range.from, input.range.to);
 
+  // Ordena pelo timestamp CRU e só depois trunca para o dia. Ordenar por `day`
+  // desempata pelo bloco de origem (memória → proposta → skill), não pela hora:
+  // uma proposta aplicada às 23h apareceria ABAIXO de uma skill instalada às 8h
+  // do mesmo dia. Como o payload descarta a hora, a tela não teria como
+  // consertar — a ordem tem que nascer certa aqui. `Date.parse` em vez de
+  // comparação de texto porque as três fontes podem serializar o fuso diferente
+  // ('…Z' vs '…+00:00'), e aí a ordem lexicográfica mente.
   const timeline: TimelineItem[] = [
-    ...input.memoryEntries.map((m) => ({
-      day: m.created_at.slice(0, 10),
-      kind: 'memory' as const,
-      title: m.title,
-    })),
+    ...input.memoryEntries.map((m) => ({ at: m.created_at, kind: 'memory' as const, title: m.title })),
     ...input.proposalsApplied.map((p) => ({
-      day: p.applied_at.slice(0, 10),
+      at: p.applied_at,
       kind: 'proposal' as const,
       title: p.content.slice(0, 120),
     })),
-    ...input.skillInstalls.map((s) => ({
-      day: s.updated_at.slice(0, 10),
-      kind: 'skill' as const,
-      title: s.name,
-    })),
-  ].sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+    ...input.skillInstalls.map((s) => ({ at: s.updated_at, kind: 'skill' as const, title: s.name })),
+  ]
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .map(({ at, kind, title }) => ({ day: at.slice(0, 10), kind, title }));
 
   // "Quase acertou" é a busca que NÃO trouxe nada e cujo melhor candidato ficou
   // logo abaixo do limiar. É o sinal que separa "a base não tem isso" de "a base
@@ -140,9 +141,21 @@ export function aggregateEvolution(input: EvolutionInput): EvolutionPayload {
     // true também pelo motivo errado. O tipo declarado aqui é `number`, então o
     // TypeScript não pega — é o pior formato de defeito, o que acerta por acaso.
     // Medido na prova real da Task 2, contra o banco.
-    const nota = k.top_score === null ? null : Number(k.top_score);
-    const limiar = Number(k.threshold);
-    if (nota !== null && Number.isFinite(nota) && nota >= limiar - PERTO) nearMisses += 1;
+    // `?? NaN` porque `Number(null)` é **0**, não NaN. Sem ele, um limiar ausente
+    // vira corte zero e TODA busca vazia conta como "quase acertou" — a tela diria
+    // ao dono do negócio "seu corte está apertado demais" sobre uma base que
+    // simplesmente não tem o conteúdo. Conselho errado com cara de diagnóstico.
+    // O `not null` da 0086 torna isso inalcançável pela produção; o guarda existe
+    // pela assimetria do custo, não pela probabilidade.
+    const nota = Number(k.top_score ?? NaN);
+    const limiar = Number(k.threshold ?? NaN);
+    // `nota < limiar` é a metade "abaixo do limiar" da regra. Hoje o único emissor
+    // (`search-knowledge.ts`) garante `hits === 0 ⇒ top_score < threshold`, mas essa
+    // é invariante de OUTRO arquivo: sem os 4 caracteres, este código depende dela
+    // em silêncio e passa a contar acerto como quase-acerto no dia em que ela mudar.
+    if (Number.isFinite(nota) && Number.isFinite(limiar) && nota < limiar && nota >= limiar - PERTO) {
+      nearMisses += 1;
+    }
   }
 
   const unmapped = input.pipelines

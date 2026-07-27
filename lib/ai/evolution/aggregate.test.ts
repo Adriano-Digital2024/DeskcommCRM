@@ -88,6 +88,45 @@ describe('aggregateEvolution', () => {
     expect(p.gaps.knowledge_empty).toBe(2);
   });
 
+  it('não conta quase-acerto ACIMA do limiar, nem trata limiar ausente como corte zero', () => {
+    const p = aggregateEvolution({
+      ...base(),
+      knowledgeSearches: [
+        // Acima do limiar sem hit: hoje inalcançável porque `search-knowledge.ts`
+        // garante `hits === 0 ⇒ top_score < threshold`. É invariante de OUTRO
+        // arquivo; a regra escrita aqui diz "ABAIXO do limiar e perto dele".
+        { created_at: '2026-07-01T10:00:00Z', hits: 0, top_score: 0.9, threshold: 0.72 },
+        // Limiar ausente. `Number(null)` é 0, e similaridade de cosseno pode ser
+        // negativa — sem guarda, esta linha vira "quase acertou" contra um corte
+        // zero que ninguém configurou.
+        { created_at: '2026-07-01T11:00:00Z', hits: 0, top_score: -0.05, threshold: null as never },
+      ],
+    });
+
+    expect(p.gaps.knowledge_near_misses).toBe(0);
+    expect(p.gaps.knowledge_empty).toBe(2);
+  });
+
+  it('ordena a linha do tempo pela HORA, não pelo bloco de origem, dentro do mesmo dia', () => {
+    // As horas estão escolhidas para DISCRIMINAR: a ordem cronológica correta
+    // (skill 23h → memória 12h → proposta 8h) é diferente da ordem de
+    // concatenação (memória → proposta → skill), então nenhum desempate estável
+    // por `day` produz o esperado por acaso. Uma versão anterior deste teste
+    // usava horas que coincidiam com a ordem dos blocos: ela passava mesmo com
+    // a ordenação por dia, isto é, não media nada.
+    const p = aggregateEvolution({
+      ...base(),
+      memoryEntries: [{ created_at: '2026-07-02T12:00:00Z', title: 'memoria-12h' }],
+      proposalsApplied: [{ applied_at: '2026-07-02T08:00:00Z', type: 'playbook_bullet', content: 'proposta-8h' }],
+      skillInstalls: [{ updated_at: '2026-07-02T23:00:00Z', name: 'skill-23h' }],
+    });
+
+    // O payload descarta a hora, então a tela não teria como consertar: ou a
+    // ordem nasce certa aqui, ou a "linha do tempo" mente para sempre.
+    expect(p.learned.timeline.map((t) => t.title)).toEqual(['skill-23h', 'memoria-12h', 'proposta-8h']);
+    expect(p.learned.timeline.map((t) => t.day)).toEqual(['2026-07-02', '2026-07-02', '2026-07-02']);
+  });
+
   it('aponta os passos do agente que nenhum estágio do pipeline recebe', () => {
     const p = aggregateEvolution({
       ...base(),
