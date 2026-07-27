@@ -23,21 +23,63 @@ export type SearchKnowledgeResult =
   | { ok: true; results: KnowledgeHit[] }
   | { ok: false; error: { code: string; message: string } };
 
+/** Piso real da similaridade de cosseno — `1 - distância`, com distância em [0,2]. */
+const PISO_SIMILARIDADE = -1;
+
 export async function searchKnowledge(
   pool: pg.Pool,
-  args: { organizationId: string; kbVersionId: string; query: string; topK: number; threshold: number },
+  args: {
+    organizationId: string;
+    kbVersionId: string;
+    query: string;
+    topK: number;
+    threshold: number;
+    /** Só para telemetria — opcional, os chamadores de hoje seguem válidos. */
+    jobId?: string | null;
+  },
   deps?: { embed?: typeof embedText },
 ): Promise<SearchKnowledgeResult> {
   const embed = deps?.embed ?? embedText;
   try {
     const { embedding } = await embed(args.query, { organizationId: args.organizationId });
     const vec = `[${embedding.join(',')}]`;
+
+    // Pedimos ao banco SEM limiar (piso da similaridade) e cortamos aqui. O
+    // conjunto entregue ao modelo é idêntico ao de antes — `order by` é por
+    // distância e o `limit` vem depois do `where`, então os K melhores globais
+    // já são os K melhores acima do limiar sempre que existirem K deles.
+    //
+    // O que ganhamos é o `top_score`: a similaridade do melhor candidato mesmo
+    // quando ela não passa. Sem isso, "a base não tem essa informação" e "a base
+    // tem e o corte está apertado demais" são indistinguíveis — e são problemas
+    // com consertos opostos.
     const { rows } = await pool.query<KnowledgeHit>(
       `select chunk_id, knowledge_source_id, content, similarity, metadata
        from retrieve_top_k_chunks($1, $2, $3::vector, $4, $5)`,
-      [args.organizationId, args.kbVersionId, vec, args.topK, args.threshold],
+      [args.organizationId, args.kbVersionId, vec, args.topK, PISO_SIMILARIDADE],
     );
-    return { ok: true, results: rows };
+
+    const results = rows.filter((r) => r.similarity >= args.threshold);
+    const topScore = rows.length > 0 ? rows[0]!.similarity : null;
+
+    // Fire-and-forget: perder telemetria é infinitamente melhor que perder a
+    // resposta ao cliente. O `threshold` gravado é o do CHAMADOR, nunca o piso
+    // acima — gravar -1 faria toda busca parecer acima do limiar e zeraria o
+    // "quase acertou" do painel.
+    try {
+      await pool.query(
+        `insert into knowledge_searches
+           (organization_id, job_id, kb_version_id, hits, top_score, threshold)
+         values ($1, $2, $3, $4, $5, $6)`,
+        [args.organizationId, args.jobId ?? null, args.kbVersionId, results.length, topScore, args.threshold],
+      );
+    } catch {
+      // Silencioso de propósito: o `catch` externo transformaria isto em
+      // `knowledge_unavailable` e o modelo diria ao cliente que a base caiu —
+      // por causa de uma linha de telemetria.
+    }
+
+    return { ok: true, results };
   } catch {
     return {
       ok: false,

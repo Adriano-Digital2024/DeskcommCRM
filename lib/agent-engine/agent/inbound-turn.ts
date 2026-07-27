@@ -997,6 +997,7 @@ export async function runAgentTurn(
           query,
           topK: agentConfig.ragTopK,
           threshold: agentConfig.ragSimilarityThreshold,
+          jobId: job.id,
         });
         if (out.ok && out.results.length > 0) {
           pendingCitations = citationsFromHits(out.results);
