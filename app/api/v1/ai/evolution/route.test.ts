@@ -18,6 +18,7 @@ interface Espiao {
   eq: Array<[string, unknown]>;
   gte: Array<[string, unknown]>;
   lte: Array<[string, unknown]>;
+  order: Array<[string, string]>;
   tabelas: string[];
 }
 
@@ -32,13 +33,17 @@ function fakeDb(
   porTabela: Record<string, unknown[]> = {},
   erros: Record<string, string> = {},
 ): Espiao {
-  const espiao: Espiao = { eq: [], gte: [], lte: [], tabelas: [] };
+  const espiao: Espiao = { eq: [], gte: [], lte: [], order: [], tabelas: [] };
   from.mockImplementation((tabela: string) => {
     espiao.tabelas.push(tabela);
     const rows = porTabela[tabela] ?? [];
     let head = false;
     const b: Record<string, unknown> = {};
-    for (const m of ['not', 'order', 'limit', 'in']) b[m] = () => b;
+    for (const m of ['not', 'limit', 'in']) b[m] = () => b;
+    b.order = (col: string) => {
+      espiao.order.push([tabela, col]);
+      return b;
+    };
     b.select = (_colunas: string, opts?: { head?: boolean }) => {
       head = opts?.head === true;
       return b;
@@ -117,11 +122,61 @@ describe('GET /api/v1/ai/evolution', () => {
     const espiao = fakeDb();
     await GET(req('?from=2026-07-01&to=2026-07-03'));
 
-    expect(espiao.gte.length).toBeGreaterThan(0);
     expect(espiao.gte.every(([, v]) => v === '2026-07-01T00:00:00.000Z')).toBe(true);
     expect(espiao.lte.every(([, v]) => v === '2026-07-03T23:59:59.999Z')).toBe(true);
-    // Uma leitura de evento sem janela infla o card em relação ao gráfico.
-    expect(espiao.gte.length).toBe(espiao.lte.length);
+    // Contra TODAS as consultas menos `crm_stages` (estado atual do funil, não
+    // evento do período). Comparar `gte.length` com `lte.length` NÃO serviria:
+    // some o par inteiro de uma leitura e a igualdade continua verdadeira — que é
+    // justamente o defeito "leitura sem janela nenhuma".
+    expect(espiao.gte.length).toBe(espiao.tabelas.length - 1);
+    expect(espiao.lte.length).toBe(espiao.tabelas.length - 1);
+  });
+
+  it('soma as DUAS fontes de handoff — os dois runtimes registram em lugares diferentes', async () => {
+    // O agent-engine (canônico) grava agent_inbox_items(kind=handoff) e não toca
+    // no event_log; o runtime nativo antigo só emite event_log. Ler um só devolve
+    // "0% de handoff" para o tenant inteiro do outro.
+    fakeDb({
+      messages: [{}, {}, {}, {}, {}, {}, {}, {}],
+      agent_inbox_items: [{}, {}],
+      event_log: [{}],
+    });
+    const r = await GET(req('?from=2026-07-01&to=2026-07-03'));
+    const body = await r.json();
+    expect(body.data.outcome.handoff_rate).toBe(3 / 8);
+  });
+
+  it('assere os filtros que definem numerador e denominador', async () => {
+    // Sem isto, apagar o `.eq("direction","inbound")` deixa a suíte verde e passa
+    // a contar mensagem OUTBOUND no denominador da taxa de handoff.
+    const espiao = fakeDb();
+    await GET(req('?from=2026-07-01&to=2026-07-03'));
+    const pares = espiao.eq.map(([c, v]) => `${c}=${String(v)}`);
+    expect(pares).toContain('direction=inbound');
+    expect(pares).toContain('kind=handoff');
+    expect(pares).toContain('event_type=ai.handoff_triggered');
+    expect(pares).toContain('is_archived=false');
+    // O embed também filtra a org: o cabeçalho do arquivo promete defesa em
+    // profundidade, e a RLS não é a promessa — é a rede embaixo dela.
+    expect(pares).toContain('crm_pipelines.organization_id=org-1');
+  });
+
+  it('ordena antes de truncar e avisa quando o teto é atingido', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ROW_CAP = 50_000;
+    const espiao = fakeDb({ llm_calls: Array.from({ length: ROW_CAP }, () => ({ cost_cents: 1 })) });
+
+    const r = await GET(req('?from=2026-07-01&to=2026-07-03'));
+    expect(r.status).toBe(200);
+
+    // Sem ORDER BY, QUAIS 50k linhas voltam é indefinido: as séries viram amostra
+    // arbitrária e o custo sub-relata, com cara de número exato.
+    expect(espiao.order).toContainEqual(['llm_calls', 'created_at']);
+    expect(espiao.order).toContainEqual(['ai_router_decisions', 'created_at']);
+
+    const aviso = warn.mock.calls.find((c) => String(c[0]).includes('llm_calls'));
+    expect(aviso, 'teto batido tem que sinalizar, não passar por número exato').toBeDefined();
+    expect(JSON.stringify(aviso![1])).toContain('row cap');
   });
 
   it('soma o custo como número mesmo quando o driver entrega numeric como string', async () => {

@@ -104,26 +104,33 @@ export async function GET(req: NextRequest): Promise<Response> {
       .lte(colunaData, toIso);
   }
 
-  async function ler<T>(
-    tabela: string,
-    colunas: string,
-    colunaData: string,
-    extraEq?: [coluna: string, valor: string],
-  ): Promise<T[]> {
-    let q = janela(tabela, colunas, colunaData).limit(ROW_CAP);
-    if (extraEq) q = q.eq(extraEq[0], extraEq[1]);
-    const { data, error } = await q;
+  async function ler<T>(tabela: string, colunas: string, colunaData: string): Promise<T[]> {
+    // `order` antes do `limit`: sem ele, QUAIS linhas voltam ao bater o teto é
+    // indefinido — as séries diárias viram amostra arbitrária e o custo
+    // sub-relata, tudo com cara de número exato. Ordenar pela mesma coluna que já
+    // está no predicado sai de graça nas duas tabelas quentes
+    // (`idx_llm_calls_org_time`, `idx_ai_router_decisions_org_created`); nas
+    // outras o volume é pequeno.
+    const { data, error } = await janela(tabela, colunas, colunaData)
+      .order(colunaData, { ascending: true })
+      .limit(ROW_CAP);
     if (error) {
       fonteFalhou(tabela, error);
       return [];
     }
-    return (data ?? []) as T[];
+    const rows = (data ?? []) as T[];
+    // Teto batido: o painel está mostrando um RECORTE, não o período. Reaproveita
+    // o canal de aviso em vez de calar — número truncado sem sinal é pior que
+    // bloco zerado, porque parece completo.
+    if (rows.length === ROW_CAP) {
+      fonteFalhou(tabela, { message: `row cap de ${ROW_CAP} atingido — período truncado` });
+    }
+    return rows;
   }
 
   /**
-   * Numerador e denominador da taxa de handoff. `head: true` porque só o número
-   * interessa: contar linhas paginadas daria o teto de `ROW_CAP` como resposta —
-   * uma taxa distorcida, e sem nada na tela dizendo que foi truncada.
+   * Contagem sem trazer linha: `head: true` devolve só o `count`. Contar o tamanho
+   * da página daria o teto de `ROW_CAP` como resposta — uma taxa distorcida.
    */
   async function contar(tabela: string, colunaData: string, extraEq: [string, string]): Promise<number> {
     const { count, error } = await janela(tabela, "id", colunaData, true).eq(extraEq[0], extraEq[1]);
@@ -144,7 +151,8 @@ export async function GET(req: NextRequest): Promise<Response> {
     stageTransitions,
     llmCalls,
     inboundCount,
-    handoffCount,
+    handoffInbox,
+    handoffEvents,
     stages,
   ] = await Promise.all([
     ler<{ created_at: string; title: string }>("org_memory_entries", "created_at, title", "created_at"),
@@ -174,6 +182,18 @@ export async function GET(req: NextRequest): Promise<Response> {
     ler<{ created_at: string; to_stage: string }>("lead_state_transitions", "created_at, to_stage", "created_at"),
     ler<{ cost_cents: number | null }>("llm_calls", "cost_cents", "created_at"),
     contar("messages", "created_at", ["direction", "inbound"]),
+    // ⚠️ DUAS FONTES DE HANDOFF, DE PROPÓSITO — não "simplifique" para uma.
+    // Há dois runtimes no repo e cada um registra o handoff no seu lugar:
+    //   • agent-engine (canônico desde a Fase 0, o mesmo que produz as outras
+    //     fontes deste painel) grava `agent_inbox_items(kind='handoff')` e NÃO
+    //     escreve em `event_log` — ver `lib/agent-engine/agent/human-handoff.ts`;
+    //   • runtime nativo antigo emite `event_log('ai.handoff_triggered')` — ver
+    //     `lib/ai/handoff/orchestrator.ts` e `lib/mcp/tools/handoff.ts`.
+    // Contar só o `event_log` daria 0% de handoff para todo tenant no agent-engine
+    // — "sua IA nunca precisa de ajuda", a mentira mais lisonjeira que este painel
+    // poderia contar. Somar não duplica: um turno passa por um runtime OU pelo
+    // outro, nunca pelos dois.
+    contar("agent_inbox_items", "created_at", ["kind", "handoff"]),
     contar("event_log", "created_at", ["event_type", "ai.handoff_triggered"]),
     // Mapeamento declarado do funil: quais passos do agente cada pipeline recebe.
     // Sem janela de data — é o estado ATUAL do funil, não um evento do período.
@@ -181,6 +201,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       .from("crm_stages")
       .select("agent_stage_hint, crm_pipelines!inner(name)")
       .eq("organization_id", orgId)
+      .eq("crm_pipelines.organization_id", orgId)
       .eq("is_archived", false)
       .limit(ROW_CAP),
   ]);
@@ -213,7 +234,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     // em silêncio e o card mostra texto (ou NaN) — nunca um erro.
     costCents: llmCalls.reduce((acc, c) => acc + Number(c.cost_cents ?? 0), 0),
     inboundCount,
-    handoffCount,
+    handoffCount: handoffInbox + handoffEvents,
     pipelines: [...porPipeline.entries()].map(([name, hints]) => ({ name, hints })),
   };
 
