@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { boaNoticia } from "@/components/ai/EvolutionGaps";
+import { boaNoticia, montaLacunas } from "@/components/ai/EvolutionGaps";
 import { descricaoResultado, taxaDeAjuda } from "@/app/app/ai/evolution/_client";
 import { aggregateEvolution, type EvolutionInput } from "@/lib/ai/evolution/aggregate";
 
@@ -55,6 +55,65 @@ describe("boaNoticia — cada afirmação precisa da sua própria evidência", (
     expect(t).toContain("toda conversa achou para onde ir");
     expect(t).toContain("todo passo do atendimento tem uma etapa do funil");
     expect(t).not.toContain("ressalva");
+  });
+});
+
+/**
+ * O ciclo "vejo a lacuna → conserto" é feito de TRÊS coisas que ninguém guardava:
+ * para onde o botão aponta, o que ele promete fazer, e os nomes dos passos. As
+ * duas primeiras eram só prova de browser (que não roda no CI); a terceira já
+ * tinha divergido uma vez — o painel traduzia os sete passos por conta própria
+ * enquanto a tela usava `ROTULO_DO_PASSO`, e nada ficava vermelho.
+ */
+describe("lacuna de funil — o botão fecha o ciclo, e o ciclo tem guarda", () => {
+  const semFuniz = {
+    pipelines_evaluated: 1,
+    knowledge_near_misses: 0,
+    knowledge_empty: 0,
+    router_no_match: 0,
+    router_failed: 0,
+  };
+  const lacunaDe = (steps: string[]) =>
+    montaLacunas({
+      ...semFuniz,
+      unmapped_agent_steps: [{ pipeline_name: "Pedidos", steps }],
+    })[0]!;
+
+  it("aponta para a tela que conserta, não para o quadro", () => {
+    const l = lacunaDe(["new"]);
+    expect(l.href).toBe("/app/settings/tenant/pipelines");
+    expect(l.href).not.toBe("/app/kanban");
+  });
+
+  it("o verbo do botão é de ação, não de observação", () => {
+    const l = lacunaDe(["new"]);
+    expect(l.cta).toBe("Escolher a etapa de cada passo");
+    expect(l.cta).not.toMatch(/^Ver/);
+  });
+
+  it("nomeia os passos com o MESMO vocabulário da tela de destino", () => {
+    // `ROTULO_DO_PASSO` é a fonte única. Se este arquivo voltar a ter a sua
+    // própria tradução, o usuário lê um nome aqui e procura outro lá.
+    const l = lacunaDe(["new", "qualifying"]);
+    expect(l.texto).toContain("Novo lead");
+    expect(l.texto).toContain("Em qualificação");
+    expect(l.texto).not.toContain("contato novo");
+    expect(l.texto).not.toContain("entendendo o que ele precisa");
+  });
+
+  it("promete «você mesmo escolhe» sem ressalva quando dá para escolher", () => {
+    const l = lacunaDe(["new", "contacted"]);
+    expect(l.texto).toContain("você mesmo escolhe");
+    expect(l.texto).not.toContain("é com quem instalou o sistema");
+  });
+
+  it("ressalva ganho/perda, porque a tela pode não ter o que oferecer", () => {
+    // `is_won`/`is_lost` não são escritos por tela nenhuma: se o funil não tem
+    // etapa de fechamento, o destino responde "quem montou o funil precisa
+    // marcar" — e o botão teria prometido que o usuário resolve.
+    const l = lacunaDe(["new", "won", "lost"]);
+    expect(l.texto).toContain("«Ganho» e «Perdido» são exceção");
+    expect(l.texto).toContain("é com quem instalou o sistema");
   });
 });
 

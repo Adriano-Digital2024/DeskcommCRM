@@ -17,9 +17,13 @@ import type { EstadoDoMapeamento } from "@/hooks/pipelines/useAgentMapping";
 vi.mock("@/lib/api/client", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
+}));
 
 import { apiClient } from "@/lib/api/client";
-import { AgentMappingSection, opcoesDoPasso, motivoDaListaVazia } from "./_mapping";
+import { toast } from "sonner";
+import { AgentMappingSection, opcoesDoPasso, motivoDaListaVazia, mensagemDeErro } from "./_mapping";
 
 // Polyfills que o Radix Select exige e o jsdom não tem.
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -121,9 +125,50 @@ describe("motivoDaListaVazia — lista vazia sempre explica por quê", () => {
     expect(t).not.toContain("já estão sendo usadas");
   });
 
-  it("etapas todas em uso diz que dá para liberar uma", () => {
+  it("etapas todas em uso diz que dá para liberar uma — sem apontar direção", () => {
     const t = motivoDaListaVazia("qualifying", ETAPAS);
     expect(t).toContain("já estão sendo usadas");
+    // O passo que segura a etapa pode estar em qualquer linha, inclusive abaixo.
+    expect(t).not.toContain("acima");
+  });
+
+  it("funil só com ganho e perda NÃO manda liberar uma etapa que não existe", () => {
+    // A assimetria que já estava resolvida para won/lost: "já estão em uso" é
+    // afirmação, e aqui não há nenhuma etapa comum para estar em uso.
+    const t = motivoDaListaVazia("qualifying", [ETAPAS[2]!, ETAPAS[3]!]);
+    expect(t).not.toContain("já estão sendo usadas");
+    expect(t).toContain("só tem etapas de fechamento e de perda");
+  });
+});
+
+describe("mensagemDeErro — nem toda frase do servidor é texto de tela", () => {
+  it("recusa de regra (409/422) chega inteira ao usuário", () => {
+    const m = mensagemDeErro(
+      new ApiError(409, "state_conflict", undefined, "r", "A etapa «Pago» mudou de papel."),
+    );
+    expect(m).toBe("A etapa «Pago» mudou de papel.");
+  });
+
+  it("500 NÃO vaza texto do Postgres em inglês", () => {
+    const cru = 'new row for relation "crm_stages" violates check constraint';
+    const m = mensagemDeErro(new ApiError(500, "internal_error", undefined, "r", cru));
+    expect(m).not.toContain("violates");
+    expect(m).not.toContain("crm_stages");
+    expect(m).toContain("Não deu para salvar");
+  });
+
+  it("403 NÃO mostra a palavra «role» ao dono da clínica", () => {
+    const m = mensagemDeErro(
+      new ApiError(403, "forbidden_role", undefined, "r", "Permissão insuficiente. Requer role >= manager."),
+    );
+    expect(m).not.toContain("role");
+    expect(m).toContain("permissão");
+  });
+
+  it("401 explica a sessão em vez de repetir «Auth required.»", () => {
+    const m = mensagemDeErro(new ApiError(401, "auth_required", undefined, "r", "Auth required."));
+    expect(m).not.toContain("Auth required");
+    expect(m).toContain("sessão");
   });
 });
 
@@ -199,6 +244,26 @@ describe("AgentMappingSection — o que a tela oferece e envia", () => {
         lost: null,
       },
     });
+    // Confirmação no mesmo canal do resto da tela (o editor de vocabulário, a
+    // 200px daqui, também usa toast) — não em texto cinza só desta seção.
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Escolhas salvas."));
+  });
+
+  it("erro 500 não vira toast de sucesso nem texto cru do Postgres na tela", async () => {
+    const user = userEvent.setup();
+    vi.mocked(apiClient.put).mockRejectedValue(
+      new ApiError(500, "internal_error", undefined, "r", 'violates check constraint "crm_stages_hint"'),
+    );
+    montar();
+    await screen.findByTestId("etapa-new");
+    await user.click(screen.getByTestId("etapa-new"));
+    await user.click(await screen.findByRole("option", { name: "Carrinho abandonado" }));
+    await user.click(screen.getByTestId("salvar-mapeamento"));
+
+    const aviso = await screen.findByTestId("mapeamento-erro");
+    expect(aviso).not.toHaveTextContent("violates");
+    expect(aviso).toHaveTextContent("Não deu para salvar");
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("depois de um erro, RELÊ o servidor e o rascunho vira o que está gravado", async () => {

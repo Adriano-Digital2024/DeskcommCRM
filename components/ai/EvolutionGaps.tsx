@@ -46,7 +46,27 @@ interface Lacuna {
   cta?: string;
 }
 
-function montaLacunas(gaps: EvolutionPayload["gaps"]): Lacuna[] {
+/**
+ * ⚠️ A PROMESSA "VOCÊ MESMO ESCOLHE" NÃO VALE PARA GANHO E PERDA.
+ *
+ * A tela de destino só oferece etapa de fechamento para «Ganho» e de perda para
+ * «Perdido» (é o CHECK da 0084), e `is_won`/`is_lost` não são escritos por tela
+ * nenhuma do produto. Num funil sem essas etapas, o usuário clica num botão que
+ * promete que ele resolve e recebe "quem montou o funil precisa marcar". A
+ * ressalva sai apenas quando um desses dois passos está na lacuna — anexá-la
+ * sempre seria ruído no caso comum.
+ */
+function ressalvaDeFechamento(steps: string[]): string {
+  const fechamento = steps.filter((s) => s === "won" || s === "lost");
+  if (fechamento.length === 0) return "";
+  const nomes = fechamento.map((s) => `«${ROTULO_DO_PASSO[s as LeadStage]}»`).join(" e ");
+  return (
+    ` ${nomes} ${plural(fechamento.length, "é exceção", "são exceção")}: ${plural(fechamento.length, "ele só pode apontar", "eles só podem apontar")} ` +
+    `para a etapa de fechamento ou de perda do funil. Se o seu funil não tem essas etapas, isso é com quem instalou o sistema.`
+  );
+}
+
+export function montaLacunas(gaps: EvolutionPayload["gaps"]): Lacuna[] {
   const out: Lacuna[] = [];
 
   for (const p of gaps.unmapped_agent_steps) {
@@ -66,7 +86,8 @@ function montaLacunas(gaps: EvolutionPayload["gaps"]): Lacuna[] {
         `etapa correspondente: ${nomeiaPassos(p.steps)}. Quando o agente chega em um desses passos, o card do cliente ` +
         `não se move — ele fica onde está. Às vezes isso é proposital: nem todo funil precisa de uma etapa para cada passo. ` +
         `Mas se você esperava ver esses clientes andarem sozinhos no quadro, é aqui que falta o vínculo — e você mesmo ` +
-        `escolhe, passo a passo, para qual etapa o card vai.`,
+        `escolhe, passo a passo, para qual etapa o card vai.` +
+        ressalvaDeFechamento(p.steps),
       // ⚠️ ESTE LINK É O QUE FECHA O CICLO. Antes ele apontava para o quadro com o
       // verbo "Ver", porque não existia lugar nenhum no produto para escrever
       // `agent_stage_hint` — o painel relatava uma lacuna e parava aí. Agora leva

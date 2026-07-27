@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -68,6 +69,12 @@ const QUANDO_ACONTECE: Readonly<Record<LeadStage, string>> = {
  *  • os outros cinco passos NUNCA em etapa de fechamento/perda → o mesmo CHECK,
  *    no sentido inverso (uma etapa de ganho só pode representar «Ganho»).
  */
+function serveParaOPasso(passo: LeadStage, etapa: EtapaDoFunil): boolean {
+  if (passo === "won") return etapa.is_won;
+  if (passo === "lost") return etapa.is_lost;
+  return !etapa.is_won && !etapa.is_lost;
+}
+
 export function opcoesDoPasso(
   passo: LeadStage,
   etapas: EtapaDoFunil[],
@@ -78,31 +85,56 @@ export function opcoesDoPasso(
       .map((p) => mapa[p])
       .filter((id): id is string => id !== null),
   );
-  return etapas.filter((e) => {
-    if (ocupadasPorOutros.has(e.id)) return false;
-    if (passo === "won") return e.is_won;
-    if (passo === "lost") return e.is_lost;
-    return !e.is_won && !e.is_lost;
-  });
+  return etapas.filter((e) => !ocupadasPorOutros.has(e.id) && serveParaOPasso(passo, e));
 }
 
 /**
  * Por que a lista está vazia — lista vazia muda é o pior desfecho possível:
  * o usuário conclui que a tela está quebrada.
  *
- * As duas causas pedem respostas opostas. "Não existe etapa de fechamento neste
- * funil" é um fato sobre o funil, e não há tela no produto que marque etapa de
- * ganho/perda (isso vem de quem montou o funil) — prometer um link seria mentir.
- * "As outras já estão em uso" é reversível aqui mesmo, e o texto diz como.
+ * ⚠️ "JÁ ESTÃO EM USO" É UMA AFIRMAÇÃO, e só pode ser feita depois de conferir
+ * que existe alguma etapa que serviria. Num funil só com ganho e perda, os cinco
+ * passos comuns não têm nenhuma candidata — mandar "libere uma delas" ali seria
+ * pedir para liberar uma etapa que não existe. Por isso o primeiro teste é
+ * SEMPRE "existe candidata?", e só o segundo é sobre ocupação.
+ *
+ * As duas causas pedem respostas opostas: a ausência de etapa é fato sobre o
+ * funil (e NÃO há tela no produto que marque ganho/perda nem que crie etapa —
+ * prometer um caminho seria mentir), a ocupação é reversível aqui mesmo.
  */
 export function motivoDaListaVazia(passo: LeadStage, etapas: EtapaDoFunil[]): string {
-  if (passo === "won" && !etapas.some((e) => e.is_won)) {
+  if (etapas.some((e) => serveParaOPasso(passo, e))) {
+    // Sem direção ("acima"): o passo que segura a etapa pode estar em qualquer
+    // linha, inclusive abaixo desta.
+    return "As etapas que serviriam para este passo já estão sendo usadas por outros passos. Libere uma delas para poder escolhê-la aqui.";
+  }
+  if (passo === "won") {
     return "Este funil não tem nenhuma etapa marcada como fechamento, então não há para onde levar o card quando a pessoa fecha. Quem montou o funil precisa marcar a etapa de ganho.";
   }
-  if (passo === "lost" && !etapas.some((e) => e.is_lost)) {
+  if (passo === "lost") {
     return "Este funil não tem nenhuma etapa marcada como perda, então não há para onde levar o card quando a pessoa desiste. Quem montou o funil precisa marcar a etapa de perda.";
   }
-  return "Todas as etapas deste funil já estão sendo usadas por outros passos. Libere uma delas acima para poder escolhê-la aqui.";
+  return "Este funil só tem etapas de fechamento e de perda, então não há etapa comum para receber o card neste passo. Quem montou o funil precisa criar as etapas do meio do caminho.";
+}
+
+/**
+ * ⚠️ NEM TODA MENSAGEM DO SERVIDOR É TEXTO DE TELA.
+ *
+ * As recusas de REGRA (409/422) foram escritas em português, citam o nome da
+ * etapa e ensinam o que fazer — vão inteiras para o usuário, e é para isso que
+ * a camada pura existe. O MESMO canal, porém, carrega frase de infraestrutura:
+ * «Permissão insuficiente. Requer role >= manager» (a palavra "role" na tela do
+ * dono de clínica) e, nos 500, texto cru do Postgres em inglês — exatamente o
+ * que o docblock de `agent-mapping.ts` diz existir para evitar. Imprimir tudo
+ * verbatim traz de volta pela porta dos fundos o que a Task 1 fechou.
+ */
+export function mensagemDeErro(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.status === 409 || e.status === 422) return e.message;
+    if (e.status === 401) return "Sua sessão expirou. Entre de novo para salvar suas escolhas.";
+    if (e.status === 403) return "Você não tem permissão para mudar a configuração deste funil.";
+  }
+  return "Não deu para salvar agora. Tente de novo em instantes.";
 }
 
 function iguais(a: MapaDoAgente, b: MapaDoAgente): boolean {
@@ -161,13 +193,11 @@ export function AgentMappingSection({ pipelineId }: { pipelineId: string }) {
     // Os SETE passos, sempre — `null` explícito é "não mover", e a rota recusa
     // corpo parcial com 422.
     salvar.mutate(rascunho, {
-      onError: (e) => {
-        setErro(
-          e instanceof ApiError
-            ? e.message
-            : "Não deu para salvar agora. Confira sua conexão e tente de novo.",
-        );
-      },
+      // Sucesso em toast, igual ao resto da tela (e do app). O ERRO fica inline
+      // e persistente de propósito: ele explica por que as escolhas na frente do
+      // usuário mudaram sozinhas, e um toast some antes de ele ler.
+      onSuccess: () => toast.success("Escolhas salvas."),
+      onError: (e) => setErro(mensagemDeErro(e)),
     });
   }
 
@@ -254,11 +284,6 @@ export function AgentMappingSection({ pipelineId }: { pipelineId: string }) {
       )}
 
       <div className="flex items-center justify-end gap-3">
-        {salvar.isSuccess && !mudou && !erro && (
-          <span className="text-xs text-text-muted" data-testid="mapeamento-salvo">
-            Escolhas salvas.
-          </span>
-        )}
         <Button onClick={enviar} disabled={!mudou || gravando} data-testid="salvar-mapeamento">
           {gravando ? "Salvando…" : "Salvar estas escolhas"}
         </Button>
