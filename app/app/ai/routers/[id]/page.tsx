@@ -65,9 +65,6 @@ export default async function RouterEditorPage({ params }: { params: Promise<{ i
     phone_number: c.phone_number ?? null,
   }));
 
-  const canManage = user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin;
-  const canTest = user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager;
-
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <RouterEditorClient
@@ -75,8 +72,6 @@ export default async function RouterEditorPage({ params }: { params: Promise<{ i
         initialState={initialState}
         agents={agents}
         channelSessions={channelSessions}
-        canManage={canManage}
-        canTest={canTest}
       />
     </div>
   );

@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { ArrowRight, CaretLeft, Info, Plus, Trash } from "@/lib/ui/icons";
 import { randomId } from "@/lib/random-id";
+import { usePermission } from "@/hooks/auth/AuthProvider";
 import {
   useRouter as useRouterData,
   useUpdateRouter,
@@ -52,8 +53,6 @@ interface Props {
   initialState: RouterDetailState;
   agents: AgentLite[];
   channelSessions: ChannelSessionLite[];
-  canManage: boolean;
-  canTest: boolean;
 }
 
 interface DraftMember extends RouterMemberInput {
@@ -67,10 +66,10 @@ export function RouterEditorClient({
   initialState,
   agents,
   channelSessions,
-  canManage,
-  canTest,
 }: Props) {
   const nextRouter = useNextRouter();
+  const canManage = usePermission("ai.routers.manage");
+  const canTest = usePermission("ai.routers.view");
   const { data } = useRouterData(routerId, initialState);
   const router = data?.router ?? initialState.router;
   const members = data?.members ?? initialState.members;

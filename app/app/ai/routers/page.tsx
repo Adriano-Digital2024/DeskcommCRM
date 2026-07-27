@@ -50,8 +50,6 @@ export default async function RoutersPage() {
     phone_number: c.phone_number ?? null,
   }));
 
-  const canManage = user.is_platform_admin || ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin;
-
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <header>
@@ -61,11 +59,7 @@ export default async function RoutersPage() {
           plugado em um número de WhatsApp.
         </p>
       </header>
-      <RoutersClient
-        initialState={{ routers }}
-        channelSessions={channelSessions}
-        canManage={canManage}
-      />
+      <RoutersClient initialState={{ routers }} channelSessions={channelSessions} />
     </div>
   );
 }

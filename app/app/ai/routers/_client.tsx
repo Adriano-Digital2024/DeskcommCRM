@@ -33,7 +33,6 @@ import type { ChannelSessionLite } from "../agents/[id]/_components/AgentForm";
 interface Props {
   initialState: { routers: RouterListItem[] };
   channelSessions: ChannelSessionLite[];
-  canManage: boolean;
 }
 
 function channelLabel(sessions: ChannelSessionLite[], id: string): string {
@@ -42,10 +41,10 @@ function channelLabel(sessions: ChannelSessionLite[], id: string): string {
   return s.phone_number ? `${s.display_name} · ${s.phone_number}` : s.display_name;
 }
 
-export function RoutersClient({ initialState, channelSessions, canManage }: Props) {
+export function RoutersClient({ initialState, channelSessions }: Props) {
   const { data } = useRouters(initialState);
   const routers = data?.routers ?? [];
-  const canManagePerm = usePermission("ai.routers.manage") && canManage;
+  const canManagePerm = usePermission("ai.routers.manage");
   const [createOpen, setCreateOpen] = React.useState(false);
 
   return (
