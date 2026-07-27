@@ -108,6 +108,7 @@ const ACTION_MIN_ROLE: Record<string, Role> = {
   "ai.skills.view": "manager",
   "ai.skills.manage": "manager",
   "ai.routers.view": "manager",
+  "ai.evolution.view": "manager",
   "ai.routers.manage": "admin",
   "ai.credentials.view": "manager",
   "ai.credentials.write": "admin",

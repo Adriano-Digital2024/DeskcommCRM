@@ -62,6 +62,8 @@ export {
   Scales as ScalesSimple,
   Eye,
   ChartBar,
+  ChartLineUp,
+  Lightbulb,
   ClockCountdown,
   // theme
   Sun,

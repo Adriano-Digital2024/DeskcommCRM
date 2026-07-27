@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, Brain, PlugsConnected, ChartBar, WebhooksLogo, FlowArrow, FileText, ClockCountdown, PuzzlePiece, Signpost } from "@/lib/ui/icons";
+import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, Brain, PlugsConnected, ChartBar, ChartLineUp, WebhooksLogo, FlowArrow, FileText, ClockCountdown, PuzzlePiece, Signpost } from "@/lib/ui/icons";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
@@ -32,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/ai/followups", label: "Follow-ups", icon: FlowArrow, permission: "ai.agents.view" },
   { href: "/app/ai/memory", label: "Memória da IA", icon: Brain, permission: "ai.memory.view" },
   { href: "/app/ai/skills", label: "Skills da IA", icon: PuzzlePiece, permission: "ai.skills.view" },
+  { href: "/app/ai/evolution", label: "Evolução da IA", icon: ChartLineUp, permission: "ai.evolution.view" },
   { href: "/app/webhooks", label: "Webhooks", icon: WebhooksLogo, permission: "webhooks.manage" },
   { href: "/app/settings", label: "Configurações", icon: Gear },
 ];
@@ -44,6 +45,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
   const canAiRouters = usePermission("ai.routers.view");
   const canAiMemory = usePermission("ai.memory.view");
   const canAiSkills = usePermission("ai.skills.view");
+  const canAiEvolution = usePermission("ai.evolution.view");
   const canWebhooks = usePermission("webhooks.manage");
 
   return (
@@ -64,6 +66,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
           if (item.permission === "ai.routers.view") return canAiRouters;
           if (item.permission === "ai.memory.view") return canAiMemory;
           if (item.permission === "ai.skills.view") return canAiSkills;
+          if (item.permission === "ai.evolution.view") return canAiEvolution;
           if (item.permission === "webhooks.manage") return canWebhooks;
           return true;
         }).map((item) => {
