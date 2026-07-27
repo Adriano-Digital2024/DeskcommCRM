@@ -3,7 +3,9 @@ import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
 import { CheckCircle, Warning } from "@/lib/ui/icons";
+import type { LeadStage } from "@/lib/agent-engine/agent/lead-state";
 import type { EvolutionPayload } from "@/lib/ai/evolution/aggregate";
+import { ROTULO_DO_PASSO } from "@/lib/leads/agent-mapping";
 
 /**
  * Cada lacuna vira UMA frase que diz o problema e o conserto — número sem ação é
@@ -19,19 +21,18 @@ import type { EvolutionPayload } from "@/lib/ai/evolution/aggregate";
  *     docblock de `boaNoticia`, que é onde a regra vive.
  */
 
-/** Os passos do atendimento em português de dono de negócio — o enum é interno. */
-const PASSOS: Record<string, string> = {
-  new: "contato novo",
-  contacted: "primeira conversa",
-  qualifying: "entendendo o que ele precisa",
-  qualified: "necessidade entendida",
-  negotiating: "em negociação",
-  won: "fechado",
-  lost: "perdido",
-};
-
+/**
+ * Os passos do atendimento em português de dono de negócio.
+ *
+ * ⚠️ VÊM DE `ROTULO_DO_PASSO`, e este arquivo NÃO tem a sua própria tradução.
+ * A tela que conserta a lacuna (Funis) lista os passos por esses mesmos nomes; se
+ * cada lado traduzisse o enum à sua maneira, o dono da clínica leria "entendendo
+ * o que ele precisa" aqui, clicaria no botão e procuraria essa linha numa tela
+ * que a chama "Em qualificação". Um nome por coisa é o que faz o botão levar a
+ * algum lugar reconhecível.
+ */
 function nomeiaPassos(steps: string[]): string {
-  return steps.map((s) => PASSOS[s] ?? s).join(", ");
+  return steps.map((s) => ROTULO_DO_PASSO[s as LeadStage] ?? s).join(", ");
 }
 
 function plural(n: number, um: string, muitos: string): string {
@@ -59,12 +60,19 @@ function montaLacunas(gaps: EvolutionPayload["gaps"]): Lacuna[] {
       // a CONSEQUÊNCIA e devolve a decisão para quem conhece o próprio negócio.
       texto:
         `No funil "${p.pipeline_name}", ${p.steps.length} ${plural(p.steps.length, "passo do atendimento não tem", "passos do atendimento não têm")} ` +
-        `etapa correspondente: ${nomeiaPassos(p.steps)}. Quando o agente chega em um desses passos, o cartão do cliente ` +
+        // "card" e não "cartão": é o nome que a tela do conserto usa na opção
+        // «Não mover o card». Um objeto, um nome — senão o usuário lê sobre
+        // "cartão" aqui e procura essa palavra lá.
+        `etapa correspondente: ${nomeiaPassos(p.steps)}. Quando o agente chega em um desses passos, o card do cliente ` +
         `não se move — ele fica onde está. Às vezes isso é proposital: nem todo funil precisa de uma etapa para cada passo. ` +
-        `Mas se você esperava ver esses clientes andarem sozinhos no quadro, é aqui que falta o vínculo — ele é feito na ` +
-        `configuração do funil, por quem instalou o sistema.`,
-      href: "/app/kanban",
-      cta: "Ver as etapas do funil",
+        `Mas se você esperava ver esses clientes andarem sozinhos no quadro, é aqui que falta o vínculo — e você mesmo ` +
+        `escolhe, passo a passo, para qual etapa o card vai.`,
+      // ⚠️ ESTE LINK É O QUE FECHA O CICLO. Antes ele apontava para o quadro com o
+      // verbo "Ver", porque não existia lugar nenhum no produto para escrever
+      // `agent_stage_hint` — o painel relatava uma lacuna e parava aí. Agora leva
+      // à tela que a conserta, e o verbo diz o que se faz lá.
+      href: "/app/settings/tenant/pipelines",
+      cta: "Escolher a etapa de cada passo",
     });
   }
 

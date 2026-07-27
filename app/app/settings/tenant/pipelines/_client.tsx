@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updatePipelineConfig } from "@/app/actions/settings/updatePipelineConfig";
 import type { PipelineConfigPatch } from "@/lib/schemas/settings";
+import { AgentMappingSection } from "./_mapping";
 
 export interface PipelineRow {
   id: string;
@@ -36,18 +37,32 @@ function readLostReasons(settings: Record<string, unknown> | null): string[] {
   return Array.isArray(r) ? (r as string[]) : [];
 }
 
-export function PipelinesClient({ pipelines }: { pipelines: PipelineRow[] }) {
+export function PipelinesClient({
+  pipelines,
+  podeEditarConfig,
+}: {
+  pipelines: PipelineRow[];
+  /** Vocabulário/custom fields são admin (a server action recusa o resto). */
+  podeEditarConfig: boolean;
+}) {
   if (pipelines.length === 0) {
     return (
       <Card className="p-6 text-sm text-muted-foreground">
-        Nenhum pipeline ativo. Crie um em Pipelines.
+        Nenhum funil ativo. Crie um no quadro para poder configurá-lo aqui.
       </Card>
     );
   }
   return (
     <div className="flex flex-col gap-4">
       {pipelines.map((p) => (
-        <PipelineEditor key={p.id} pipeline={p} />
+        <Card key={p.id} className="space-y-6 p-6">
+          <header>
+            <h2 className="text-base font-semibold">{p.name}</h2>
+            <p className="text-xs text-muted-foreground">/{p.slug}</p>
+          </header>
+          <AgentMappingSection pipelineId={p.id} />
+          {podeEditarConfig && <PipelineEditor pipeline={p} />}
+        </Card>
       ))}
     </div>
   );
@@ -93,11 +108,8 @@ function PipelineEditor({ pipeline }: { pipeline: PipelineRow }) {
   }
 
   return (
-    <Card className="space-y-4 p-6">
-      <header>
-        <h2 className="text-base font-semibold">{pipeline.name}</h2>
-        <p className="text-xs text-muted-foreground">/{pipeline.slug}</p>
-      </header>
+    <div className="space-y-4 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold">Vocabulário e campos</h3>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="space-y-1">
@@ -138,9 +150,9 @@ function PipelineEditor({ pipeline }: { pipeline: PipelineRow }) {
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={isPending}>
-          {isPending ? "Salvando…" : "Salvar"}
+          {isPending ? "Salvando…" : "Salvar vocabulário e campos"}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
