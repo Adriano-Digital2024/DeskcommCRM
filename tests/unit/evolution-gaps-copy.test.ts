@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 
 import { boaNoticia } from "@/components/ai/EvolutionGaps";
-import { taxaDeAjuda } from "@/app/app/ai/evolution/_client";
+import { descricaoResultado, taxaDeAjuda } from "@/app/app/ai/evolution/_client";
+import { aggregateEvolution, type EvolutionInput } from "@/lib/ai/evolution/aggregate";
 
 /**
  * Estes dois pedaços são INALCANÇÁVEIS pela tela nas orgs que temos: basta um
@@ -54,6 +55,64 @@ describe("boaNoticia — cada afirmação precisa da sua própria evidência", (
     expect(t).toContain("toda conversa achou para onde ir");
     expect(t).toContain("todo passo do atendimento tem uma etapa do funil");
     expect(t).not.toContain("ressalva");
+  });
+});
+
+describe("descricaoResultado — 'houve atendimento' é mensagem recebida, não custo", () => {
+  const base = {
+    stage_transitions: 0,
+    won: 0,
+    lost: 0,
+    handoff_rate: 0,
+    cost_cents: 0,
+    messages_received: 0,
+  };
+
+  it("custo alto e ZERO mensagens ainda diz que não houve atendimento", () => {
+    // O caso real: `llm_calls` inclui `connection_test` e as chamadas do
+    // flywheel, cujo cron julga turnos passados e carimba o custo no dia em que
+    // rodou. Se o custo voltar ao guarda, a ressalva some justamente no período
+    // em que ela é necessária — e este teste fica vermelho.
+    const t = descricaoResultado({ ...base, cost_cents: 1200, handoff_rate: 0.5 });
+    expect(t).toContain("Não houve atendimento neste período");
+  });
+
+  it("uma mensagem recebida já basta para a descrição normal", () => {
+    const t = descricaoResultado({ ...base, messages_received: 1 });
+    expect(t).not.toContain("Não houve atendimento");
+    expect(t).toContain("compare com o mês anterior");
+  });
+});
+
+describe("aggregateEvolution expõe o fato exato no payload", () => {
+  const vazio: EvolutionInput = {
+    range: { from: new Date("2026-01-01T00:00:00Z"), to: new Date("2026-01-02T00:00:00Z") },
+    memoryEntries: [],
+    proposalsApplied: [],
+    skillInstalls: [],
+    skillActivations: [],
+    routerDecisions: [],
+    knowledgeSearches: [],
+    stageTransitions: [],
+    costCents: 0,
+    inboundCount: 0,
+    handoffCount: 0,
+    pipelines: [],
+  };
+
+  it("messages_received vem de inboundCount, e não de nenhum substituto", () => {
+    expect(aggregateEvolution({ ...vazio, inboundCount: 42, costCents: 999 }).outcome.messages_received).toBe(42);
+    expect(aggregateEvolution({ ...vazio, costCents: 999 }).outcome.messages_received).toBe(0);
+  });
+
+  it("pipelines_evaluated distingue 'tudo mapeado' de 'não há funil'", () => {
+    expect(aggregateEvolution(vazio).gaps.pipelines_evaluated).toBe(0);
+    const comFunil = aggregateEvolution({
+      ...vazio,
+      pipelines: [{ name: "Clínica", hints: ["new", "contacted", "qualifying", "qualified", "negotiating", "won", "lost"] }],
+    });
+    expect(comFunil.gaps.pipelines_evaluated).toBe(1);
+    expect(comFunil.gaps.unmapped_agent_steps).toEqual([]);
   });
 });
 

@@ -66,6 +66,16 @@ export interface EvolutionPayload {
     lost: number;
     handoff_rate: number;
     cost_cents: number;
+    /**
+     * Mensagens recebidas de clientes na janela — o denominador de `handoff_rate`,
+     * e o único campo do payload que responde "houve atendimento?".
+     *
+     * `cost_cents` NÃO responde: `llm_calls` inclui propósitos que não são
+     * atendimento na janela — `connection_test` (script de ops) e os do flywheel,
+     * cujo cron julga turnos PASSADOS e carimba o custo no dia em que rodou. Um
+     * período sem nenhum atendimento teria custo > 0 e a tela concluiria que houve.
+     */
+    messages_received: number;
   };
   gaps: {
     unmapped_agent_steps: Array<{ pipeline_name: string; steps: string[] }>;
@@ -205,6 +215,7 @@ export function aggregateEvolution(input: EvolutionInput): EvolutionPayload {
       lost: input.stageTransitions.filter((t) => t.to_stage === 'lost').length,
       handoff_rate: input.inboundCount > 0 ? input.handoffCount / input.inboundCount : 0,
       cost_cents: input.costCents,
+      messages_received: input.inboundCount,
     },
     gaps: {
       unmapped_agent_steps: unmapped,

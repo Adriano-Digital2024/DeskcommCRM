@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EvolutionGaps } from "@/components/ai/EvolutionGaps";
 import { EvolutionTimeline } from "@/components/ai/EvolutionTimeline";
 import { useEvolution } from "@/hooks/ai/useEvolution";
+import type { EvolutionPayload } from "@/lib/ai/evolution/aggregate";
 
 /**
  * O painel responde UMA pergunta do dono do negócio: "o que meu agente aprendeu
@@ -41,12 +42,6 @@ const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" 
 const DESCRICAO_RESULTADO =
   "O que aconteceu com os seus negócios neste período. Para saber se melhorou, mude as datas acima e compare com o mês anterior.";
 
-/**
- * Sem atendimento nenhum no período, "0 casos precisaram de uma pessoa" LÊ como
- * "sua IA deu conta de tudo" — a mentira mais lisonjeira que este bloco poderia
- * contar, e a mais fácil de acreditar. O zero continua lá (é o valor certo); o
- * que muda é a frase que diz do que ele é feito.
- */
 /**
  * Os três primeiros números deste bloco vêm de `lead_state_transitions`, e o
  * ÚNICO escritor dessa tabela no repo é a máquina de estados do agente
@@ -96,8 +91,30 @@ export function taxaDeAjuda(rate: number): string {
   return `${porCem.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} a cada 100`;
 }
 
+/**
+ * Sem atendimento nenhum no período, "0 casos precisaram de uma pessoa" LÊ como
+ * "sua IA deu conta de tudo" — a mentira mais lisonjeira que este bloco poderia
+ * contar, e a mais fácil de acreditar. O zero continua lá (é o valor certo); o
+ * que muda é a frase que diz do que ele é feito.
+ */
 const DESCRICAO_RESULTADO_SEM_ATIVIDADE =
   "Não houve atendimento neste período, então os zeros abaixo querem dizer \"nada aconteceu\", e não \"foi mal\". Mude as datas acima para um período com movimento.";
+
+/**
+ * A escolha da descrição olha SÓ `messages_received`, e recebe o `outcome`
+ * inteiro de propósito: é o que torna sabotável — se alguém voltar a somar
+ * `cost_cents` aqui, o teste fica vermelho.
+ *
+ * O guarda anterior usava custo como SUBSTITUTO de "houve atendimento", e
+ * substituto não é evidência: `llm_calls` inclui `connection_test` (script de
+ * ops) e as chamadas do flywheel, cujo cron julga turnos PASSADOS e carimba o
+ * custo no dia em que rodou. Num período sem atendimento nenhum, o custo do cron
+ * apagaria justamente a ressalva que existe para impedir a leitura lisonjeira.
+ * O fato exato já era calculado na rota; só faltava chegar ao payload.
+ */
+export function descricaoResultado(outcome: EvolutionPayload["outcome"]): string {
+  return outcome.messages_received > 0 ? DESCRICAO_RESULTADO : DESCRICAO_RESULTADO_SEM_ATIVIDADE;
+}
 
 function num(n: number): string {
   return n.toLocaleString("pt-BR");
@@ -381,20 +398,6 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
   // com a evidência de uma. Ver o comentário em EvolutionGaps.
   const buscas = soma(activity.series.knowledge_searches);
   const decisoes = soma(activity.series.router_decisions);
-  // ⚠️ Custo e ajuda humana entram no guarda, e são a parte que importa. As
-  // outras quatro fontes não provam "houve atendimento": decisão de roteador só
-  // existe se há roteador, busca só se o agente usou a ferramenta, skill só se
-  // ativou. Uma instalação nova — sem roteador, base vazia — que atendeu 200
-  // clientes zera as quatro, e a tela diria "não houve atendimento" logo acima
-  // de "Custo da IA: R$ 12,00". É o mesmo defeito do guarda grosso da lista de
-  // lacunas, um andar acima: guarda menor do que a afirmação que ele autoriza.
-  const houveAtividade =
-    buscas +
-      decisoes +
-      soma(activity.series.skill_activations) +
-      outcome.stage_transitions +
-      outcome.cost_cents >
-      0 || outcome.handoff_rate > 0;
 
   return (
     <>
@@ -518,7 +521,7 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
       <Bloco
         testId="bloco-resultado"
         titulo="O que mudou no resultado"
-        descricao={houveAtividade ? DESCRICAO_RESULTADO : DESCRICAO_RESULTADO_SEM_ATIVIDADE}
+        descricao={descricaoResultado(outcome)}
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
