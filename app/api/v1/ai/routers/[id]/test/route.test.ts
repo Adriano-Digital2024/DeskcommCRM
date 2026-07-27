@@ -137,6 +137,7 @@ describe("POST /api/v1/ai/routers/:id/test", () => {
     expect(body.data).toEqual({
       intent_name: "vendas",
       confidence: 0.92,
+      min_confidence: 0.6,
       agent_id: AGENT_ID,
       agent_name: "Agente Vendas",
     });
@@ -151,6 +152,41 @@ describe("POST /api/v1/ai/routers/:id/test", () => {
     // (leitura) e ai_agents (leitura do nome); nenhuma chamada de INSERT/DELETE.
     const admin = vi.mocked(createAdminClient).mock.results[0]!.value as { from: (t: string) => unknown };
     expect(() => admin.from("ai_router_decisions")).toThrow();
+  });
+
+  it("confidence abaixo do min_confidence → não casa o membro, cai no fallback do router (espelha resolve-turn-agent)", async () => {
+    mockAuthzOk();
+    vi.mocked(createAdminClient).mockReturnValue(makeAdminStub({ routerFound: true, agentName: "Agente Fallback" }) as never);
+    vi.mocked(loadActiveRouter).mockResolvedValue({
+      id: ROUTER_ID,
+      name: "Roteador",
+      classifierModel: "claude-haiku-4-5",
+      sticky: true,
+      minConfidence: 0.6,
+      fallbackAgentId: AGENT_ID,
+      members: [
+        { agentId: "77777777-7777-4777-8777-777777777777", intentName: "vendas", intentDescription: "Quer comprar", examples: [] },
+      ],
+    });
+    vi.mocked(classifyIntent).mockResolvedValue({ intentName: "vendas", confidence: 0.4 });
+
+    const { POST } = await import("./route");
+    const res = await POST(req({ message: "talvez eu compre" }), ctx());
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: { intent_name: string | null; confidence: number; min_confidence: number; agent_id: string | null; agent_name: string | null };
+    };
+    // intent_name reporta o que o classificador viu, mas agent_id NÃO é o
+    // membro "vendas" — confidence 0.4 < min_confidence 0.6 cai no fallback,
+    // igual à produção (resolve-turn-agent.ts:193).
+    expect(body.data).toEqual({
+      intent_name: "vendas",
+      confidence: 0.4,
+      min_confidence: 0.6,
+      agent_id: AGENT_ID,
+      agent_name: "Agente Fallback",
+    });
   });
 
   it("router não está ativo (loadActiveRouter não devolve este id) → 409 state_conflict", async () => {

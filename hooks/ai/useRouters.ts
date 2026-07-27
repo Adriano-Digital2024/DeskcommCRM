@@ -45,6 +45,7 @@ export interface RouterDetailState {
 export interface RouterTestResult {
   intent_name: string | null;
   confidence: number;
+  min_confidence: number;
   agent_id: string | null;
   agent_name: string | null;
 }

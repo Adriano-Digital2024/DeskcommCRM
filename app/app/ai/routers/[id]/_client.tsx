@@ -534,9 +534,18 @@ function TestPanel({
   message: string;
   onMessageChange: (v: string) => void;
   onTest: () => void;
-  result: { intent_name: string | null; confidence: number; agent_id: string | null; agent_name: string | null } | undefined;
+  result:
+    | {
+        intent_name: string | null;
+        confidence: number;
+        min_confidence: number;
+        agent_id: string | null;
+        agent_name: string | null;
+      }
+    | undefined;
   pending: boolean;
 }) {
+  const belowThreshold = result?.intent_name != null && result.confidence < result.min_confidence;
   return (
     <Card className="space-y-3 p-4">
       <CardHeader className="p-0">
@@ -580,6 +589,12 @@ function TestPanel({
                 </span>
               )}
             </p>
+            {belowThreshold && (
+              <p className="text-xs text-amber-600">
+                Confiança {(result.confidence * 100).toFixed(0)}% — abaixo do mínimo de{" "}
+                {(result.min_confidence * 100).toFixed(0)}%, cairia no atendimento padrão em produção.
+              </p>
+            )}
             <p>
               Agente que atenderia:{" "}
               <span className="font-medium">{result.agent_name ?? "nenhum (sem fallback)"}</span>

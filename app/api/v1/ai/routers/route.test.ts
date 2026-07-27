@@ -45,11 +45,28 @@ interface AdminCfg {
   routersSelect?: { data?: unknown[] | null; error?: unknown };
   membersSelect?: { data?: unknown[] | null; error?: unknown };
   insertResult?: { data?: unknown; error?: unknown };
+  sessionFound?: boolean;
 }
 
 function makeAdminStub(cfg: AdminCfg) {
   return {
     from(table: string) {
+      if (table === "channel_sessions") {
+        const builder = {
+          select() {
+            return builder;
+          },
+          eq() {
+            return builder;
+          },
+          maybeSingle() {
+            return Promise.resolve(
+              cfg.sessionFound === false ? { data: null, error: null } : { data: { id: SESSION_ID }, error: null },
+            );
+          },
+        };
+        return builder;
+      }
       if (table === "ai_routers") {
         let insertedRow: Record<string, unknown> | undefined;
         const builder = {
@@ -190,6 +207,20 @@ describe("POST /api/v1/ai/routers", () => {
     expect(res.status).toBe(422);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe("validation_failed");
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it("channel_session_id de outra org → 404 channel_session_not_found (não 201, não 409)", async () => {
+    mockAuthzOk("admin");
+    const admin = makeAdminStub({ sessionFound: false, insertResult: { data: { id: "new-router-1" }, error: null } });
+    vi.mocked(createAdminClient).mockReturnValue(admin as never);
+
+    const { POST } = await import("./route");
+    const res = await POST(postReq({ name: "Roteador", channel_session_id: SESSION_ID }));
+
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("channel_session_not_found");
     expect(audit).not.toHaveBeenCalled();
   });
 

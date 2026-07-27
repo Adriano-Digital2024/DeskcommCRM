@@ -38,6 +38,11 @@
       "id": "skills",
       "label": "Skills instaláveis (Fase 2)",
       "variant": "exception"
+    },
+    {
+      "id": "router",
+      "label": "Intent Router (Fase 3)",
+      "variant": "exception"
     }
   ],
   "mainPath": [
@@ -154,6 +159,22 @@
       "type": "backend",
       "label": "Skill catalog",
       "sublabel": "skill_versions + pointers"
+    },
+    {
+      "id": "routerscreen",
+      "lane": "router",
+      "col": 0,
+      "type": "frontend",
+      "label": "Routers",
+      "sublabel": "tela + API (app/app/ai/routers)"
+    },
+    {
+      "id": "routerconfig",
+      "lane": "router",
+      "col": 1,
+      "type": "backend",
+      "label": "ai_routers",
+      "sublabel": "intents + min_confidence + sticky"
     }
   ],
   "edges": [
@@ -269,6 +290,24 @@
       "toSide": "right",
       "route": "outside-right",
       "labelDy": 40
+    },
+    {
+      "id": "routerscreen-routerconfig",
+      "from": "routerscreen",
+      "to": "routerconfig",
+      "label": "cria/edita router · testa classificação",
+      "labelDy": 50
+    },
+    {
+      "id": "routerconfig-turn",
+      "from": "routerconfig",
+      "to": "turn",
+      "label": "classifica a intenção e decide o agentConfig do turno",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "right",
+      "route": "outside-right",
+      "labelDy": 60
     }
   ],
   "cards": [

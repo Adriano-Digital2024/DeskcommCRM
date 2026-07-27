@@ -8,6 +8,10 @@
  * trás de um clique de teste na UI, e llm_calls.contact_id/job_id são FKs —
  * um uuid inventado quebraria o insert do registro de custo (ver
  * lib/agent-engine/agent/intent-classifier.ts).
+ *
+ * O match só conta se confidence >= min_confidence do router (mesma regra do
+ * runtime, resolve-turn-agent.ts:193) — devolve min_confidence no payload pra
+ * a tela explicar quando o resultado cairia no fallback/genérico em produção.
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -94,8 +98,13 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     { log },
   );
 
+  // espelha resolve-turn-agent.ts:193 — só casa a intenção se a confiança
+  // bateu o mínimo do router; abaixo disso, produção cai no fallback/genérico,
+  // e o painel de teste não pode fingir que casou (review whole-branch item 3).
   const matchedMember =
-    verdict?.intentName != null ? loaded.members.find((m) => m.intentName === verdict.intentName) : undefined;
+    verdict?.intentName != null && verdict.confidence >= loaded.minConfidence
+      ? loaded.members.find((m) => m.intentName === verdict.intentName)
+      : undefined;
   const agentId = matchedMember?.agentId ?? loaded.fallbackAgentId;
 
   let agentName: string | null = null;
@@ -113,6 +122,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     {
       intent_name: verdict?.intentName ?? null,
       confidence: verdict?.confidence ?? 0,
+      min_confidence: loaded.minConfidence,
       agent_id: agentId,
       agent_name: agentName,
     },

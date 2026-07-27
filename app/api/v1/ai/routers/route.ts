@@ -94,6 +94,18 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const admin = createAdminClient();
 
+  const { data: session } = await admin
+    .from("channel_sessions")
+    .select("id")
+    .eq("id", input.channel_session_id)
+    .eq("organization_id", org.orgId)
+    .maybeSingle();
+  if (!session) {
+    return fail("channel_session_not_found", "Número de WhatsApp não encontrado nesta organização.", 404, {
+      requestId,
+    });
+  }
+
   const { data: created, error: insErr } = await admin
     .from("ai_routers")
     .insert({
