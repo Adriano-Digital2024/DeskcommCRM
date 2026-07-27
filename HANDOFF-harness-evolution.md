@@ -89,3 +89,20 @@ A primeira com `hits >= 1`, a segunda com `hits = 0` e `top_score` preenchido (b
 - **Upstash morto: substituído por Redis local.** A instância da nuvem dá NXDOMAIN (foi removida). Subi o mesmo par do `docker-compose.prod.yml` — `deskcomm-redis-local` (redis:7-alpine) + `deskcomm-srh-local` (serverless-redis-http na porta 8079, que fala o protocolo REST do Upstash sobre o redis normal). `.env.local` aponta para lá, com os valores da nuvem **comentados logo acima** para reverter. Backup em `.env.local.bak-*`. Health voltou a `healthy`.
 - **Servidor da porta 3000:** o processo antigo (quebrado porque o `pnpm install` do merge trocou o `node_modules` por baixo dele) morreu sozinho; subi um `next start` novo do build atual.
 - **Worker reiniciado** para pegar o código da fase — o anterior era das 07:54 e não tinha a telemetria nem a ponte do funil.
+
+## PROVA DE PONTA A PONTA FECHADA — 2026-07-27 (Rafael mandou as mensagens)
+
+O elo que faltava está provado. Rafael mandou duas mensagens reais no WhatsApp e o ciclo inteiro andou:
+
+- **"qual o prazo de garantia dos produtos?"** → o agente respondeu com o fato da base ("12 meses contra defeitos de fabricação, contando da data de entrega") e gravou `hits=1, top_score=0.676531, threshold=0.5`.
+- **"vocês patrocinam torneios de xadrez na Islândia?"** → o agente recusou honestamente ("Não temos essa informação aqui") e gravou `hits=0, top_score=0.165184`.
+
+**As duas linhas têm `job_id` preenchido** — que era o discriminador declarado entre prova de bancada e prova real. A bancada gravou nulo de propósito; turno de verdade preenche.
+
+O `top_score` de 0,165 é o ponto do épico: ele diz **"a base não tem esse assunto"**, e não "o corte estava apertado demais". Antes desta fase o sistema não sabia distinguir os dois — e são problemas com consertos opostos.
+
+**Na tela** (`/app/ai/evolution`, logado como `e2e-manager`): "Consultas aos seus materiais — **2 no período**" com o pico em 27/07, e em "O que está travando": *"1 pergunta de cliente não encontrou resposta nos seus materiais. São os assuntos que ainda faltam escrever — cada um deles é uma conversa em que o agente teve que improvisar ou passar adiante"*, com o botão para a base. Prova visual em `f4-prova-real-whatsapp.png`.
+
+**ACHADO DE AMBIENTE (não é bug, mas custa tempo de quem for repetir):** a conta de login do Rafael (`rafael@maudibrasil.com.br`) é admin da org **Deskcomm Admin**, enquanto o número de WhatsApp, a agente Lia e toda a telemetria vivem na org **E2E Test Org**. Abrir o painel com a conta dele mostra zeros — corretamente, porque o isolamento entre empresas está funcionando. Quem for repetir a prova precisa entrar com uma conta da org que tem o número, ou o painel vai parecer quebrado quando está certo.
+
+**A lacuna de funil apareceu com dados reais**, confirmando o plano `docs/superpowers/plans/2026-07-27-mapeamento-funil-agente.md`: os funis "Pedidos" (4 passos sem etapa) e "CRM Vivo — Clínica" (2 passos) estão listados na tela, e hoje **não existe interface para consertá-los**.
