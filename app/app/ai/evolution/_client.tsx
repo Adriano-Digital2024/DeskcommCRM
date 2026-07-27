@@ -47,6 +47,38 @@ const DESCRICAO_RESULTADO =
  * contar, e a mais fácil de acreditar. O zero continua lá (é o valor certo); o
  * que muda é a frase que diz do que ele é feito.
  */
+/**
+ * Os três primeiros números deste bloco vêm de `lead_state_transitions`, e o
+ * ÚNICO escritor dessa tabela no repo é a máquina de estados do agente
+ * (`lib/agent-engine/agent/lead-state.ts`). Atendente arrastando cartão no
+ * Kanban não gera linha nenhuma ali. Sem esta ressalva, um mês em que a equipe
+ * fechou doze negócios na mão apareceria como "0" num bloco chamado "o que
+ * mudou no resultado" — e o dono do negócio concluiria que o mês foi zero.
+ *
+ * O vocabulário também é deliberado: o bloco 4 usa "funil"/"etapa" para
+ * `crm_pipelines`/`crm_stages` e "passo do atendimento" para o estado do agente.
+ * Chamar isto de "avanço no funil" faria a mesma tela dizer que os cartões
+ * andaram e que os cartões não andam.
+ */
+const SIGNIFICA_GANHOS =
+  "Clientes que o AGENTE marcou como fechados. Negócio que a sua equipe fechou na mão, movendo o cartão no quadro, não entra aqui.";
+const SIGNIFICA_PERDIDOS =
+  "Clientes que o AGENTE marcou como perdidos — contraponto necessário, porque ganhos sem perdidos ao lado enganam. Também não conta o que a sua equipe marcou na mão.";
+const SIGNIFICA_AVANCOS =
+  "Quantas vezes o AGENTE registrou que um cliente avançou um passo do atendimento — o sinal de que a conversa andou, e não só aconteceu. Cartão movido à mão no quadro não entra aqui.";
+
+/**
+ * Uma ajuda em 5.000 mensagens é 0,02 a cada 100 — com uma casa decimal isso
+ * vira "0", que lê como "nunca precisou de gente". É o mesmo zero lisonjeiro
+ * dos outros números do bloco, só que produzido pelo formatador.
+ */
+function taxaDeAjuda(rate: number): string {
+  if (rate <= 0) return "0";
+  const porCem = rate * 100;
+  if (porCem < 0.1) return "menos de 0,1 a cada 100";
+  return `${porCem.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} a cada 100`;
+}
+
 const DESCRICAO_RESULTADO_SEM_ATIVIDADE =
   "Não houve atendimento neste período, então os zeros abaixo querem dizer \"nada aconteceu\", e não \"foi mal\". Mude as datas acima para um período com movimento.";
 
@@ -326,20 +358,14 @@ export function EvolutionClient({ defaultRange }: { defaultRange: { from: string
 function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolution>["data"]> }) {
   const { learned, activity, outcome, gaps } = payload;
 
-  const aprendeuAlgo =
-    learned.memory_entries > 0 || learned.proposals_applied > 0 || learned.skills_installed > 0;
-
-  const totalAtividade =
-    activity.series.skill_activations.reduce((a, p) => a + p.value, 0) +
-    activity.series.router_decisions.reduce((a, p) => a + p.value, 0) +
-    activity.series.knowledge_searches.reduce((a, p) => a + p.value, 0);
-  const houveAtividade = totalAtividade > 0 || outcome.stage_transitions > 0;
-
-  // A taxa é EPISÓDIO por mensagem recebida, não pedido por pedido: o mesmo
-  // cliente pedindo ajuda três vezes no mesmo caso aberto conta uma vez só (o
-  // handoff é deduplicado por episódio). Chamar isso de "pedidos de ajuda"
-  // prometeria uma precisão que o dado não tem.
-  const porCem = outcome.handoff_rate * 100;
+  const soma = (s: Array<{ value: number }>) => s.reduce((a, p) => a + p.value, 0);
+  // Contagens SEPARADAS, não um booleano só: cada frase de "nada travando" é uma
+  // afirmação sobre uma fonte diferente, e um guarda único as autorizaria todas
+  // com a evidência de uma. Ver o comentário em EvolutionGaps.
+  const buscas = soma(activity.series.knowledge_searches);
+  const decisoes = soma(activity.series.router_decisions);
+  const houveAtividade =
+    buscas + decisoes + soma(activity.series.skill_activations) + outcome.stage_transitions > 0;
 
   return (
     <>
@@ -372,12 +398,12 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
           </p>
           <div className="mt-3">
             {learned.timeline.length === 0 ? (
+              // Um só texto, e não dois: a linha do tempo é montada das MESMAS três
+              // fontes dos três contadores acima, então `timeline.length === 0` é
+              // equivalente a "os três contadores são zero". O ramo "aprendeu algo
+              // mas não tem data" era inalcançável.
               <Vazio
-                texto={
-                  aprendeuAlgo
-                    ? "Nada foi registrado com data neste intervalo. Tente um período maior."
-                    : "Seu agente ainda não aprendeu nada neste período. Ele aprende de três jeitos: você publica uma regra na Memória da IA, aprova uma sugestão de melhoria na aba Propostas do agente, ou instala uma habilidade em Skills da IA."
-                }
+                texto="Seu agente ainda não aprendeu nada neste período. Ele aprende de três jeitos: você publica uma regra na Memória da IA, aprova uma sugestão de melhoria na aba Propostas do agente, ou instala uma habilidade em Skills da IA."
                 acoes={[
                   { href: "/app/ai/memory", label: "Publicar uma regra" },
                   { href: "/app/ai/agents", label: "Ver sugestões de melhoria" },
@@ -429,7 +455,7 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
             vazio={
               <Vazio
                 texto="O agente não consultou seus materiais. Ou não há nada publicado na base de conhecimento, ou as conversas não chegaram a precisar."
-                acoes={[{ href: "/app/ai/knowledge", label: "Publicar material" }]}
+                acoes={[{ href: "/app/ai/knowledge/sources", label: "Publicar material" }]}
               />
             }
           />
@@ -467,28 +493,24 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
-            rotulo="Negócios ganhos"
+            rotulo="Negócios fechados pelo agente"
             valor={num(outcome.won)}
-            significa="Clientes que chegaram ao fim do funil como fechados neste período."
+            significa={SIGNIFICA_GANHOS}
           />
           <StatCard
-            rotulo="Negócios perdidos"
+            rotulo="Negócios perdidos pelo agente"
             valor={num(outcome.lost)}
-            significa="Clientes marcados como perdidos. Serve de contraponto: ganhos sem perdidos ao lado enganam."
+            significa={SIGNIFICA_PERDIDOS}
           />
           <StatCard
-            rotulo="Avanços no funil"
+            rotulo="Avanços no atendimento"
             valor={num(outcome.stage_transitions)}
-            significa="Quantas vezes um cliente mudou de etapa — o sinal de que a conversa andou, e não só aconteceu."
+            significa={SIGNIFICA_AVANCOS}
           />
           <StatCard
             rotulo="Casos que precisaram de uma pessoa"
-            valor={
-              outcome.handoff_rate > 0
-                ? `${porCem.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} a cada 100`
-                : "0"
-            }
-            significa="Conversas que o agente passou para um atendente humano, a cada 100 mensagens recebidas. Conta o caso, não o pedido: se o mesmo cliente pediu ajuda três vezes com o caso ainda aberto, conta uma vez só."
+            valor={taxaDeAjuda(outcome.handoff_rate)}
+            significa="Conversas que o agente passou para um atendente humano, a cada 100 mensagens recebidas. Conta casos, não pedidos: pedir ajuda três vezes com o mesmo caso aberto conta uma vez só. É um número aproximado — atendimentos feitos pelo modo antigo do sistema podem contar o mesmo caso mais de uma vez."
           />
           <StatCard
             rotulo="Custo da IA no período"
@@ -501,9 +523,9 @@ function Conteudo({ payload }: { payload: NonNullable<ReturnType<typeof useEvolu
       <Bloco
         testId="bloco-travando"
         titulo="O que está travando"
-        descricao="Cada linha aqui é uma coisa que você pode consertar hoje para o agente ir melhor amanhã."
+        descricao="Cada linha aqui é uma coisa que está limitando seu agente, e o que fazer a respeito — às vezes você mesmo, às vezes quem cuida da sua instalação."
       >
-        <EvolutionGaps gaps={gaps} houveAtividade={houveAtividade} />
+        <EvolutionGaps gaps={gaps} buscas={buscas} decisoes={decisoes} />
       </Bloco>
     </>
   );

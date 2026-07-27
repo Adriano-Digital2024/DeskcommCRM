@@ -62,9 +62,10 @@ export {
   Scales as ScalesSimple,
   Eye,
   ChartBar,
+  ClockCountdown,
+  // painéis de evolução / aprendizado
   ChartLineUp,
   Lightbulb,
-  ClockCountdown,
   // theme
   Sun,
   Moon,

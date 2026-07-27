@@ -74,7 +74,7 @@ function montaLacunas(gaps: EvolutionPayload["gaps"]): Lacuna[] {
         `${gaps.knowledge_empty} ${plural(gaps.knowledge_empty, "pergunta de cliente não encontrou", "perguntas de clientes não encontraram")} ` +
         `resposta nos seus materiais. São os assuntos que ainda faltam escrever — cada um deles é uma conversa em que o ` +
         `agente teve que improvisar ou passar adiante.`,
-      href: "/app/ai/knowledge",
+      href: "/app/ai/knowledge/sources",
       cta: "Abrir a base de conhecimento",
     });
   }
@@ -87,7 +87,7 @@ function montaLacunas(gaps: EvolutionPayload["gaps"]): Lacuna[] {
         `havia material parecido, mas não parecido o bastante para o agente arriscar usar. Aqui o conteúdo provavelmente ` +
         `já existe — só está escrito com palavras diferentes das que o cliente usa. Vale reescrever esses materiais com as ` +
         `perguntas do jeito que chegam.`,
-      href: "/app/ai/knowledge",
+      href: "/app/ai/knowledge/sources",
       cta: "Abrir a base de conhecimento",
     });
   }
@@ -119,12 +119,46 @@ function montaLacunas(gaps: EvolutionPayload["gaps"]): Lacuna[] {
   return out;
 }
 
+/**
+ * A boa notícia é feita de TRÊS afirmações independentes, e cada uma precisa da
+ * sua própria evidência:
+ *   • "toda pergunta encontrou resposta"  ← só vale se houve busca na base;
+ *   • "toda conversa achou para onde ir"  ← só vale se houve decisão de rota;
+ *   • "todo passo tem etapa que o recebe" ← sempre vale: é o estado ATUAL do
+ *     funil, não um evento do período, então independe de ter havido movimento.
+ *
+ * Um booleano "houveAtividade" para as três autorizaria todas com a evidência de
+ * uma: um tenant com roteador configurado e base VAZIA tem decisões > 0 e a tela
+ * afirmaria "toda pergunta encontrou resposta nos seus materiais" tendo havido
+ * ZERO perguntas. O guarda tem que ter o tamanho da afirmação.
+ */
+export function boaNoticia(buscas: number, decisoes: number): string {
+  const partes: string[] = [];
+  if (buscas > 0) partes.push("toda pergunta encontrou resposta nos seus materiais");
+  if (decisoes > 0) partes.push("toda conversa achou para onde ir");
+  partes.push("todo passo do atendimento tem uma etapa do funil que o recebe");
+
+  const frase = `Nada travando neste período: ${partes.join(", ")}.`;
+  if (buscas > 0 && decisoes > 0) return frase;
+  return `${frase} Vale a ressalva de que ${
+    buscas === 0 && decisoes === 0
+      ? "não houve consulta à sua base nem encaminhamento de conversa"
+      : buscas === 0
+        ? "ninguém consultou sua base de conhecimento"
+        : "nenhuma conversa foi encaminhada"
+  } no período — sobre isso a lista está calada, não elogiosa.`;
+}
+
 export function EvolutionGaps({
   gaps,
-  houveAtividade,
+  buscas,
+  decisoes,
 }: {
   gaps: EvolutionPayload["gaps"];
-  houveAtividade: boolean;
+  /** Consultas à base no período — evidência da 1ª afirmação de `boaNoticia`. */
+  buscas: number;
+  /** Decisões de encaminhamento no período — evidência da 2ª afirmação. */
+  decisoes: number;
 }) {
   const lacunas = montaLacunas(gaps);
 
@@ -132,19 +166,7 @@ export function EvolutionGaps({
     return (
       <Card className="flex items-start gap-3 p-5" data-testid="gaps-vazio">
         <CheckCircle size={20} className="mt-0.5 shrink-0 text-success-fg" aria-hidden />
-        <p className="text-sm leading-relaxed">
-          {houveAtividade ? (
-            <>
-              Nada travando neste período. Toda pergunta encontrou resposta nos seus materiais, toda conversa achou
-              para onde ir, e todo passo do atendimento tem uma etapa do funil que o recebe.
-            </>
-          ) : (
-            <>
-              Nada travando — mas também não houve atendimento suficiente no período para dizer muito. Esta lista só
-              vira boa notícia depois que o agente tiver conversado com clientes de verdade.
-            </>
-          )}
-        </p>
+        <p className="text-sm leading-relaxed">{boaNoticia(buscas, decisoes)}</p>
       </Card>
     );
   }
