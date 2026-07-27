@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { mirrorLeadStageToCrm } from './move-lead-stage';
+import { MIRROR_WARN_ONLY, mirrorLeadStageToCrm } from './move-lead-stage';
 
 const cfg = { supabase: {} as never };
 const db = {} as never;
@@ -43,6 +43,47 @@ describe('mirrorLeadStageToCrm', () => {
       expect(r).toMatchObject({ reason: 'not_configured' });
     },
   );
+
+  it('banco fora vira crm_unavailable — indisponibilidade NÃO pode virar estado normal', async () => {
+    // O defeito que este teste fixa: o supabase-js não lança em falha de rede,
+    // então o motor devolvia "sem_negocio" e o card parado parecia rotina.
+    const sync = vi.fn().mockResolvedValue({
+      moveu: false, motivo: 'indisponivel', detalhe: 'TypeError: fetch failed',
+    });
+    const r = await mirrorLeadStageToCrm(
+      db, cfg as never, { tenantId: 'o', leadId: 'c', toStage: 'won' }, { sync },
+    );
+    expect(r).toMatchObject({ ok: false, reason: 'crm_unavailable' });
+    expect(MIRROR_WARN_ONLY.has('crm_unavailable')).toBe(false); // abre inbox
+  });
+
+  it('falha de escrita vira crm_error, nunca sucesso', async () => {
+    const sync = vi.fn().mockResolvedValue({
+      moveu: false, motivo: 'falha_de_escrita', detalhe: 'deadlock detected',
+    });
+    const r = await mirrorLeadStageToCrm(
+      db, cfg as never, { tenantId: 'o', leadId: 'c', toStage: 'won' }, { sync },
+    );
+    expect(r).toMatchObject({ ok: false, reason: 'crm_error' });
+    expect(MIRROR_WARN_ONLY.has('crm_error')).toBe(false); // abre inbox
+  });
+
+  it('humano moveu o card antes: rótulo próprio, warn-only (sem inbox) e não é not_configured', async () => {
+    const sync = vi.fn().mockResolvedValue({ moveu: false, motivo: 'conflito_humano' });
+    const r = await mirrorLeadStageToCrm(
+      db, cfg as never, { tenantId: 'o', leadId: 'c', toStage: 'won' }, { sync },
+    );
+    expect(r).toMatchObject({ ok: false, reason: 'human_conflict' });
+    expect(MIRROR_WARN_ONLY.has('human_conflict')).toBe(true); // sem ruído de inbox
+  });
+
+  it('motivo desconhecido não vira warn-only silencioso', async () => {
+    const sync = vi.fn().mockResolvedValue({ moveu: false, motivo: 'inventado' });
+    const r = await mirrorLeadStageToCrm(
+      db, cfg as never, { tenantId: 'o', leadId: 'c', toStage: 'won' }, { sync },
+    );
+    expect(r).toMatchObject({ ok: false, reason: 'crm_error' });
+  });
 
   it('erro da sincronização vira crm_error e NUNCA lança', async () => {
     const sync = vi.fn().mockRejectedValue(new Error('supabase fora'));

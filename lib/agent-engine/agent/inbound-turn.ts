@@ -47,7 +47,7 @@ import {
   type ToolSet,
 } from '../edge/llm/run-model-call';
 import type { ProviderRegistry } from '../edge/llm/providers';
-import { mirrorLeadStageToCrm } from '../edge/crm/move-lead-stage';
+import { MIRROR_WARN_ONLY, mirrorLeadStageToCrm } from '../edge/crm/move-lead-stage';
 import { insertInboxItem } from '../db/repository';
 import { buildNativeMediaParts } from './media-parts';
 import type { JobRow, Queryable } from '../queue/queue';
@@ -1193,10 +1193,10 @@ export async function runAgentTurn(
             return update; // erro de ensino (payload fora da whitelist / transição inválida)
           }
           if (update.transition !== null) {
-            // Espelho no CRM (surrogates). Falha NUNCA reverte o harness (fonte
-            // da verdade do funil) nem falha o job: humano resolve via inbox_items;
-            // 'not_configured' (tenant sem pareamento/mapa) é só warn — espelho
-            // deliberadamente desligado não é incidente.
+            // Espelho no CRM. Falha NUNCA reverte o harness (fonte da verdade do
+            // funil) nem falha o job: humano resolve via inbox_items. Os motivos
+            // de MIRROR_WARN_ONLY (tenant sem mapa; humano moveu o card antes) são
+            // só warn — estado legítimo do produto não é incidente.
             const mirror = await mirrorLeadStageToCrm(pool, deps.crmCfg, {
               tenantId,
               leadId,
@@ -1208,7 +1208,7 @@ export async function runAgentTurn(
                 to_stage: update.transition.to,
                 reason: mirror.reason,
               });
-              if (mirror.reason !== 'not_configured') {
+              if (!MIRROR_WARN_ONLY.has(mirror.reason)) {
                 await insertInboxItem(pool, tenantId, {
                   kind: 'other',
                   title: 'Espelho de stage no CRM falhou — funil possivelmente inconsistente',
