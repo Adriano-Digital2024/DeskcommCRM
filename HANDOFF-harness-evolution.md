@@ -7,7 +7,7 @@
 
 ## Estado atual
 - **ÉPICO COMPLETO.** A spec tem cinco fases, numeradas **0 a 4**, e todas fecharam — a última (Painel de Evolução) em 2026-07-27, na branch `feat/operacao-visivel`. *(Correção: uma versão anterior desta linha dizia "falta a Fase 5". Não existe Fase 5 — a contagem "5 fases" virou um número de fase que a spec nunca teve. Confira em `docs/superpowers/specs/2026-07-23-harness-evolution-design.md`: os cabeçalhos vão de "Fase 0" a "Fase 4".)*
-- **Continuação natural do épico, já planejada:** `docs/superpowers/plans/2026-07-27-mapeamento-funil-agente.md` — a tela que permite ao tenant dizer em qual etapa do funil o agente coloca o cliente. É a única lacuna que o Painel de Evolução relata e o produto não oferece onde consertar (`crm_stages.agent_stage_hint` existe desde a 0084 e **nenhuma interface a escreve**).
+- **Continuação do épico: ENTREGUE em 2026-07-27** (`docs/superpowers/plans/2026-07-27-mapeamento-funil-agente.md`) — a tela onde o tenant diz em qual etapa do funil o agente coloca o cliente. Era a única lacuna que o Painel de Evolução relatava sem oferecer conserto; `crm_stages.agent_stage_hint` deixou de ser coluna que só sonda de teste escreve. Detalhe no fim deste arquivo.
 - **Uma prova continua em aberto, e é do Rafael:** ninguém mandou uma mensagem real de WhatsApp fechando o ciclo completo. A receita de 1 minuto está no fim deste arquivo.
 
 ## Log
@@ -106,3 +106,66 @@ O `top_score` de 0,165 é o ponto do épico: ele diz **"a base não tem esse ass
 **ACHADO DE AMBIENTE (não é bug, mas custa tempo de quem for repetir):** a conta de login do Rafael (`rafael@maudibrasil.com.br`) é admin da org **Deskcomm Admin**, enquanto o número de WhatsApp, a agente Lia e toda a telemetria vivem na org **E2E Test Org**. Abrir o painel com a conta dele mostra zeros — corretamente, porque o isolamento entre empresas está funcionando. Quem for repetir a prova precisa entrar com uma conta da org que tem o número, ou o painel vai parecer quebrado quando está certo.
 
 **A lacuna de funil apareceu com dados reais**, confirmando o plano `docs/superpowers/plans/2026-07-27-mapeamento-funil-agente.md`: os funis "Pedidos" (4 passos sem etapa) e "CRM Vivo — Clínica" (2 passos) estão listados na tela, e hoje **não existe interface para consertá-los**.
+
+---
+
+# Mapeamento do funil do agente — ENTREGUE 2026-07-27 (branch `feat/operacao-visivel`)
+
+**Plano:** `docs/superpowers/plans/2026-07-27-mapeamento-funil-agente.md` · **Ledger das 4 tasks:** `.superpowers/sdd/2026-07-27-mapeamento-funil-agente/progress.md`
+
+## O que passou a existir
+
+Uma seção dentro da tela de Funis (`/app/settings/tenant/pipelines`) com **uma linha por passo do atendimento**, na ordem em que o cliente avança, cada uma escolhendo a etapa do funil do tenant. A tela **inverte o banco de propósito**: o banco guarda `etapa → passo` (`crm_stages.agent_stage_hint`), a tela mostra `passo → etapa` — o modelo mental de quem configura, e a forma que torna impossível pedir dois destinos para o mesmo passo. «Não mover o card» é escolha legítima, nunca pendência.
+
+- `lib/leads/agent-mapping.ts` — regras puras (coerência com ganho/perda antes do banco, `diffParaUpdates` com **os UNSETs antes dos SETs**).
+- `app/api/v1/pipelines/[id]/agent-mapping/route.ts` — `GET` mapa + etapas; `PUT` **total** (os 7 passos sempre, `null` explícito), papel `manager`.
+- `app/app/settings/tenant/pipelines/_mapping.tsx` + `hooks/pipelines/useAgentMapping.ts` — a seção e sua leitura/gravação.
+- `components/ai/EvolutionGaps.tsx` — o CTA da lacuna passou a **levar** a essa tela (antes apontava para o quadro com o verbo "Ver").
+- `docs/architecture/agent-turn.workflow.json` (+ `agent-turn.html` regerado) — faixa **Mapeamento do funil**, com as duas arestas que fecham o ciclo: `Evolução da IA → Mapa do funil` ("lacuna vira ação") e `crm_stages → Turno IA` ("o card anda para a etapa escolhida").
+
+## Números (verificação final, exit code capturado direto)
+
+`typecheck 0` · `lint 0` (159 warnings pré-existentes, 0 erros) · `vitest 1232/1232 em 157 arquivos` · `test:db 372 passaram + 1 skip em 56 arquivos` (inclui baseline `install` fresh e `update` re-aplicado) · `build 0`.
+Da feature em si, **medido arquivo a arquivo agora** (não somado dos relatórios): `agent-mapping.test.ts` **19** · `agent-mapping/route.test.ts` **16** · `_mapping.test.tsx` **18** = **53 nos três arquivos que a feature criou**; mais `tests/unit/evolution-gaps-copy.test.ts` **17**, arquivo da Fase 4 que esta feature ampliou com as guardas do CTA (href, verbo e nomes dos passos).
+Sabotagens: **49** (17 + 16 + 16) — número **relatado pelas tasks**, não recontado por mim; cada uma exigindo a marca no disco por `grep -cF` antes de rodar.
+
+## A prova que fecha o ciclo (a que faltava)
+
+`tests/prova-ciclo-funil.ts` — **um processo só**, com controle negativo e a mesma chamada dos dois lados:
+
+1. `mirrorLeadStageToCrm` (a função que o turno chama) com o passo «Qualificado» → `not_configured`, card parado em «Primeiro contato»;
+2. **navegador de verdade**, login como `e2e-manager`, tela de Funis, escolhe «Negociação» na linha «Qualificado» pelo NOME visível, salva;
+3. a MESMA chamada, o MESMO card → `{"ok":true}`, card em **«Negociação»**, e timeline `stage_changed · Movido de Primeiro contato para Negociação · ator=system`.
+
+Uma variável muda entre as duas medições: o clique. Estado restaurado **pela própria tela** ao fim (mapa idêntico ao inicial; `contacts/crm_leads/crm_lead_activities` 55/53/337 antes e depois). Evidência: `.superpowers/evidence/ciclo-funil-tela.png`.
+
+## Bugs achados e corrigidos (todos provados por execução, não por leitura)
+
+1. **Permuta de passos colidia com o índice único** (`16310b7`): trocar dois passos de etapa gerava 2 SETs e nenhum UNSET, e o primeiro `UPDATE` batia em `uniq_crm_stages_pipeline_hint` (23505 — índice é imediato, a transação não salva). Os UNSETs passaram a sair primeiro; o repro `{qualifying:'e2', qualified:'e1'}` foi re-executado contra o HEAD.
+2. **Mapa parcial apagava mapeamento em silêncio** quando a etapa alvo já carregava outro passo — passou a recusar citando o conflito. Perda silenciosa era o pior desfecho possível.
+3. **`23514`/`23505` escapavam como 500 com texto cru do Postgres em inglês** (`830530a`) — viraram 409 `state_conflict` com frase em português citando o nome da etapa.
+4. **O CTA mandaria um manager para 403**: a página de Funis era admin-only e o painel é manager+. O ciclo que a feature existe para fechar estava quebrado por permissão. Página passou a manager+, com o editor de vocabulário/campos ainda admin.
+5. **O painel tinha uma SEGUNDA tradução dos 7 passos** — quem clicasse no CTA procuraria linhas com nomes que não existem no destino. Apagada; `ROTULO_DO_PASSO` virou fonte única dos dois lados.
+6. **A tela imprimia qualquer mensagem do servidor como copy** — incluindo «Auth required.», a palavra "role" e texto cru do Postgres. Passou a filtrar por status (409/422 vão inteiras; 401/403/resto viram frase de tela).
+7. **Texto prometia um caminho que não existe**: a lista vazia mandava "crie um funil no quadro" e o quadro manda "ir para configurações" — pingue-pongue fechado (ver achado A abaixo).
+
+## Dois achados sobre o PRODUTO que esta feature revelou
+
+### A. O produto não cria funil nem etapa — mas o BANCO semeia (a premissa do achado original estava errada)
+
+**O que é verdade:** nenhuma rota, server action ou tela insere em `crm_pipelines` ou `crm_stages`. Grep no HEAD: os únicos `insert` nessas tabelas estão em `tests/invariants/*` e no `supabase/baseline.sql`. O tenant não consegue criar um segundo funil, acrescentar/renomear etapa, nem reordenar — só editar vocabulário, campos e motivos de perda (`updatePipelineConfig`, admin).
+
+**O que NÃO é verdade, e o ledger da Task 3 afirmou:** que "como o instalador não provisiona nenhum, toda instalação nova nasce sem funil — P0". **Provei o contrário executando**: inseri uma organização nova no banco real e li o que apareceu. O trigger `trg_seed_default_pipeline_for_org` (`supabase/baseline.sql:2766`, função em `:682`) cria, a cada `INSERT` em `organizations`, o funil **"Pedidos"** com 8 etapas — `Pago` com `is_won`, `Cancelado` com `is_lost`. A org de teste foi apagada em seguida (0 funis restantes). É o mesmo funil "Pedidos" que a E2E Test Org tem, com os mesmos slugs na mesma ordem.
+
+**Então o P0 é outro, e menor:** instalação nova nasce funcional; o teto aparece quando o tenant quer um funil que não seja "Pedidos" (clínica, imobiliária, serviços) — aí ele depende de SQL/script. Quem for atacar isto: o caminho que revelou foi a mensagem de lista vazia da tela de mapeamento, que precisou ser reescrita para não prometer um botão inexistente.
+
+### B. `is_won`/`is_lost` não são escritos por nada do produto
+
+Só pelo trigger de seed. Grep no HEAD: todo o resto é leitura (`.eq("is_won", true)` na rota de fechar negócio, filtros da tela de mapeamento). Consequência prática: o funil semeado já vem com ganho e perda marcados, mas **qualquer funil criado por fora fica sem caminho de produto para marcar a etapa de fechamento** — e é exatamente o que a tela de mapeamento diz ao usuário quando «Ganho»/«Perdido» não têm candidata ("quem montou o funil precisa marcar a etapa de ganho"). A frase é honesta; o caminho que ela pressupõe não existe. Revelado pela avaliação de experiência da Task 3 (E2), ao conferir se o CTA cumpre a promessa "você mesmo escolhe".
+
+## O que ficou para trás (consciente, não esquecido)
+
+- **O CTA leva à página, não ao funil específico** — `unmapped_agent_steps` não carrega `pipeline_id`. Com dois funis com lacuna, o usuário procura qual é.
+- **Audit não sai quando a mutação falha no meio** do laço de `UPDATE`s (M3) e **não há concorrência otimista** (M4): depois de qualquer erro a tela relê o servidor e substitui o rascunho, que é o antídoto escolhido — reenviar sobre um funil que mudou gravaria por cima da decisão de outra pessoa.
+- **Sugerir mapeamento por semelhança de nome** ("Proposta" → `negotiating`) ficou FORA de propósito: é a adivinhação que o cabeçalho de `lib/leads/agent-stage-sync.ts` proíbe. Se um dia entrar, tem que ser sugestão que o usuário confirma.
+- **A branch segue atrás da `main`** (o merge foi deixado para depois da feature, por doutrina de higiene de branches).

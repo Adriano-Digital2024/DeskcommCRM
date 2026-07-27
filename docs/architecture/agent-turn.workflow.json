@@ -48,6 +48,11 @@
       "id": "evolucao",
       "label": "Evolução da IA (Fase 4)",
       "variant": "exception"
+    },
+    {
+      "id": "funil",
+      "label": "Mapeamento do funil",
+      "variant": "exception"
     }
   ],
   "mainPath": [
@@ -196,6 +201,22 @@
       "type": "backend",
       "label": "Buscas na base",
       "sublabel": "knowledge_searches: hits + limiar"
+    },
+    {
+      "id": "mappingscreen",
+      "lane": "funil",
+      "col": 0,
+      "type": "frontend",
+      "label": "Mapa do funil",
+      "sublabel": "tela (settings/tenant/pipelines)"
+    },
+    {
+      "id": "stagehint",
+      "lane": "funil",
+      "col": 1,
+      "type": "database",
+      "label": "crm_stages",
+      "sublabel": "agent_stage_hint: passo → etapa"
     }
   ],
   "edges": [
@@ -361,6 +382,35 @@
       "toSide": "bottom",
       "route": "drop",
       "labelDy": 40
+    },
+    {
+      "id": "evolutionscreen-mappingscreen",
+      "from": "evolutionscreen",
+      "to": "mappingscreen",
+      "label": "lacuna vira ação: escolher a etapa que recebe o passo",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "drop",
+      "labelDy": 40
+    },
+    {
+      "id": "mappingscreen-stagehint",
+      "from": "mappingscreen",
+      "to": "stagehint",
+      "label": "grava os 7 passos de uma vez",
+      "labelDy": 50
+    },
+    {
+      "id": "stagehint-turn",
+      "from": "stagehint",
+      "to": "turn",
+      "label": "o card anda para a etapa escolhida (mirrorLeadStageToCrm)",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "right",
+      "route": "outside-right",
+      "labelDy": 100
     }
   ],
   "cards": [
@@ -368,7 +418,7 @@
       "dot": "amber",
       "title": "Saídas do painel (Fase 4)",
       "items": [
-        "Roteador é a aresta desenhada; as outras saem por CTA na mesma tela",
+        "Roteador e Mapa do funil são as arestas desenhadas; as outras saem por CTA",
         "Memória da Org (publicar regra) · Skills (instalar habilidade)",
         "Base de conhecimento (publicar material que faltou)",
         "Sem saída o painel seria vitrine: o número existe para virar conserto"
