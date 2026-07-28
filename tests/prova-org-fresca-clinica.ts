@@ -55,7 +55,8 @@ const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL!, env.SUPABASE_SERVICE_R
   auth: { persistSession: false },
 });
 
-const APP = "http://localhost:3000";
+/** O servidor sob prova. `PROVA_APP` permite apontar para um `next start` recém-buildado do HEAD. */
+const APP = process.env.PROVA_APP ?? "http://localhost:3000";
 const EVID = ".superpowers/evidence";
 const SENHA = "Clinica!Prova1234";
 
