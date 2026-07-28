@@ -169,3 +169,103 @@ Só pelo trigger de seed. Grep no HEAD: todo o resto é leitura (`.eq("is_won", 
 - **Audit não sai quando a mutação falha no meio** do laço de `UPDATE`s (M3) e **não há concorrência otimista** (M4): depois de qualquer erro a tela relê o servidor e substitui o rascunho, que é o antídoto escolhido — reenviar sobre um funil que mudou gravaria por cima da decisão de outra pessoa.
 - **Sugerir mapeamento por semelhança de nome** ("Proposta" → `negotiating`) ficou FORA de propósito: é a adivinhação que o cabeçalho de `lib/leads/agent-stage-sync.ts` proíbe. Se um dia entrar, tem que ser sugestão que o usuário confirma.
 - **A branch segue atrás da `main`** (o merge foi deixado para depois da feature, por doutrina de higiene de branches).
+
+---
+
+# Gerenciar as etapas do funil — ENTREGUE 2026-07-28 (branch `feat/operacao-visivel`)
+
+**Plano:** `docs/superpowers/plans/2026-07-27-gerenciar-etapas-do-funil.md` · **Ledger das 4 tasks:** `.superpowers/sdd/2026-07-27-gerenciar-etapas-do-funil/progress.md`
+
+Fecha o achado **B** da feature anterior (`is_won`/`is_lost` sem caminho de produto) e metade do achado **A** (o tenant já cria, renomeia, reordena e arquiva ETAPAS; criar um segundo FUNIL continua sem caminho — ver achado 2 abaixo).
+
+## O que passou a existir
+
+Uma seção **«Etapas deste funil»** dentro da tela de Funis (`/app/settings/tenant/pipelines`), acima do mapeamento, onde o dono da operação renomeia, cria, reordena, marca ganho/perda e arquiva as colunas do próprio quadro. As duas seções se completam e se **referenciam nas duas direções**: quem arquiva uma etapa vinculada ao assistente é avisado e levado ao mapeamento; quem não tem etapa de fechamento para o passo «Ganho» é levado às etapas.
+
+- `lib/leads/stage-editing.ts` — regras puras (nome→slug, `posicaoEntre`, guarda de desfecho, validação de arquivamento e do destino dos negócios).
+- `app/api/v1/pipelines/[id]/stages/route.ts` (`POST`) e `.../stages/[stageId]/route.ts` (`PATCH`/`DELETE`), papel `manager`, com `_funil.ts` de leitura compartilhada.
+- `app/app/settings/tenant/pipelines/_stages.tsx` + `hooks/pipelines/useStages.ts`.
+- `docs/architecture/agent-turn.workflow.json` (+ `agent-turn.html` regerado) — a faixa virou **«Funil: etapas + mapeamento»** com a peça nova e **3 arestas reais**: `Etapas → crm_stages` (cria/renomeia/reordena/ganho-perda/arquiva), `Etapas → Mapa do funil` (arquivar mata o vínculo com o assistente) e a de volta `Mapa do funil → Etapas` (sem etapa de fechamento, o passo não tem destino). `archify validate --quality standard` **0 erros**, 1 warning de cruzamento próprio; HTML regerado a partir do JSON.
+
+## Números (verificação final, exit code capturado direto — nunca por `| tail`)
+
+`typecheck EXIT=0` · `lint EXIT=0` (0 erros, **159 warnings** — as mesmas de antes da feature) · `vitest` **1355 passaram / 1356 em 163 arquivos, EXIT=1** · `test:db` **372 passaram + 1 skip em 56 arquivos, EXIT=0** · `build EXIT=0`.
+
+**A única vermelha é HERDADA da `main` e não é desta feature:** `tests/unit/evidencia-citada.test.ts` reprova porque `docs/growth/lp-prompts-imagens.md` cita 11 imagens 3D que nunca foram versionadas. O arquivo veio da `main` (`60216e7`) e esta branch não tocou em `docs/growth/` nem no teste — conferido por `git diff origin/main...HEAD`.
+
+Testes da feature, **medidos arquivo a arquivo agora** (não somados dos relatórios): `lib/leads/stage-editing.test.ts` **31** · `stages/route.test.ts` **10** · `stages/[stageId]/route.test.ts` **34** · `_stages.test.tsx` **34** = **109 nos quatro arquivos que a feature criou**; mais `_mapping.test.tsx`, que saiu de 18 para **19** ao ganhar a guarda do link de volta.
+Sabotagens: **97** (24 + 38 + 34 + 1 desta task) — os três primeiros números são **relatados pelas tasks**, com script versionado ao lado de cada relatório; o último é meu, descrito abaixo.
+
+## A prova que é a razão da feature existir
+
+`tests/prova-org-fresca-clinica.ts` — **19/19**, numa organização criada do zero e apagada no fim.
+
+1. `INSERT` em `organizations` → o gatilho `trg_seed_default_pipeline_for_org` semeia "Pedidos" com **vocabulário de e-commerce** ("Carrinho abandonado" … "Pos-venda"), `Pago` com `is_won`, **nenhuma** etapa com `agent_stage_hint`;
+2. **no navegador, logado por senha como manager**, as 8 etapas são renomeadas para o vocabulário de uma clínica ("Primeiro contato", "Avaliação", … "Tratamento concluído", "Desistiu") e a marcação de fechamento é **movida de «Pago» para «Tratamento concluído»** — slugs intactos;
+3. **CONTROLE:** a ponte do agente recusa os dois passos por `not_configured`, e o card não sai do lugar;
+4. ainda no navegador, «Qualificado» → «Avaliação» e «Ganho» → «Tratamento concluído», salvo;
+5. **as MESMAS chamadas** movem o card para «Avaliação» e depois «Tratamento concluído» — nomes que **não existem** no funil de fábrica;
+6. a org é apagada; `organizations/crm_pipelines/crm_stages/crm_leads/contacts` voltam a **5/6/46/71/108**, idênticos.
+
+**O caminho de cada afirmação, declarado** (não são a mesma coisa, e confundir os dois é como uma dívida foi dada como quitada nesta sessão):
+- passos 2 e 4 passaram **por HTTP, no navegador, com sessão de usuário real** — é o clique, não a rota chamada por fora;
+- passos 3 e 5 **chamaram `mirrorLeadStageToCrm`, a mesma função que o turno chama** (`inbound-turn.ts:1200`), no processo do script, com o client Supabase real. **Não é um turno de IA completo** — nenhum modelo foi chamado. Chamar `sincronizaEstagioDoAgente` direto passaria com a ponte desligada, por isso a entrada é a ponte;
+- o servidor sob prova foi um `next start` **recém-buildado da árvore desta sessão** (`PROVA_APP=http://localhost:3055`), não o `:3000` — que roda um build anterior a esta sessão.
+
+**A prova se prova (sabotagem 97):** trocar `e.agent_stage_hint === passo` por nada em `resolveDestinoDoAgente` deixa **5 asserções vermelhas** (14/19), inclusive "o card vai para a etapa marcada na tela". Mutação confirmada no disco por `grep` antes de rodar, arquivo restaurado e re-medido em 19/19.
+
+**E o instrumento errou primeiro, como nas três rodadas anteriores:** a 1ª versão esperava o `value` do próprio campo virar o nome novo — o que o `fill()` já satisfaz **antes de qualquer ida ao servidor**. Sete renomeações passaram por sorte (a iteração seguinte dava tempo do PATCH voltar) e a oitava, sem ninguém depois dela, reprovou. O detector passou a ser o **banco**.
+
+Evidência visual: `.superpowers/evidence/org-fresca-{1-ecommerce,2-clinica,3-mapeado,4-final}.png`.
+
+## Bugs achados e corrigidos (todos por execução, nenhum por leitura)
+
+1. **🔴 A guarda de desfecho protegia a coisa errada, e o vazio era exatamente a instalação fresca** (`b06545f`): ela se apoiava em `agent_stage_hint === passo`, mas o gatilho de seed insere as etapas **sem hint** — «Pago» nasce `is_won=true, hint=null`, e o backfill da 0084 só pegou linhas pré-existentes. **Toda org criada depois** podia desmarcar a única etapa de ganho, e `/leads/[id]/win:52` passava a responder 422. A correção **encolheu** o código: `etapa[campo]` não é uma guarda diferente da do hint, é o **superconjunto** dela (o CHECK garante `hint='won' ⇒ is_won`).
+2. **🔴 Arquivar a etapa de ganho passava, e a consequência é pior que a prevista** (`b06545f`): `/leads/[id]/win` consulta `is_won=true` **sem filtrar arquivada** — o negócio fechado ERA movido, para uma coluna fora do quadro, em silêncio.
+3. **🔴 O `PATCH` aceitava etapa ARQUIVADA como alvo da marcação** (`462aee1`): liberava a etapa de ganho real e ocupava a arquivada; 200, e a tela não via. O índice parcial não barra (ignora arquivadas de propósito). Alcançável por aba desatualizada. Passou a recusar 409 guardando a operação inteira.
+4. **🟠 Destino do arquivamento sem checagem de ganho/perda** (`462aee1`): destino = etapa de ganho fazia N negócios virarem `status='won'` com `closed_at=now()` em silêncio — **receita mexida por ação de configuração**; destino = perda estouraria `22023 lost_reason_required`.
+5. **🟠 Segunda irreversibilidade não avisada** (`af743d4`): `validarArquivamento` não olhava `agent_stage_hint` e o `DELETE` não o limpava. A tela dizia "O assistente usa esta etapa para «X»" e mantinha o Arquivar habilitado a 300px dali; arquivar matava o vínculo em silêncio. O painel passou a avisar, com link para o mapeamento.
+6. **Rota sem filtro de `pipeline_id` na leitura** (achado por sabotagem sobrevivente): etapa de outro funil da MESMA org passava pelo 404 e o `UPDATE` casava zero linhas — "200 alegre, nada gravado".
+7. **Texto que mentia:** "Cada funil tem uma de cada" (o guarda só impede remover A ÚLTIMA, nunca garante que exista) → "Cada funil **precisa de** uma de cada"; "1 negócios estão nesta etapa"; e o rótulo «Ordem» desalinhado no celular (`y=4893` vs `y=4883`), corrigido e re-medido.
+
+**E o achado sobre o instrumento, 3ª vez nesta sessão:** ao ligar a emissão de atividade do arquivamento em massa, a suíte ficou VERDE — as atividades não saíam. O dublê de banco devolvia `data: null` para `select(cols, { count })`, o que só vale com `head: true`. **Um dublê que mentia em silêncio tinha acabado de esconder uma feature inteira.**
+
+## Dois achados sobre o PRODUTO que esta feature revelou — e que NÃO são dela
+
+### 1. O app inteiro transborda a 390px de largura
+
+`app/app/_components/AppShell.tsx:16` aplica `ml-60` (240px) **sem breakpoint**, desde `a078f83` (2026-04-28). Medido por ferramenta num `next start` do build desta sessão, logado como manager, viewport 390×844:
+
+| rota | `scrollWidth` | `innerWidth` | `marginLeft` do shell |
+|---|---|---|---|
+| `/app` | 486 | 390 | 240px |
+| `/app/kanban` | 532 | 390 | 240px |
+| `/app/settings/tenant/pipelines` | 610 | 390 | 240px |
+| `/app/contacts` | 984 | 390 | 240px |
+
+Não é da feature: é **qualquer tela**. O caminho que revelou foi a correção I3 da Task 3 (rótulos aplicados num viewport só), quando o implementador foi medir no celular. O raciocínio dele para medir a SEÇÃO e não a página é preciso e vale guardar: *"medir a página reprovaria esta seção por defeito do shell, e passaria a esconder um transbordo meu quando alguém consertasse o shell"* — a seção cabe (`scrollWidth = clientWidth = 224`).
+
+### 2. Não existe criação de FUNIL no produto
+
+Nenhuma rota, server action ou tela insere em `crm_pipelines` — só o gatilho de seed. Depois desta feature, `is_won`/`is_lost` **passaram** a ter caminho de produto (o seletor «O que acontece nesta coluna»), então o achado B da feature anterior está fechado; o que sobra é só o funil. Como o gatilho garante **um** funil por organização, o teto real é estreito e específico: **o tenant não consegue um SEGUNDO funil** (clínica que quer separar "Consultas" de "Cirurgias", agência com dois produtos). Revelado ao escrever o brief de escopo desta feature, e reconfirmado pela prova da org fresca (1 funil, sempre "Pedidos").
+
+**Terceiro achado, menor, de higiene:** `razaoDaMudancaPeloAgente` (`lib/leads/agent-stage-sync.ts:69`) é **órfã** — grep no HEAD, zero chamadores de produção, só o próprio teste unitário. Pior: o docstring dela argumenta que a timeline precisa nomear os dois lados ("Movido para Avaliação" esconde que foi o agente), e o código que de fato roda, 40 linhas abaixo, decidiu o contrário de propósito (mesma gramática do arrasto humano; quem moveu está no ATOR). Duas doutrinas opostas no mesmo arquivo, uma delas morta. É da feature de mapeamento, não desta.
+
+## Dívidas declaradas pelas tasks (nenhuma escondida)
+
+- **`lerFunil` e a tradução de `23505`/`23514` estão duplicadas** entre `app/api/v1/pipelines/[id]/stages/_funil.ts` e `.../agent-mapping/route.ts`. O `_funil.ts` é o **superconjunto**; a irmã deveria importar dele. Duas fontes que começam iguais e divergem no primeiro ajuste — a doença que a própria feature de mapeamento nomeou.
+- **A mensagem gentil do 500 virou genérica** na tela de etapas (defensável: status desconhecido não deve virar copy), mas é uma regressão de tom em relação ao que a tela de mapeamento faz.
+- **`_stages.tsx` importa `mensagemDeErro` de `_mapping.tsx`** — acoplamento unidirecional e declarado; a decisão registrada é extrair para módulo próprio no **terceiro** consumidor.
+- Sem transação nos dois caminhos de escrita dupla (a ordem escolhida garante que falha nunca deixa negócio apontando para coluna arquivada); `position_in_stage` dos negócios movidos em massa **não é recalculado**.
+- `posicaoEntre` pode devolver `NaN` — o modo de falha foi MEDIDO e é alto e claro (`JSON.stringify` vira `null`, coluna é `NOT NULL` → `23502`), não corrupção silenciosa.
+
+## O que ficou de fora, com razão declarada
+
+- **Criação e arquivamento de FUNIS** — o gatilho garante um por organização, e depois desta feature um segundo funil é quase de graça (a metade difícil, as etapas, já existe). É a continuação natural.
+- **Vocabulário do funil** (`crm_pipelines.vocabulary`, que renomeia lead/negócio/ganho/perdido): já tem editor, hoje admin-only. Mexer nele junto misturaria duas conversas na mesma tela.
+- **Sugerir nomes de etapa por nicho** — é a mesma adivinhação que o cabeçalho de `lib/leads/agent-stage-sync.ts` proíbe. Se entrar, tem que ser sugestão que o usuário confirma, e é feature de onboarding, não de configuração.
+- **A branch segue atrás da `main`** (merge deixado para depois da feature, por doutrina de higiene de branches).
+
+## ⚠️ Estado do ambiente ao fim desta sessão
+
+O servidor da **:3000 está servindo 500 nos chunks estáticos** (`/_next/static/chunks/*`) e a tela de login cai para submit nativo (vira `GET /login?email=…`). Causa: o `npm run build` da verificação final reescreveu `.next` sob um `next start` que já rodava desde 08:47 — e que, além disso, é **Next 16.2.11 enquanto `node_modules` está em 16.2.12**, ou seja, já era um servidor de build antigo. **Não matei o processo (PID 79644) por ser de outra sessão.** Quem retomar precisa reiniciá-lo. A prova desta task não dependeu dele: rodou contra um `next start` próprio na :3055, encerrado ao fim.
