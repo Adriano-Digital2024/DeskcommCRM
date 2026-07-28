@@ -51,7 +51,7 @@
     },
     {
       "id": "funil",
-      "label": "Mapeamento do funil",
+      "label": "Funil: etapas + mapeamento",
       "variant": "exception"
     }
   ],
@@ -203,9 +203,17 @@
       "sublabel": "knowledge_searches: hits + limiar"
     },
     {
-      "id": "mappingscreen",
+      "id": "stagesscreen",
       "lane": "funil",
       "col": 0,
+      "type": "frontend",
+      "label": "Etapas",
+      "sublabel": "tela + API: criar · renomear · ganho/perda · arquivar"
+    },
+    {
+      "id": "mappingscreen",
+      "lane": "funil",
+      "col": 2,
       "type": "frontend",
       "label": "Mapa do funil",
       "sublabel": "tela (settings/tenant/pipelines)"
@@ -213,7 +221,7 @@
     {
       "id": "stagehint",
       "lane": "funil",
-      "col": 1,
+      "col": 4,
       "type": "database",
       "label": "crm_stages",
       "sublabel": "agent_stage_hint: passo → etapa"
@@ -392,7 +400,44 @@
       "fromSide": "bottom",
       "toSide": "top",
       "route": "drop",
-      "labelDy": 40
+      "labelDy": 40,
+      "labelDx": -50
+    },
+    {
+      "id": "stagesscreen-stagehint",
+      "from": "stagesscreen",
+      "to": "stagehint",
+      "label": "cria · renomeia · ganho/perda · arquiva",
+      "fromSide": "top",
+      "toSide": "top",
+      "route": "up-channel",
+      "labelAt": [
+        400,
+        1196
+      ]
+    },
+    {
+      "id": "stagesscreen-mappingscreen",
+      "from": "stagesscreen",
+      "to": "mappingscreen",
+      "label": "arquivar mata o vínculo com o assistente",
+      "labelDy": 44
+    },
+    {
+      "id": "mappingscreen-stagesscreen",
+      "from": "mappingscreen",
+      "to": "stagesscreen",
+      "label": "sem etapa de fechamento, conserta aqui",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "route": "bottom-channel",
+      "labelDy": 0,
+      "channelY": 1276,
+      "labelAt": [
+        190,
+        1288
+      ]
     },
     {
       "id": "mappingscreen-stagehint",
