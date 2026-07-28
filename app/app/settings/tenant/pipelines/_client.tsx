@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updatePipelineConfig } from "@/app/actions/settings/updatePipelineConfig";
 import type { PipelineConfigPatch } from "@/lib/schemas/settings";
-import { AgentMappingSection } from "./_mapping";
+import { AgentMappingSection, ancoraDoMapeamento } from "./_mapping";
+import { StagesSection, ancoraDasEtapas } from "./_stages";
 
 export interface PipelineRow {
   id: string;
@@ -69,7 +70,15 @@ export function PipelinesClient({
             <h2 className="text-base font-semibold">{p.name}</h2>
             <p className="text-xs text-muted-foreground">/{p.slug}</p>
           </header>
-          <AgentMappingSection pipelineId={p.id} />
+          {/* As ETAPAS vêm primeiro, e a ordem é a do raciocínio de quem
+              configura: primeiro o quadro existe do jeito da sua operação,
+              depois se decide o que o assistente faz com ele. Invertido, a
+              primeira coisa que o dono da clínica vê é um mapeamento sobre
+              colunas de e-commerce que ele nem sabia que dava para trocar. */}
+          <StagesSection pipelineId={p.id} ancoraMapeamento={ancoraDoMapeamento(p.id)} />
+          <div className="border-t border-border pt-6">
+            <AgentMappingSection pipelineId={p.id} ancoraEtapas={ancoraDasEtapas(p.id)} />
+          </div>
           {podeEditarConfig && <PipelineEditor pipeline={p} />}
         </Card>
       ))}

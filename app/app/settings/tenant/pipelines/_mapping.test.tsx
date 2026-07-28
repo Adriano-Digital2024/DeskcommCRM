@@ -12,7 +12,8 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { ApiError } from "@/lib/api/types";
-import type { EstadoDoMapeamento } from "@/hooks/pipelines/useAgentMapping";
+import type { LeadStage } from "@/lib/agent-engine/agent/lead-state";
+import type { EstadoDoMapeamento, EtapaDoFunil } from "@/hooks/pipelines/useAgentMapping";
 
 vi.mock("@/lib/api/client", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -23,7 +24,13 @@ vi.mock("sonner", () => ({
 
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
-import { AgentMappingSection, opcoesDoPasso, motivoDaListaVazia, mensagemDeErro } from "./_mapping";
+import {
+  AgentMappingSection,
+  conserteNasEtapas,
+  opcoesDoPasso,
+  motivoDaListaVazia,
+  mensagemDeErro,
+} from "./_mapping";
 
 // Polyfills que o Radix Select exige e o jsdom não tem.
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -65,7 +72,7 @@ function montar() {
   });
   return render(
     <QueryClientProvider client={qc}>
-      <AgentMappingSection pipelineId={PIPE} />
+      <AgentMappingSection pipelineId={PIPE} ancoraEtapas={`etapas-${PIPE}`} />
     </QueryClientProvider>,
   );
 }
@@ -138,6 +145,28 @@ describe("motivoDaListaVazia — lista vazia sempre explica por quê", () => {
     const t = motivoDaListaVazia("qualifying", [ETAPAS[2]!, ETAPAS[3]!]);
     expect(t).not.toContain("já estão sendo usadas");
     expect(t).toContain("só tem etapas de fechamento e de perda");
+  });
+
+  /**
+   * ⭐ O LINK PRECISA CONCORDAR COM O TEXTO. `conserteNasEtapas` decide se a tela
+   * mostra «Ir para as etapas do funil»; se ela divergir do primeiro ramo de
+   * `motivoDaListaVazia`, o usuário lê "libere uma etapa aqui" e recebe um link
+   * para outra seção — ou lê "não existe etapa de fechamento" e não recebe link
+   * nenhum. As duas nascem do mesmo `serveParaOPasso` de propósito; isto é o
+   * alarme se alguém separá-las.
+   */
+  it("o link para as etapas aparece exatamente quando o conserto NÃO é aqui", () => {
+    const casos: Array<[LeadStage, EtapaDoFunil[]]> = [
+      ["won", [ETAPAS[0]!, ETAPAS[3]!]],
+      ["lost", [ETAPAS[0]!, ETAPAS[2]!]],
+      ["qualifying", ETAPAS],
+      ["qualifying", [ETAPAS[2]!, ETAPAS[3]!]],
+      ["won", ETAPAS],
+    ];
+    for (const [passo, etapas] of casos) {
+      const ehOcupacao = motivoDaListaVazia(passo, etapas).includes("já estão sendo usadas");
+      expect(conserteNasEtapas(passo, etapas)).toBe(!ehOcupacao);
+    }
   });
 });
 

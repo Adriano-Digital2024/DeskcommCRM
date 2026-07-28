@@ -248,7 +248,16 @@ export async function DELETE(req: NextRequest, ctx: RouteCtx): Promise<Response>
   const negocios = count ?? 0;
 
   const veredito = validarArquivamento(etapas, stageId, { negocios, destinoId });
-  if (!veredito.ok) return fail("unprocessable_entity", veredito.erro, 422, { requestId });
+  // A CONTAGEM VAI EM `details`, não só dentro da frase. A tela pergunta "N
+  // negócios estão nesta etapa, para onde eles vão?" e precisa do NÚMERO; extraí-lo
+  // da mensagem com regex seria uma segunda régua que quebra na primeira vez que
+  // alguém melhorar o texto. A frase continua sendo a mesma para quem lê.
+  if (!veredito.ok) {
+    return fail("unprocessable_entity", veredito.erro, 422, {
+      requestId,
+      details: { negocios },
+    });
+  }
 
   // ⚠️ OS NEGÓCIOS ANDAM PRIMEIRO. Arquivar antes de mover deixaria os cards
   // apontando para uma coluna fora do quadro se a segunda escrita falhasse —

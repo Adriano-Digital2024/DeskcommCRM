@@ -44,6 +44,9 @@ import { ArrowRight, Warning } from "@/lib/ui/icons";
 /** Sentinela do «não mover»: o Radix Select proíbe item com valor vazio. */
 const SEM_ETAPA = "__sem_etapa__";
 
+/** A âncora desta seção. A tela de etapas linka para cá quando o vínculo com o assistente trava a edição. */
+export const ancoraDoMapeamento = (pipelineId: string) => `mapeamento-${pipelineId}`;
+
 /**
  * Quando cada passo acontece, em linguagem de quem atende — não é uma segunda
  * tradução do nome (esse vem inteiro de `ROTULO_DO_PASSO`, fonte única), é a
@@ -99,8 +102,8 @@ export function opcoesDoPasso(
  * SEMPRE "existe candidata?", e só o segundo é sobre ocupação.
  *
  * As duas causas pedem respostas opostas: a ausência de etapa é fato sobre o
- * funil (e NÃO há tela no produto que marque ganho/perda nem que crie etapa —
- * prometer um caminho seria mentir), a ocupação é reversível aqui mesmo.
+ * funil (e conserta-se na seção de ETAPAS, logo acima — hoje ela existe), a
+ * ocupação é reversível aqui mesmo.
  */
 export function motivoDaListaVazia(passo: LeadStage, etapas: EtapaDoFunil[]): string {
   if (etapas.some((e) => serveParaOPasso(passo, e))) {
@@ -109,12 +112,25 @@ export function motivoDaListaVazia(passo: LeadStage, etapas: EtapaDoFunil[]): st
     return "As etapas que serviriam para este passo já estão sendo usadas por outros passos. Libere uma delas para poder escolhê-la aqui.";
   }
   if (passo === "won") {
-    return "Este funil não tem nenhuma etapa marcada como fechamento, então não há para onde levar o card quando a pessoa fecha. Quem montou o funil precisa marcar a etapa de ganho.";
+    return "Este funil não tem nenhuma etapa marcada como fechamento, então não há para onde levar o card quando a pessoa fecha. Marque uma etapa como «aqui o cliente fecha» em «Etapas deste funil».";
   }
   if (passo === "lost") {
-    return "Este funil não tem nenhuma etapa marcada como perda, então não há para onde levar o card quando a pessoa desiste. Quem montou o funil precisa marcar a etapa de perda.";
+    return "Este funil não tem nenhuma etapa marcada como perda, então não há para onde levar o card quando a pessoa desiste. Marque uma etapa como «aqui o cliente desiste» em «Etapas deste funil».";
   }
-  return "Este funil só tem etapas de fechamento e de perda, então não há etapa comum para receber o card neste passo. Quem montou o funil precisa criar as etapas do meio do caminho.";
+  return "Este funil só tem etapas de fechamento e de perda, então não há etapa comum para receber o card neste passo. Crie as etapas do meio do caminho em «Etapas deste funil».";
+}
+
+/**
+ * A lacuna se conserta na seção de ETAPAS, e não aqui — é quando vale mostrar o
+ * link para lá.
+ *
+ * Definida pela MESMA condição de `motivoDaListaVazia` (a negação do primeiro
+ * ramo, sobre o mesmo `serveParaOPasso`) de propósito: um segundo critério para
+ * decidir a mesma coisa acabaria mandando o usuário para a seção errada. O teste
+ * de coerência entre as duas está em `_mapping.test.tsx`.
+ */
+export function conserteNasEtapas(passo: LeadStage, etapas: EtapaDoFunil[]): boolean {
+  return !etapas.some((e) => serveParaOPasso(passo, e));
 }
 
 /**
@@ -141,7 +157,14 @@ function iguais(a: MapaDoAgente, b: MapaDoAgente): boolean {
   return LEAD_STAGES.every((p) => a[p] === b[p]);
 }
 
-export function AgentMappingSection({ pipelineId }: { pipelineId: string }) {
+export function AgentMappingSection({
+  pipelineId,
+  ancoraEtapas,
+}: {
+  pipelineId: string;
+  /** Onde o dono do funil cria a etapa que falta ou marca a de fechamento/perda. */
+  ancoraEtapas: string;
+}) {
   const consulta = useAgentMapping(pipelineId);
   const salvar = useSaveAgentMapping(pipelineId);
   const [rascunho, setRascunho] = useState<MapaDoAgente | null>(null);
@@ -202,7 +225,11 @@ export function AgentMappingSection({ pipelineId }: { pipelineId: string }) {
   }
 
   return (
-    <div className="space-y-4" data-testid={`mapeamento-${pipelineId}`}>
+    <div
+      className="space-y-4"
+      id={ancoraDoMapeamento(pipelineId)}
+      data-testid={`mapeamento-${pipelineId}`}
+    >
       <div className="space-y-1">
         {/* "O funil do agente" seria o nome óbvio e é o errado: a página inteira
             se chama Funis e trata dos funis do tenant. Duas coisas diferentes
@@ -242,6 +269,24 @@ export function AgentMappingSection({ pipelineId }: { pipelineId: string }) {
                 {opcoes.length === 0 ? (
                   <p className="text-xs leading-relaxed text-text-muted" data-testid={`vazio-${passo}`}>
                     {motivoDaListaVazia(passo, etapas)}
+                    {/* O ciclo se fecha aqui: o mapeamento APONTA a lacuna, a
+                        seção de etapas RESOLVE. Sem o link, o texto acima é um
+                        diagnóstico que manda o usuário procurar sozinho a tela
+                        que conserta — e a Task anterior mostrou que ele não
+                        procura, desiste. */}
+                    {conserteNasEtapas(passo, etapas) && (
+                      <>
+                        {" "}
+                        <a
+                          className="underline underline-offset-2"
+                          href={`#${ancoraEtapas}`}
+                          data-testid={`ir-para-etapas-${passo}`}
+                        >
+                          Ir para as etapas do funil
+                        </a>
+                        .
+                      </>
+                    )}
                   </p>
                 ) : (
                   <Select

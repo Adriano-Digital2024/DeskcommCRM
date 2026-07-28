@@ -34,7 +34,14 @@ export interface EstadoDoMapeamento {
   mapeamento: MapaDoAgente;
 }
 
-const chave = (pipelineId: string) => ["agent-mapping", pipelineId];
+/**
+ * A chave desta leitura, exportada porque a tela de ETAPAS escreve sobre o mesmo
+ * funil e precisa invalidá-la (`useStages`). Duas literais `["agent-mapping",
+ * id]` em arquivos diferentes divergiriam no primeiro ajuste, e o sintoma seria
+ * a lista de etapas velha depois de uma edição bem-sucedida.
+ */
+export const chaveDoFunil = (pipelineId: string) => ["agent-mapping", pipelineId];
+const chave = chaveDoFunil;
 const rota = (pipelineId: string) =>
   `/api/v1/pipelines/${encodeURIComponent(pipelineId)}/agent-mapping`;
 

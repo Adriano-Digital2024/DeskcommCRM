@@ -407,10 +407,15 @@ describe("DELETE /api/v1/pipelines/[id]/stages/[stageId]", () => {
     const res = await DELETE(reqDelete(), ctx());
 
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { error: { message: string } };
+    const body = (await res.json()) as {
+      error: { message: string; details?: { negocios?: number } };
+    };
     // 2, não 3: o negócio de «Cancelado» não está nesta etapa.
     expect(body.error.message).toContain("2 negócios");
     expect(body.error.message).toContain("«Proposta»");
+    // ⭐ E o MESMO 2 chega em `details`, como número. É o que a tela usa para
+    // perguntar "para onde vão os 2 negócios?" sem extrair dígito de frase.
+    expect(body.error.details?.negocios).toBe(2);
     expect(db.escritas).toEqual([]);
   });
 
