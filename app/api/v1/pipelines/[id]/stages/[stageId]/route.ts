@@ -19,6 +19,8 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
+import { buildLeadActivityRow, stageChangeReason } from "@/lib/leads/activity-emitter";
+import { registraFalhaDeAtividade } from "@/lib/leads/activity-write-failure";
 import {
   posicaoEntre,
   updatesDeMarcacao,
@@ -94,6 +96,23 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx): Promise<Response> 
   if (!etapas) return fail("not_found", "Funil não encontrado.", 404, { requestId });
   const alvo = etapas.find((e) => e.id === stageId);
   if (!alvo) return fail("not_found", "Etapa não encontrada.", 404, { requestId });
+
+  // ⚠️ ARQUIVADA NÃO SE EDITA — e este é o caso perigoso, não um detalhe de
+  // higiene. `lerFunil` devolve as arquivadas de propósito (elas ainda ocupam
+  // slug e disputam nome), e `uniq_crm_stages_pipeline_won` é PARCIAL
+  // (`where is_won and is_archived = false`): marcar uma arquivada como etapa de
+  // ganho passa pelo índice, libera a etapa de ganho de verdade e deixa o funil
+  // com o ganho numa coluna que sumiu do quadro. `/leads/[id]/win` busca
+  // `.eq("is_won", true)` SEM filtrar arquivada — o negócio fechado iria parar
+  // lá. Alcançável sem má-fé: uma aba aberta antes de a etapa ser arquivada.
+  if (alvo.is_archived) {
+    return fail(
+      "state_conflict",
+      `A etapa «${alvo.name}» foi arquivada e não está mais no quadro. Recarregue a página.`,
+      409,
+      { requestId },
+    );
+  }
 
   // ⚠️ VALIDAR ANTES DE TOCAR O BANCO — as constraints são rede de segurança.
   if (pedido.name !== undefined) {
@@ -216,12 +235,13 @@ export async function DELETE(req: NextRequest, ctx: RouteCtx): Promise<Response>
   const alvo = etapas.find((e) => e.id === stageId);
   if (!alvo) return fail("not_found", "Etapa não encontrada.", 404, { requestId });
 
-  // Contagem exata pelo banco (`head: true` não traz linha nenhuma): ela vai
-  // INTEIRA para a mensagem de recusa, e "escolha um destino para os negócios"
-  // sem dizer quantos são não ajuda ninguém a decidir.
-  const { count, error: contErr } = await supabase
+  // Os negócios da etapa, com a contagem EXATA do banco no mesmo round-trip: a
+  // contagem vai inteira para a mensagem de recusa ("escolha para onde vão os 2
+  // negócios" sem dizer quantos são não ajuda ninguém a decidir), e as linhas
+  // são o que a timeline de cada card precisa depois da mudança.
+  const { data: negociosDaEtapa, count, error: contErr } = await supabase
     .from("crm_leads")
-    .select("id", { count: "exact", head: true })
+    .select("id, contact_id", { count: "exact" })
     .eq("organization_id", orgId)
     .eq("stage_id", stageId);
   if (contErr) return fail("internal_error", contErr.message, 500, { requestId });
@@ -240,11 +260,14 @@ export async function DELETE(req: NextRequest, ctx: RouteCtx): Promise<Response>
       .eq("organization_id", orgId)
       .eq("stage_id", stageId);
     if (error) {
+      // O texto do Postgres vai em `details`, não colado na frase: a mensagem é
+      // o que a tela mostra ao dono da clínica, e "violates check constraint" no
+      // meio dela é exatamente o que a camada pura existe para evitar.
       return fail(
         "internal_error",
-        `Não consegui mover os negócios de «${alvo.name}»; a etapa continua no quadro. ${error.message}`,
+        `Não consegui mover os negócios de «${alvo.name}». A etapa continua no quadro — tente de novo.`,
         500,
-        { requestId },
+        { requestId, details: { erro: error.message } },
       );
     }
   }
@@ -259,6 +282,51 @@ export async function DELETE(req: NextRequest, ctx: RouteCtx): Promise<Response>
     const conflito = conflitoDoBanco(error as { code?: string }, alvo.name, requestId);
     if (conflito) return conflito;
     return fail("internal_error", error.message, 500, { requestId });
+  }
+
+  // ⚠️ O CARD MUDOU DE COLUNA — A LINHA DO TEMPO DELE TEM QUE DIZER POR QUÊ.
+  // O `api_audit_log` registra a ação de configuração, mas nenhuma tela de lead
+  // o lê: sem isto o cliente vê o card noutra coluna e a timeline não explica
+  // nada (doutrina do sistema vivo, §3 — "mudança de estágio gera atividade E
+  // aparece na tela"). É UM insert multi-linha: uma ida ao banco, tantas linhas
+  // quantos cards de fato se moveram.
+  const movidos = destinoId ? (negociosDaEtapa ?? []) : [];
+  if (movidos.length > 0) {
+    const destinoNome = etapas.find((e) => e.id === destinoId)?.name ?? null;
+    const { error: ativErr } = await supabase.from("crm_lead_activities").insert(
+      movidos.map((lead) =>
+        buildLeadActivityRow({
+          organizationId: orgId,
+          leadId: lead.id as string,
+          contactId: (lead.contact_id as string | null) ?? null,
+          type: "stage_changed",
+          sourceModule: "crm",
+          sourceId: stageId,
+          // Foi uma pessoa que arquivou a etapa — não o sistema "sozinho".
+          actor: { type: "user", id: authz.user.id },
+          reason: `${stageChangeReason(alvo.name, destinoNome)} (a etapa «${alvo.name}» foi arquivada)`,
+          payload: {
+            from_stage_id: stageId,
+            to_stage_id: destinoId,
+            pipeline_id: pipelineId,
+            stage_archived: true,
+          },
+        }),
+      ),
+    );
+    // Falha BAIXO: os cards já se moveram e a operação não pode ser desfeita por
+    // causa do rastro — mas falhar baixo é escolher não bloquear, não escolher
+    // não contar (`registraFalhaDeAtividade` avisa em `event_log`).
+    if (ativErr) {
+      await registraFalhaDeAtividade(supabase, {
+        organizationId: orgId,
+        leadId: movidos[0]!.id as string,
+        tipo: "stage_changed",
+        origem: `pipelines/${pipelineId}/stages/${stageId} DELETE (${movidos.length} negócios)`,
+        erro: ativErr.message,
+        requestId,
+      });
+    }
   }
 
   void audit({

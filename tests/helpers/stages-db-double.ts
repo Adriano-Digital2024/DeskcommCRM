@@ -1,5 +1,5 @@
 /**
- * Dublê de banco das rotas de etapas — usado SÓ pelos testes ao lado.
+ * Dublê de banco das rotas de etapas (`app/api/v1/pipelines/[id]/stages/**`).
  *
  * Ele APLICA os filtros `eq`, a projeção do `select()`, o `order()` e o
  * `count`/`head` de verdade. Um stub de linha fixa deixaria "etapa de outra
@@ -54,16 +54,25 @@ export interface LeadRow {
   stage_id: string;
   pipeline_id: string;
   organization_id: string;
+  contact_id: string | null;
 }
 
 export function negocio(id: string, stageId: string, over: Partial<LeadRow> = {}): LeadRow {
-  return { id, stage_id: stageId, pipeline_id: PIPE, organization_id: ORG_ID, ...over };
+  return {
+    id,
+    stage_id: stageId,
+    pipeline_id: PIPE,
+    organization_id: ORG_ID,
+    contact_id: null,
+    ...over,
+  };
 }
 
 export interface Escrita {
   tipo: "update" | "insert";
   table: string;
-  patch: Record<string, unknown>;
+  /** O corpo como a rota o mandou: linha no update/insert simples, ARRAY no insert multi-linha. */
+  patch: Record<string, unknown> | Record<string, unknown>[];
   filtros: Array<[string, unknown]>;
 }
 
@@ -81,18 +90,26 @@ type Linha = Record<string, unknown>;
 export interface Registro {
   escritas: Escrita[];
   eventos: string[];
+  rpcs: Array<{ nome: string; args: unknown }>;
   /** As tabelas DEPOIS das escritas — é aqui que se confere que os negócios andaram. */
-  tabelas: { crm_pipelines: Linha[]; crm_stages: Linha[]; crm_leads: Linha[] };
+  tabelas: {
+    crm_pipelines: Linha[];
+    crm_stages: Linha[];
+    crm_leads: Linha[];
+    crm_lead_activities: Linha[];
+  };
 }
 
 export function makeDb(opts: DbOpts = {}): Registro {
   const registro: Registro = {
     escritas: [],
     eventos: [],
+    rpcs: [],
     tabelas: {
       crm_pipelines: [{ id: PIPE, name: "Pedidos", organization_id: opts.pipelineOrg ?? ORG_ID }],
       crm_stages: (opts.stages ?? []) as unknown as Linha[],
       crm_leads: (opts.leads ?? []) as unknown as Linha[],
+      crm_lead_activities: [],
     },
   };
   const tables = registro.tabelas as unknown as Record<string, Linha[] | undefined>;
@@ -101,7 +118,7 @@ export function makeDb(opts: DbOpts = {}): Registro {
   function builder(table: string) {
     const filtros: Array<[string, unknown]> = [];
     let patch: Record<string, unknown> | null = null;
-    let nova: Record<string, unknown> | null = null;
+    let nova: Record<string, unknown> | Record<string, unknown>[] | null = null;
     let colunas: string[] | null = null;
     let ordem: string | null = null;
     let contar = false;
@@ -119,7 +136,7 @@ export function makeDb(opts: DbOpts = {}): Registro {
 
     async function escreve(
       tipo: "update" | "insert",
-      corpo: Record<string, unknown>,
+      corpo: Record<string, unknown> | Record<string, unknown>[],
       aplica: () => void,
     ): Promise<{ data: unknown; error: unknown; count: number | null }> {
       const i = nEscrita++;
@@ -144,13 +161,24 @@ export function makeDb(opts: DbOpts = {}): Registro {
         return r.error ? r : { ...r, data: alvos.map((l) => ({ ...l })) };
       }
       if (nova) {
-        const linha = { id: `novo-${nEscrita + 1}`, ...nova };
+        // `insert` aceita linha OU array — a rota de arquivamento grava as
+        // atividades num ÚNICO insert multi-linha, e um dublê que só entende
+        // linha solta esconderia justamente isso.
+        const linhas = (Array.isArray(nova) ? nova : [nova]).map((l, k) => ({
+          id: `novo-${nEscrita + 1}-${k}`,
+          ...l,
+        }));
         const r = await escreve("insert", nova, () => {
-          (tables[table] ??= []).push(linha);
+          (tables[table] ??= []).push(...linhas);
         });
-        return r.error ? r : { ...r, data: [linha] };
+        return r.error ? r : { ...r, data: linhas };
       }
-      if (head || contar) return { data: null, error: null, count: casam().length };
+      // `head: true` NÃO traz linhas; `count` sozinho traz linhas E contagem —
+      // é assim que o PostgREST responde, e a diferença não é acadêmica: o dublê
+      // devolvendo `data: null` para `select(..., { count })` fez a emissão de
+      // atividades do arquivamento sumir com a suíte verde.
+      if (head) return { data: null, error: null, count: casam().length };
+      if (contar) return { data: lidos(), error: null, count: casam().length };
       return { data: lidos(), error: null, count: null };
     }
 
@@ -161,7 +189,7 @@ export function makeDb(opts: DbOpts = {}): Registro {
         if (o?.head) head = true;
         return b;
       },
-      insert: (r: Record<string, unknown>) => {
+      insert: (r: Record<string, unknown> | Record<string, unknown>[]) => {
         nova = r;
         return b;
       },
@@ -194,7 +222,15 @@ export function makeDb(opts: DbOpts = {}): Registro {
     return b;
   }
 
-  vi.mocked(createClient).mockResolvedValue({ from: builder } as never);
+  // `rpc` só existe para o aviso de atividade perdida (`emit_event`): sem ele, a
+  // rota estouraria no caminho de falha e o teste mediria um TypeError em vez do
+  // comportamento ("o arquivamento não é desfeito por causa do rastro").
+  const rpc = async (nome: string, args: unknown) => {
+    registro.rpcs.push({ nome, args });
+    return { data: null, error: null };
+  };
+
+  vi.mocked(createClient).mockResolvedValue({ from: builder, rpc } as never);
   return registro;
 }
 

@@ -13,12 +13,13 @@ import {
   ORG_ID,
   OUTRA_ORG,
   PIPE,
+  USER_ID,
   authOk,
   etapa,
   funil,
   makeDb,
   negocio,
-} from "../_db-double";
+} from "@/tests/helpers/stages-db-double";
 
 const url = `http://localhost/api/v1/pipelines/${PIPE}/stages/e2`;
 
@@ -115,6 +116,44 @@ describe("PATCH /api/v1/pipelines/[id]/stages/[stageId]", () => {
     const res = await PATCH(reqPatch({ name: "Orçamento" }), ctx("x1"));
 
     expect(res.status).toBe(404);
+    expect(db.escritas).toEqual([]);
+  });
+
+  /**
+   * ⭐ `lerFunil` devolve as arquivadas de propósito (elas ocupam slug e
+   * disputam nome), e `uniq_crm_stages_pipeline_won` é PARCIAL — marcar uma
+   * arquivada como ganho PASSA pelo índice, libera a etapa de ganho de verdade e
+   * deixa o funil com o ganho numa coluna fora do quadro, que é justamente onde
+   * `/leads/[id]/win` (que não filtra arquivada) mandaria o negócio fechado.
+   * Aba desatualizada basta: B abre o funil, A arquiva a etapa, B a marca.
+   */
+  it("marcar uma etapa ARQUIVADA como ganho → 409 e NENHUMA escrita", async () => {
+    authOk();
+    const db = makeDb({
+      stages: [
+        ...funil(),
+        etapa({ id: "e9", name: "Proposta antiga", slug: "antiga", position: 9000, is_archived: true }),
+      ],
+    });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(reqPatch({ is_won: true }), ctx("e9"));
+
+    expect(res.status).toBe(409);
+    expect((await res.json() as { error: { message: string } }).error.message).toContain("arquivada");
+    // O veredito não é o status: é que a etapa de ganho de verdade continua sendo «Pago».
+    expect(db.escritas).toEqual([]);
+    expect(db.tabelas.crm_stages.find((e) => e.id === "e3")?.is_won).toBe(true);
+  });
+
+  it("renomear uma etapa ARQUIVADA → 409 e nenhuma escrita", async () => {
+    authOk();
+    const db = makeDb({
+      stages: [...funil(), etapa({ id: "e9", name: "Antiga", slug: "antiga", is_archived: true })],
+    });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(reqPatch({ name: "Renomeada" }), ctx("e9"));
+
+    expect(res.status).toBe(409);
     expect(db.escritas).toEqual([]);
   });
 
@@ -362,14 +401,14 @@ describe("DELETE /api/v1/pipelines/[id]/stages/[stageId]", () => {
     authOk();
     const db = makeDb({
       stages: funil(),
-      leads: [negocio("l1", "e2"), negocio("l2", "e2"), negocio("l3", "e1")],
+      leads: [negocio("l1", "e2"), negocio("l2", "e2"), negocio("l3", "e4")],
     });
     const { DELETE } = await import("./route");
     const res = await DELETE(reqDelete(), ctx());
 
     expect(res.status).toBe(422);
     const body = (await res.json()) as { error: { message: string } };
-    // 2, não 3: o negócio de «Novo» não está nesta etapa.
+    // 2, não 3: o negócio de «Cancelado» não está nesta etapa.
     expect(body.error.message).toContain("2 negócios");
     expect(body.error.message).toContain("«Proposta»");
     expect(db.escritas).toEqual([]);
@@ -381,29 +420,124 @@ describe("DELETE /api/v1/pipelines/[id]/stages/[stageId]", () => {
    */
   it("com destino → move os negócios ANTES de arquivar a etapa", async () => {
     authOk();
+    // `l3` mora em «Cancelado» e é o detector de dano: sem o `eq("stage_id")` no
+    // UPDATE, ele também seria teleportado para o destino — e o teste que só
+    // olha a forma da query não veria diferença nenhuma.
     const db = makeDb({
       stages: funil(),
-      leads: [negocio("l1", "e2"), negocio("l2", "e2")],
+      leads: [negocio("l1", "e2"), negocio("l2", "e2"), negocio("l3", "e4")],
     });
     const { DELETE } = await import("./route");
     const res = await DELETE(reqDelete("e1"), ctx());
 
     expect(res.status).toBe(200);
-    expect(db.escritas.map((e) => [e.table, e.patch])).toEqual([
-      ["crm_leads", { stage_id: "e1" }],
-      ["crm_stages", { is_archived: true }],
+    expect(db.escritas.map((e) => e.table)).toEqual([
+      "crm_leads",
+      "crm_stages",
+      "crm_lead_activities",
     ]);
-    expect(db.eventos).toEqual([
+    expect(db.escritas[0]?.patch).toEqual({ stage_id: "e1" });
+    expect(db.escritas[1]?.patch).toEqual({ is_archived: true });
+    expect(db.eventos.slice(0, 4)).toEqual([
       "start:crm_leads:0",
       "end:crm_leads:0",
       "start:crm_stages:1",
       "end:crm_stages:1",
     ]);
-    // Os negócios andaram de verdade, e só os desta etapa.
-    expect(db.tabelas.crm_leads.map((l) => l.stage_id)).toEqual(["e1", "e1"]);
-    // O update dos negócios é filtrado por tenant e por etapa de origem.
+    // Cada negócio ficou onde devia: os dois da etapa arquivada andaram, o de
+    // «Cancelado» não se mexeu.
+    expect(db.tabelas.crm_leads.map((l) => [l.id, l.stage_id])).toEqual([
+      ["l1", "e1"],
+      ["l2", "e1"],
+      ["l3", "e4"],
+    ]);
+    // Os dois UPDATEs são filtrados por tenant — o de negócios pela etapa de
+    // origem, o da etapa pelo funil.
     expect(db.escritas[0]?.filtros).toContainEqual(["organization_id", ORG_ID]);
     expect(db.escritas[0]?.filtros).toContainEqual(["stage_id", "e2"]);
+    expect(db.escritas[1]?.filtros).toContainEqual(["organization_id", ORG_ID]);
+    expect(db.escritas[1]?.filtros).toContainEqual(["pipeline_id", PIPE]);
+    expect(db.escritas[1]?.filtros).toContainEqual(["id", "e2"]);
+  });
+
+  /**
+   * O card mudou de coluna: a linha do tempo dele tem que dizer por quê. O
+   * `api_audit_log` registra a ação de configuração, mas nenhuma tela de lead o
+   * lê — sem isto o cliente vê o card noutro lugar e a timeline não explica nada.
+   */
+  it("com destino → grava a atividade de cada negócio movido, num ÚNICO insert", async () => {
+    authOk();
+    const db = makeDb({
+      stages: funil(),
+      leads: [negocio("l1", "e2", { contact_id: "c1" }), negocio("l2", "e2"), negocio("l3", "e4")],
+    });
+    const { DELETE } = await import("./route");
+    await DELETE(reqDelete("e1"), ctx());
+
+    const insercoes = db.escritas.filter((e) => e.table === "crm_lead_activities");
+    // UM insert, não N idas ao banco.
+    expect(insercoes).toHaveLength(1);
+
+    const linhas = insercoes[0]!.patch as Array<Record<string, unknown>>;
+    expect(linhas.map((l) => l.lead_id)).toEqual(["l1", "l2"]);
+    expect(linhas[0]).toMatchObject({
+      organization_id: ORG_ID,
+      contact_id: "c1",
+      type: "stage_changed",
+      // Foi uma PESSOA que arquivou a etapa — não o sistema sozinho.
+      actor_kind: "user",
+      performed_by_user_id: USER_ID,
+      payload: { from_stage_id: "e2", to_stage_id: "e1", stage_archived: true },
+    });
+    // A razão é lida por gente: cita as duas colunas e o motivo.
+    expect(linhas[0]!.reason).toBe("Movido de Proposta para Novo (a etapa «Proposta» foi arquivada)");
+  });
+
+  /**
+   * Falha BAIXO: os cards JÁ se moveram, e a operação não pode ser desfeita por
+   * causa do rastro — mas falhar baixo é escolher não bloquear, não escolher não
+   * contar. O aviso vai para `event_log`.
+   */
+  it("falha ao gravar as atividades → 200 mesmo assim, com o aviso em event_log", async () => {
+    authOk();
+    const db = makeDb({
+      stages: funil(),
+      leads: [negocio("l1", "e2")],
+      writeError: (_n, table) =>
+        table === "crm_lead_activities" ? { code: "23503", message: "fk violation" } : null,
+    });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(reqDelete("e1"), ctx());
+
+    expect(res.status).toBe(200);
+    expect(db.tabelas.crm_stages.find((e) => e.id === "e2")?.is_archived).toBe(true);
+    expect(db.rpcs.map((r) => r.nome)).toEqual(["emit_event"]);
+  });
+
+  it("destino é a etapa de GANHO → 422, e nenhuma escrita", async () => {
+    authOk();
+    // `fn_crm_lead_close_on_stage` marcaria os negócios como ganhos com
+    // `closed_at=now()`: receita mexida por uma ação de configuração.
+    const db = makeDb({ stages: funil(), leads: [negocio("l1", "e2")] });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(reqDelete("e3"), ctx());
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("«Pago»");
+    expect(db.escritas).toEqual([]);
+  });
+
+  it("destino é a etapa de PERDA → 422, e nenhuma escrita", async () => {
+    authOk();
+    // Aqui o banco levantaria 22023 (`fn_validate_lost_reason_required`) e a
+    // tela receberia o texto do Postgres colado numa frase em português.
+    const db = makeDb({ stages: funil(), leads: [negocio("l1", "e2")] });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(reqDelete("e4"), ctx());
+
+    expect(res.status).toBe(422);
+    expect(db.escritas).toEqual([]);
   });
 
   it("etapa vazia sem destino → arquiva direto", async () => {
@@ -476,5 +610,13 @@ describe("DELETE /api/v1/pipelines/[id]/stages/[stageId]", () => {
     expect(res.status).toBe(500);
     expect(db.escritas.map((e) => e.table)).toEqual(["crm_leads"]);
     expect(db.tabelas.crm_stages.find((e) => e.id === "e2")?.is_archived).toBe(false);
+
+    // A frase é escrita para leigo — o texto do banco vai em `details`, nunca
+    // colado nela. Sem esta metade, `${error.message}` no meio da mensagem
+    // passa despercebido.
+    const body = (await res.json()) as { error: { message: string; details: { erro: string } } };
+    expect(body.error.message).toContain("«Proposta»");
+    expect(body.error.message).not.toContain("connection failure");
+    expect(body.error.details.erro).toBe("connection failure");
   });
 });

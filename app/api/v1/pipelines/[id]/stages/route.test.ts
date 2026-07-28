@@ -9,7 +9,7 @@ vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
 
-import { ORG_ID, OUTRA_ORG, PIPE, authOk, etapa, funil, makeDb } from "./_db-double";
+import { ORG_ID, OUTRA_ORG, PIPE, authOk, etapa, funil, makeDb } from "@/tests/helpers/stages-db-double";
 
 const ctx = { params: Promise.resolve({ id: PIPE }) };
 
@@ -138,7 +138,7 @@ describe("POST /api/v1/pipelines/[id]/stages", () => {
     const res = await POST(reqPost({ name: "Retorno" }), ctx);
 
     expect(res.status).toBe(201);
-    expect(db.escritas[0]?.patch.slug).toBe("retorno_2");
+    expect(db.escritas[0]?.patch).toMatchObject({ slug: "retorno_2" });
   });
 
   it("caminho feliz audita pipeline.stage_created", async () => {

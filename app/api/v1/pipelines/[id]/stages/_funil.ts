@@ -70,10 +70,17 @@ export function corpo(etapas: EtapaEditavel[]): {
 /**
  * Recusa do banco traduzida — ou `null` se o erro não é de conflito.
  *
- * ⚠️ O TEXTO DO POSTGRES NUNCA CHEGA À TELA. "duplicate key value violates
- * unique constraint uniq_crm_stages_pipeline_won" não ensina nada ao dono da
- * clínica e é exatamente o que a camada pura existe para evitar; devolvê-lo num
- * 500 traria o problema de volta pela porta dos fundos.
+ * ⚠️ ESCOPO EXATO, porque o contrário já foi escrito aqui e era falso: isto
+ * cobre `23505` e `23514`, os dois conflitos que um funil editado em duas abas
+ * produz. Eles viram texto de tela em português porque "duplicate key value
+ * violates unique constraint uniq_crm_stages_pipeline_won" não ensina nada ao
+ * dono da clínica.
+ *
+ * O QUE NÃO É COBERTO: qualquer outro erro sai como `internal_error`, e o
+ * `message` dele é técnico por convenção do repo (é o que a rota irmã faz). A
+ * regra que vale para as DUAS classes é a de composição — texto de banco nunca
+ * entra COLADO numa frase escrita para leigo; quando a rota precisa dizer algo
+ * ao usuário sobre uma falha técnica, o texto do Postgres vai em `details`.
  */
 export function conflitoDoBanco(
   erro: { code?: string } | null | undefined,

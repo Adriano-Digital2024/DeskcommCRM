@@ -335,11 +335,31 @@ export function validarArquivamento(
           `Escolha para qual etapa eles vão antes de arquivá-la.`,
       };
     }
-    if (!restantes.some((e) => e.id === destinoId)) {
+    const destino = restantes.find((e) => e.id === destinoId);
+    if (!destino) {
       return {
         ok: false,
         erro: `A etapa escolhida para receber os negócios de «${etapa.name}» não está mais no funil. Recarregue a página.`,
       };
+    }
+
+    // ⚠️ O DESTINO NÃO PODE SER A ETAPA DE GANHO NEM A DE PERDA, e os dois lados
+    // são ruins de um jeito diferente. `fn_crm_lead_close_on_stage` fecha o
+    // negócio pelo estágio: mandar N negócios para a de GANHO os marca
+    // `status='won'` com `closed_at=now()` — receita mexida por uma ação de
+    // configuração, em silêncio. Para a de PERDA, `fn_validate_lost_reason_required`
+    // levanta `22023` e a tela recebe o texto do Postgres colado numa frase em
+    // português. Arquivar uma etapa é organizar o quadro, não fechar negócio.
+    for (const passo of ["won", "lost"] as const) {
+      if (destino[CAMPO_DO_PASSO[passo]]) {
+        const desfecho = passo === "won" ? "de ganho" : "de perda";
+        return {
+          ok: false,
+          erro:
+            `«${destino.name}» é a etapa ${desfecho} deste funil: mandar os negócios de «${etapa.name}» ` +
+            `para lá os daria por encerrados. Escolha uma etapa em aberto.`,
+        };
+      }
     }
   }
 

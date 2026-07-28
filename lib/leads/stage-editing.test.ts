@@ -181,6 +181,30 @@ describe('validarArquivamento', () => {
     expect(r.ok).toBe(false);
   });
 
+  it('recusa mandar os negócios para a etapa de GANHO — seria fechar negócio por configuração', () => {
+    // `fn_crm_lead_close_on_stage` marca `status='won'` com `closed_at=now()`
+    // por estágio: N negócios virariam receita porque alguém arrumou o quadro.
+    const r = validarArquivamento(etapas, 'e2', { negocios: 3, destinoId: 'e3' });
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.erro).toMatch(/encerrados/);
+  });
+
+  it('recusa mandar os negócios para a etapa de PERDA — o banco levantaria 22023', () => {
+    const comPerdido = [
+      ...etapas,
+      { ...etapas[0]!, id: 'e4', name: 'Perdido', slug: 'perdido', is_lost: true },
+    ];
+    const r = validarArquivamento(comPerdido, 'e2', { negocios: 3, destinoId: 'e4' });
+    expect(r.ok).toBe(false);
+    // Mede o MOTIVO, não só o `ok:false`: sem isso, a regra de "destino fora do
+    // funil" recusaria igual e o teste passaria com esta regra removida.
+    expect(r.ok === false && r.erro).toMatch(/de perda/);
+  });
+
+  it('aceita destino em aberto no mesmo funil', () => {
+    expect(validarArquivamento(etapas, 'e2', { negocios: 3, destinoId: 'e1' }).ok).toBe(true);
+  });
+
   it('recusa arquivar a etapa de ganho — /leads/[id]/win não filtra arquivada', () => {
     // A rota busca `.eq("is_won", true)` sem filtrar is_archived: o negócio
     // fechado SERIA MOVIDO para uma coluna fora do quadro, em silêncio.
