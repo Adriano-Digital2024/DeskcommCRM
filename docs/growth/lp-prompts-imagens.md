@@ -7,6 +7,12 @@
 
 ## Como usar
 
+> Os nomes nas tabelas abaixo são **como salvar cada arquivo** (acrescente `.png`).
+> Nenhuma dessas imagens existe no repositório ainda — este documento é a especificação
+> para gerá-las. Escritos com a extensão, eles seriam lidos como prova já entregue pelo
+> guarda `tests/unit/evidencia-citada.test.ts`, que cobra: imagem citada é imagem versionada.
+
+
 1. Abra **uma** conversa nova no ChatGPT e cole o **Bloco de Estilo** abaixo como primeira mensagem, sozinho.
 2. Depois cole um prompt por vez, na ordem deste documento.
 3. Peça sempre **PNG com fundo transparente**. Se vier com fundo, peça *"same image, transparent background"* — não regenere do zero, senão muda a cena.
@@ -92,10 +98,10 @@ Everything else fully transparent. Do not move or resize anything.
 
 | Arquivo | `[ELEMENTO]` |
 |---|---|
-| `mesa-01-a-tampo.png` | `the desk surface and its shadow, with the empty channels carved but unlit` |
-| `mesa-01-b-trilhas.png` | `the sage green channel floors, glowing softly from within the grooves` |
-| `mesa-01-c-pecas.png` | `the five modules sitting on the desk` |
-| `mesa-01-d-lead.png` | `the single small sage sphere` |
+| `mesa-01-a-tampo` | `the desk surface and its shadow, with the empty channels carved but unlit` |
+| `mesa-01-b-trilhas` | `the sage green channel floors, glowing softly from within the grooves` |
+| `mesa-01-c-pecas` | `the five modules sitting on the desk` |
+| `mesa-01-d-lead` | `the single small sage sphere` |
 
 ---
 
@@ -163,13 +169,13 @@ Para cada um, comece com: *"Same close-up scene, same camera, same lighting. Cha
 
 | Arquivo | Mudança pedida |
 |---|---|
-| `cena-01-chega.png` | `The conversation module is now lit sage. A thin flat panel rises just above and behind it, like a card being lifted from the desk, showing blank rounded rows.` |
-| `cena-02-contexto.png` | `Add a small cluster of thin stacked plates to the left of the agent module, connected to it by a lit sage channel. Three of the plates are slightly pulled out from the stack.` |
-| `cena-03-gates.png` | `Add a row of seven small identical upright blocks forming a short corridor between the agent module and the desk edge. Six blocks are sage green. The fourth one is amber and slightly rotated, blocking the corridor.` |
-| `cena-04-veto.png` | `Zoom slightly toward the amber block. A thin flat panel rises beside it with blank rounded rows, and a short sage channel curves from the amber block BACK toward the agent module, forming a return loop.` |
-| `cena-05-move.png` | `The small sage sphere now sits at the top of the second pipeline column instead of at the conversation module. The channel it travelled along is lit sage behind it.` |
-| `cena-06-handoff.png` | `Add a second module beside the agent, same size but warm off-white instead of sage. A small flat plate is suspended midway between the two, tilted, as if being handed across.` |
-| `cena-07-followup.png` | `The circular timer module is now lit sage with its ring partially filled. The sage sphere sitting in the pipeline column now has a thin amber ring around its base.` |
+| `cena-01-chega` | `The conversation module is now lit sage. A thin flat panel rises just above and behind it, like a card being lifted from the desk, showing blank rounded rows.` |
+| `cena-02-contexto` | `Add a small cluster of thin stacked plates to the left of the agent module, connected to it by a lit sage channel. Three of the plates are slightly pulled out from the stack.` |
+| `cena-03-gates` | `Add a row of seven small identical upright blocks forming a short corridor between the agent module and the desk edge. Six blocks are sage green. The fourth one is amber and slightly rotated, blocking the corridor.` |
+| `cena-04-veto` | `Zoom slightly toward the amber block. A thin flat panel rises beside it with blank rounded rows, and a short sage channel curves from the amber block BACK toward the agent module, forming a return loop.` |
+| `cena-05-move` | `The small sage sphere now sits at the top of the second pipeline column instead of at the conversation module. The channel it travelled along is lit sage behind it.` |
+| `cena-06-handoff` | `Add a second module beside the agent, same size but warm off-white instead of sage. A small flat plate is suspended midway between the two, tilted, as if being handed across.` |
+| `cena-07-followup` | `The circular timer module is now lit sage with its ring partially filled. The sage sphere sitting in the pipeline column now has a thin amber ring around its base.` |
 
 ---
 
