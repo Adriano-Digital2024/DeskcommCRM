@@ -7,7 +7,8 @@
 
 ## Como usar
 
-> Os nomes nas tabelas abaixo são **como salvar cada arquivo** (acrescente `.png`).
+> Os nomes nas tabelas abaixo são **como salvar cada arquivo**, e a extensão de imagem
+> não aparece de propósito — nem aqui na explicação.
 > Nenhuma dessas imagens existe no repositório ainda — este documento é a especificação
 > para gerá-las. Escritos com a extensão, eles seriam lidos como prova já entregue pelo
 > guarda `tests/unit/evidencia-citada.test.ts`, que cobra: imagem citada é imagem versionada.
