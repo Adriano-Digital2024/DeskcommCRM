@@ -31,6 +31,13 @@ describe('validarNomeDeEtapa', () => {
     expect(validarNomeDeEtapa('  proposta ', etapas, null).ok).toBe(false);
   });
 
+  it('dobra acento e espaço interno — "Pos  Venda" é a mesma coluna que "Pós venda"', () => {
+    // Decisão de produto: quem digita sem acento cria uma duplicata que ele lê
+    // como a mesma coluna, e ninguém sabe explicar por que o quadro tem duas.
+    const comPosVenda = [...etapas, { ...etapas[0]!, id: 'e5', name: 'Pós venda', slug: 'pos_venda' }];
+    expect(validarNomeDeEtapa('Pos  Venda', comPosVenda, null).ok).toBe(false);
+  });
+
   it('etapa arquivada não bloqueia o nome — ela não está no quadro', () => {
     // Recusar por causa de uma etapa invisível seria erro sem saída para o usuário.
     const comArquivada = [...etapas, { ...etapas[1]!, id: 'e9', name: 'Antiga', slug: 'antiga', is_archived: true }];
@@ -86,6 +93,23 @@ describe('validarMarcacao', () => {
   it('recusa marcar a mesma etapa como ganho E perda', () => {
     expect(validarMarcacao(etapas, 'e1', { is_won: true, is_lost: true }).ok).toBe(false);
   });
+
+  it('recusa desmarcar o ganho da INSTALAÇÃO FRESCA, onde ninguém tem hint', () => {
+    // fn_seed_default_pipeline_for_org semeia "Pago" com is_won=true e
+    // agent_stage_hint=null; o backfill da 0084 só pegou o que já existia. Uma
+    // guarda chaveada no hint protegeria só bancos antigos — e o funil de toda
+    // org nova ficaria sem etapa de ganho, com /leads/[id]/win em 422.
+    const fresco = [
+      { ...etapas[0]!, id: 'p1', name: 'Aguardando pagamento', slug: 'aguardando_pagamento' },
+      { ...etapas[0]!, id: 'p2', name: 'Pago', slug: 'pago', is_won: true, agent_stage_hint: null },
+    ];
+    expect(validarMarcacao(fresco, 'p2', { is_won: false }).ok).toBe(false);
+  });
+
+  it('recusa desmarcar a etapa de PERDA — o lado espelho da regra de ganho', () => {
+    const comPerdido = [...etapas, { ...etapas[0]!, id: 'e4', name: 'Perdido', slug: 'perdido', is_lost: true, agent_stage_hint: 'lost' }];
+    expect(validarMarcacao(comPerdido, 'e4', { is_lost: false }).ok).toBe(false);
+  });
 });
 
 describe('updatesDeMarcacao', () => {
@@ -101,6 +125,13 @@ describe('updatesDeMarcacao', () => {
 
   it('não emite update nenhum quando a marcação já é a desejada', () => {
     expect(updatesDeMarcacao(etapas, 'e3', { is_won: true })).toEqual([]);
+  });
+
+  it('move a marcação de PERDA com a mesma ordem e o mesmo cuidado com o hint', () => {
+    const comPerdido = [...etapas, { ...etapas[0]!, id: 'e4', name: 'Perdido', slug: 'perdido', is_lost: true, agent_stage_hint: 'lost' }];
+    const ups = updatesDeMarcacao(comPerdido, 'e1', { is_lost: true });
+    expect(ups[0]).toEqual({ stageId: 'e4', patch: { is_lost: false, agent_stage_hint: null } });
+    expect(ups[1]).toEqual({ stageId: 'e1', patch: { is_lost: true, agent_stage_hint: 'lost' } });
   });
 
   it('desmarca a etapa de ganho VIVA, não uma arquivada — o índice único ignora arquivadas', () => {
@@ -148,6 +179,14 @@ describe('validarArquivamento', () => {
   it('recusa destino que não está no funil', () => {
     const r = validarArquivamento(etapas, 'e2', { negocios: 3, destinoId: 'e404' });
     expect(r.ok).toBe(false);
+  });
+
+  it('recusa arquivar a etapa de ganho — /leads/[id]/win não filtra arquivada', () => {
+    // A rota busca `.eq("is_won", true)` sem filtrar is_archived: o negócio
+    // fechado SERIA MOVIDO para uma coluna fora do quadro, em silêncio.
+    const r = validarArquivamento(etapas, 'e3', { negocios: 0, destinoId: null });
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.erro).toMatch(/ganho/);
   });
 
   it('recusa arquivar a ÚLTIMA etapa do funil', () => {

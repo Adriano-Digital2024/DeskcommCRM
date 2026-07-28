@@ -61,7 +61,7 @@ function ehPasso(valor: string): valor is LeadStage {
 }
 
 /** Rótulo de tela. Hint fora do vocabulário (banco antigo) sai cru, mas nunca em branco. */
-function rotuloDoPasso(passo: string): string {
+export function rotuloDoPasso(passo: string): string {
   return ehPasso(passo) ? ROTULO_DO_PASSO[passo] : passo;
 }
 

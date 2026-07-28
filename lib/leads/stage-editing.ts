@@ -1,10 +1,10 @@
-import type { LeadStage } from "@/lib/agent-engine/agent/lead-state";
-import { ROTULO_DO_PASSO, type EtapaDoMapa } from "@/lib/leads/agent-mapping";
+import { rotuloDoPasso, type EtapaDoMapa } from "@/lib/leads/agent-mapping";
 
 /**
  * As regras da edição das etapas do funil, sem tocar no banco.
  *
- * Hoje NENHUMA tela escreve em `crm_stages`: o gatilho
+ * Hoje nenhuma tela CRIA, RENOMEIA OU ARQUIVA etapa (a de mapeamento do
+ * assistente escreve `agent_stage_hint`, e é o único outro escritor): o gatilho
  * `trg_seed_default_pipeline_for_org` semeia um funil de e-commerce em toda
  * organização criada, então uma clínica abre o sistema e vê "Carrinho
  * abandonado" sem ter como corrigir. Este arquivo é a camada pura que sustenta
@@ -41,12 +41,14 @@ function ativas(etapas: EtapaEditavel[]): EtapaEditavel[] {
   return etapas.filter((e) => !e.is_archived);
 }
 
-/** Rótulo de tela do passo do assistente. Hint fora do vocabulário sai cru, nunca em branco. */
-function rotuloDoPasso(passo: string): string {
-  return ROTULO_DO_PASSO[passo as LeadStage] ?? passo;
-}
-
-/** Minúsculas, sem acento e sem espaço sobrando — o que o usuário lê como "o mesmo nome". */
+/**
+ * Minúsculas, sem acento e sem espaço sobrando — o que o usuário lê como "o mesmo nome".
+ *
+ * ⚠️ DOBRAR ACENTO É DECISÃO DE PRODUTO, não detalhe técnico: quem digita
+ * "Pos venda" com a etapa "Pós-venda" na tela criou uma duplicata que ele vai
+ * ler como a mesma coluna, e ninguém explica ao dono da clínica por que o
+ * quadro tem duas. Mesma razão para colapsar espaço interno.
+ */
 function chaveDeNome(nome: string): string {
   return nome
     .normalize("NFD")
@@ -137,7 +139,14 @@ type PassoDeDesfecho = keyof typeof CAMPO_DO_PASSO;
  * ⚠️ MOVER a marcação é permitido; DESMARCAR sem substituta, não. São coisas
  * diferentes: mover relocaliza o desfecho (e `updatesDeMarcacao` faz o passo do
  * assistente acompanhar), enquanto desmarcar deixaria o funil sem onde fechar
- * negócio — e, se a etapa carrega o hint, o CHECK devolveria 23514 cru.
+ * negócio — `/leads/[id]/win` passa a responder 422 `pipeline_no_won_stage`.
+ *
+ * ⚠️ A GUARDA OLHA `is_won`/`is_lost`, NÃO O HINT. O gatilho
+ * `fn_seed_default_pipeline_for_org` (baseline.sql:707) semeia "Pago" com
+ * `is_won=true, agent_stage_hint=null` — o backfill da 0084 rodou uma vez, sobre
+ * o que já existia. Chavear no hint deixaria a instalação FRESCA, que é o
+ * cenário deste arquivo, sem proteção nenhuma. E não há o que perder: o CHECK já
+ * garante que hint='won' só existe em etapa com `is_won`.
  */
 export function validarMarcacao(
   etapas: EtapaEditavel[],
@@ -162,15 +171,15 @@ export function validarMarcacao(
   }
 
   for (const passo of ["won", "lost"] as const) {
-    const rotulo = ROTULO_DO_PASSO[passo];
+    const campo = CAMPO_DO_PASSO[passo];
     const desfecho = passo === "won" ? "de ganho" : "de perda";
 
-    if (!desejado[passo] && etapa.agent_stage_hint === passo) {
+    if (!desejado[passo] && etapa[campo]) {
       return {
         ok: false,
         erro:
-          `A etapa «${etapa.name}» é onde o assistente registra «${rotulo}». ` +
-          `Para mudar isso, marque OUTRA etapa como ${desfecho} — o funil precisa de uma.`,
+          `A etapa «${etapa.name}» é a etapa ${desfecho} deste funil e o funil precisa de uma. ` +
+          `Marque OUTRA etapa como ${desfecho} — a marcação se muda, não se apaga.`,
       };
     }
 
@@ -272,6 +281,11 @@ export interface PedidoDeArquivamento {
  *
  * Arquivar (e não apagar) é o que `crm_leads_stage_id_fkey ON DELETE RESTRICT`
  * impõe: o histórico dos negócios continua apontando para a etapa.
+ *
+ * ⚠️ A ETAPA DE GANHO/PERDA NÃO PODE SER ARQUIVADA. `/leads/[id]/win` procura a
+ * etapa por `.eq("is_won", true)` SEM filtrar arquivada: com a de ganho
+ * arquivada, o negócio fechado É MOVIDO para uma coluna que sumiu do quadro.
+ * Some em silêncio, que é pior do que recusar a operação aqui.
  */
 export function validarArquivamento(
   etapas: EtapaEditavel[],
@@ -291,6 +305,18 @@ export function validarArquivamento(
         `«${etapa.name}» é a única etapa deste funil. Um funil sem etapa nenhuma some do quadro e não ` +
         `recebe negócio novo — crie outra etapa antes de arquivar esta.`,
     };
+  }
+
+  for (const passo of ["won", "lost"] as const) {
+    if (etapa[CAMPO_DO_PASSO[passo]]) {
+      const desfecho = passo === "won" ? "de ganho" : "de perda";
+      return {
+        ok: false,
+        erro:
+          `«${etapa.name}» é a etapa ${desfecho} deste funil. Marque OUTRA etapa como ${desfecho} antes ` +
+          `de arquivar esta — senão os negócios continuariam indo parar numa coluna fora do quadro.`,
+      };
+    }
   }
 
   if (destinoId === etapaId) {
