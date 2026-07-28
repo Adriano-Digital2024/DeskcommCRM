@@ -134,11 +134,25 @@ function passoPorEtapa(mapa: MapaDoAgente): Map<string, LeadStage> {
   return m;
 }
 
-/** O 422 do arquivamento carrega a contagem exata; a frase é do servidor, o número é daqui. */
-function negociosDoErro(e: unknown): number | null {
-  if (!(e instanceof ApiError)) return null;
-  const n = (e.details as { negocios?: unknown } | undefined)?.negocios;
-  return typeof n === "number" ? n : null;
+/** "1 negócio", "4 negócios" — a tela recompõe a frase, então pluraliza como o servidor. */
+export function contagemDeNegocios(n: number): string {
+  return `${n} ${n === 1 ? "negócio" : "negócios"}`;
+}
+
+/**
+ * O que o 422 do arquivamento diz sobre o caso — contagem e QUAL regra recusou.
+ *
+ * ⚠️ `precisaDestino` VEM DO SERVIDOR, não é re-derivado aqui. A tela troca essa
+ * recusa específica por uma pergunta; decidir isso por conta própria ("tem
+ * negócio e não é de ganho/perda") faria qualquer recusa NOVA sobre uma etapa
+ * comum com negócios sumir atrás da pergunta.
+ */
+function casoDoErro(e: unknown): { negocios: number | null; precisaDestino: boolean } {
+  const d = e instanceof ApiError ? (e.details as Record<string, unknown> | undefined) : undefined;
+  return {
+    negocios: typeof d?.negocios === "number" ? d.negocios : null,
+    precisaDestino: d?.precisa_destino === true,
+  };
 }
 
 /** O que o painel de arquivamento está esperando do usuário. */
@@ -149,6 +163,33 @@ type Arquivamento = {
   destino: string | null;
   erro: string | null;
 };
+
+/**
+ * As larguras das colunas, em UM lugar só.
+ *
+ * O cabeçalho e a linha precisam medir igual — divergência faz cada rótulo
+ * nomear a coluna errada, e nenhum teste pega isso (a prova mede o alinhamento
+ * no navegador, mas só depois de alguém rodá-la). Constante compartilhada torna
+ * a divergência impossível em vez de indetectável.
+ */
+// ⚠️ AS CLASSES SÃO LITERAIS INTEIRAS, com o prefixo `sm:` incluído: o Tailwind
+// varre o texto-fonte, então `sm:${...}` montado por interpolação NÃO gera CSS.
+// E o prefixo é o certo de qualquer jeito — no celular a linha empilha e largura
+// fixa espremeria os controles.
+const LARGURA = { ordem: "sm:w-[76px]", papel: "sm:w-56", arquivar: "sm:w-[104px]" } as const;
+
+/**
+ * O texto de cada rótulo, em UM lugar só — porque ele aparece em DOIS.
+ *
+ * No desktop, como cabeçalho de coluna; no celular, em cima de cada controle da
+ * linha empilhada. Duas cópias divergiriam e o celular ficaria com o texto
+ * antigo, que é exatamente o defeito que estes rótulos existem para consertar.
+ */
+export const ROTULO = {
+  nome: "Nome da coluna (clique para renomear)",
+  ordem: "Ordem",
+  papel: "O que acontece nesta coluna",
+} as const;
 
 export function StagesSection({
   pipelineId,
@@ -163,7 +204,9 @@ export function StagesSection({
   const editar = useEditarEtapa(pipelineId);
   const arquivar = useArquivarEtapa(pipelineId);
 
-  const [erro, setErro] = useState<{ etapaId: string | null; texto: string } | null>(null);
+  const [erro, setErro] = useState<
+    { etapaId: string | null; texto: string; sobrePapel?: boolean } | null
+  >(null);
   const [confirmacao, setConfirmacao] = useState<{ etapaId: string; papel: Papel; texto: string } | null>(null);
   const [arquivamento, setArquivamento] = useState<Arquivamento | null>(null);
   const [nova, setNova] = useState<string | null>(null);
@@ -191,11 +234,17 @@ export function StagesSection({
     if (Object.keys(patch).length === 0) return;
     setErro(null);
     setConfirmacao(null);
+    // ⚠️ SÓ RECUSA DE PAPEL GANHA O LINK PARA O MAPEAMENTO. O vínculo com o
+    // assistente é o que trava trocar ganho/perda; ele não tem nada a ver com
+    // nome duplicado nem com ordem. Condicionar o link a "esta linha tem passo"
+    // produzia o non sequitur "Já existe uma etapa chamada «Cancelado». Ir para
+    // o mapeamento do assistente."
+    const sobrePapel = patch.is_won !== undefined || patch.is_lost !== undefined;
     editar.mutate(
       { stageId: etapaId, patch },
       {
         onSuccess: () => toast.success("Etapa atualizada."),
-        onError: (e) => setErro({ etapaId, texto: mensagemDeErro(e) }),
+        onError: (e) => setErro({ etapaId, texto: mensagemDeErro(e), sobrePapel }),
       },
     );
   }
@@ -233,20 +282,15 @@ export function StagesSection({
           toast.success(`«${etapa.name}» saiu do quadro.`);
         },
         onError: (e) => {
-          const negocios = negociosDoErro(e);
           // Negócios parados na etapa não é recusa final: é a pergunta "para
-          // onde eles vão?" — e ela só pode ser feita com o número na mão.
-          const perguntaDestino =
-            negocios !== null &&
-            negocios > 0 &&
-            !etapa.is_won &&
-            !etapa.is_lost &&
-            destino === null;
+          // onde eles vão?" — e QUEM DIZ que é esse o caso é o servidor
+          // (`precisa_destino`), não uma re-derivação daqui.
+          const caso = casoDoErro(e);
           setArquivamento({
             etapaId: etapa.id,
-            negocios,
+            negocios: caso.negocios,
             destino: null,
-            erro: perguntaDestino ? null : mensagemDeErro(e),
+            erro: caso.precisaDestino ? null : mensagemDeErro(e),
           });
         },
       },
@@ -276,25 +320,30 @@ export function StagesSection({
         </p>
         <p className="max-w-3xl text-sm leading-relaxed text-text-muted">
           Duas colunas têm papel especial: a <strong>de fechamento</strong> é onde o negócio
-          vira venda, e a <strong>de perda</strong> é onde ele se perde. Cada funil tem uma de
-          cada — por isso a marcação se muda de lugar, não se apaga.
+          vira venda, e a <strong>de perda</strong> é onde ele se perde. Cada funil precisa de uma
+          de cada — por isso a marcação se muda de lugar, não se apaga.
         </p>
       </div>
 
       {/* ⚠️ O CABEÇALHO NÃO É ENFEITE. Sem ele a linha tem um campo de texto sem
           rótulo, duas setas sem legenda e um seletor dizendo "Nada especial"
           sobre coisa nenhuma — a dona da clínica precisa adivinhar o que cada
-          controle faz. Some no celular (`sm:`), onde a linha empilha e cada
-          controle já vem com o próprio rótulo acessível. */}
+          controle faz. No celular a linha EMPILHA e um cabeçalho de colunas não
+          alinha com nada: lá o mesmo texto vai em cima de cada controle
+          (`sm:hidden`, mesmas constantes). `aria-label` não substitui nenhum dos
+          dois — é invisível para quem enxerga. */}
       {/* `border border-transparent`: a lista abaixo tem borda de 1px, que empurra
           o conteúdo dela 1px para dentro. Sem a mesma borda aqui, cada rótulo
           fica 1px à direita do controle que nomeia — medido, não estimado. */}
-      <div className="hidden gap-3 border border-transparent px-4 text-xs font-medium text-text-muted sm:flex">
+      <div
+        className="hidden gap-3 border border-transparent px-4 text-xs font-medium text-text-muted sm:flex"
+        data-testid="etapas-cabecalho"
+      >
         <span className="w-6 shrink-0" />
-        <span className="min-w-0 flex-1">Nome da coluna (clique para renomear)</span>
-        <span className="w-[76px] shrink-0 text-center">Ordem</span>
-        <span className="w-56 shrink-0">O que acontece nesta coluna</span>
-        <span className="w-[104px] shrink-0" />
+        <span className="min-w-0 flex-1">{ROTULO.nome}</span>
+        <span className={`${LARGURA.ordem} shrink-0 text-center`}>{ROTULO.ordem}</span>
+        <span className={`${LARGURA.papel} shrink-0`}>{ROTULO.papel}</span>
+        <span className={`${LARGURA.arquivar} shrink-0`} />
       </div>
 
       <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
@@ -316,13 +365,30 @@ export function StagesSection({
                   {i + 1}.
                 </span>
 
-                <NomeDaEtapa
-                  etapa={etapa}
-                  desabilitado={ocupado}
-                  aoConfirmar={(nome) => aplicar(etapa.id, { name: nome })}
-                />
+                {/* No empilhado, cada controle carrega o rótulo que no desktop
+                    vive no cabeçalho — mesmas constantes, `sm:hidden`. */}
+                <div className="min-w-0 flex-1 space-y-1">
+                  <span className="block text-xs font-medium text-text-muted sm:hidden">
+                    {ROTULO.nome}
+                  </span>
+                  <NomeDaEtapa
+                    etapa={etapa}
+                    desabilitado={ocupado}
+                    aoConfirmar={(nome) => aplicar(etapa.id, { name: nome })}
+                  />
+                </div>
 
-                <div className="flex w-[76px] shrink-0 items-center justify-center gap-1">
+                {/* No empilhado o rótulo vai EM CIMA, como os outros dois: ao
+                    lado, ele desalinhava com as setas (medido no celular:
+                    rótulo em y=4893, setas em y=4883) e a linha ficava com três
+                    rótulos em duas convenções diferentes. */}
+                <div
+                  className={`flex flex-col gap-1 ${LARGURA.ordem} shrink-0 sm:flex-row sm:items-center sm:justify-center sm:gap-1`}
+                >
+                  <span className="text-xs font-medium text-text-muted sm:hidden">
+                    {ROTULO.ordem}
+                  </span>
+                  <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -347,9 +413,13 @@ export function StagesSection({
                   >
                     <CaretDown size={16} aria-hidden />
                   </Button>
+                  </div>
                 </div>
 
-                <div className="w-full shrink-0 sm:w-56">
+                <div className={`w-full shrink-0 space-y-1 ${LARGURA.papel} sm:space-y-0`}>
+                  <span className="block text-xs font-medium text-text-muted sm:hidden">
+                    {ROTULO.papel}
+                  </span>
                   <Select
                     value={papelDaEtapa(etapa)}
                     onValueChange={(v) => escolherPapel(etapa, v as Papel)}
@@ -374,7 +444,7 @@ export function StagesSection({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-[104px] shrink-0"
+                  className={`${LARGURA.arquivar} shrink-0`}
                   data-testid={`arquivar-${etapa.id}`}
                   disabled={ocupado}
                   onClick={() => {
@@ -436,13 +506,15 @@ export function StagesSection({
                     // Sem destino possível não há pergunta a fazer — e mandar
                     // escolher entre nada seria um beco sem saída.
                     <p className="text-sm leading-relaxed" data-testid={`arquivar-sem-destino-${etapa.id}`}>
-                      {arquivandoAqui.negocios} negócios estão nesta etapa e não há outra coluna
-                      em aberto para recebê-los. Crie uma etapa antes de arquivar «{etapa.name}».
+                      {contagemDeNegocios(arquivandoAqui.negocios)} {arquivandoAqui.negocios === 1 ? "está" : "estão"} nesta
+                      etapa e não há outra coluna em aberto para recebê-{arquivandoAqui.negocios === 1 ? "lo" : "los"}. Crie
+                      uma etapa antes de arquivar «{etapa.name}».
                     </p>
                   ) : (
                     <>
                       <p className="text-sm leading-relaxed" data-testid={`arquivar-pergunta-${etapa.id}`}>
-                        {arquivandoAqui.negocios} negócios estão nesta etapa. Para onde eles vão?
+                        {contagemDeNegocios(arquivandoAqui.negocios)}{" "}
+                        {arquivandoAqui.negocios === 1 ? "está nesta etapa. Para onde ele vai?" : "estão nesta etapa. Para onde eles vão?"}
                       </p>
                       <div className="sm:w-72">
                         <Select
@@ -467,6 +539,30 @@ export function StagesSection({
                         </Select>
                       </div>
                     </>
+                  )}
+
+                  {/* ⚠️ A SEGUNDA IRREVERSIBILIDADE, e ela era silenciosa.
+                      `validarArquivamento` recusa arquivar a etapa de ganho/perda,
+                      mas NÃO olha `agent_stage_hint`, e o DELETE não limpa o hint —
+                      `resolveDestinoDoAgente` procura o alvo com `!is_archived`,
+                      então arquivar simplesmente desliga esse passo do assistente.
+                      O mapeamento volta sozinho para «não mover o card», ninguém é
+                      avisado, e como a coluna não volta o vínculo só se refaz
+                      escolhendo OUTRA etapa. Avisar da coluna e calar sobre isto era
+                      contar metade. */}
+                  {passo && !arquivandoAqui.erro && (
+                    <p
+                      className="text-sm leading-relaxed text-warning-fg"
+                      data-testid={`arquivar-perde-passo-${etapa.id}`}
+                    >
+                      Esta etapa é a que o assistente usa para «{ROTULO_DO_PASSO[passo]}».
+                      Arquivando, ele para de mover o card nesse passo até você escolher outra
+                      etapa em{" "}
+                      <a className="underline underline-offset-2" href={`#${ancoraMapeamento}`}>
+                        «Para onde o card vai em cada passo»
+                      </a>
+                      .
+                    </p>
                   )}
 
                   <div className="flex gap-2">
@@ -503,7 +599,7 @@ export function StagesSection({
                   <Warning size={18} className="mt-0.5 shrink-0 text-warning-fg" aria-hidden />
                   <p className="text-sm leading-relaxed">
                     {erroDaLinha}
-                    {passo && (
+                    {passo && erro?.sobrePapel && (
                       <>
                         {" "}
                         <a className="underline underline-offset-2" href={`#${ancoraMapeamento}`}>

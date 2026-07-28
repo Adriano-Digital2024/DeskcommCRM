@@ -36,6 +36,21 @@ export interface EtapaEditavel extends EtapaDoMapa {
 
 export type Resultado = { ok: true } | { ok: false; erro: string };
 
+/**
+ * A recusa do arquivamento, com o único caso que a TELA precisa distinguir.
+ *
+ * ⚠️ `precisaDestino` NÃO É REDUNDÂNCIA COM A MENSAGEM. A tela substitui esta
+ * recusa por uma pergunta ("para onde vão os N negócios?") em vez de mostrá-la —
+ * e decidir isso re-derivando o motivo do lado de lá (por "tem negócio e não é
+ * de ganho/perda") funciona hoje por coincidência: qualquer recusa NOVA sobre
+ * uma etapa comum com negócios passaria a ser engolida pela pergunta, e o
+ * usuário gastaria um passo antes de ver o motivo real. Quem sabe qual regra
+ * disparou é quem a aplicou.
+ */
+export type ResultadoDeArquivamento =
+  | { ok: true }
+  | { ok: false; erro: string; precisaDestino?: true };
+
 /** Só as etapas que disputam nome, marcação e slug — os índices parciais ignoram arquivadas. */
 function ativas(etapas: EtapaEditavel[]): EtapaEditavel[] {
   return etapas.filter((e) => !e.is_archived);
@@ -291,7 +306,7 @@ export function validarArquivamento(
   etapas: EtapaEditavel[],
   etapaId: string,
   { negocios, destinoId }: PedidoDeArquivamento,
-): Resultado {
+): ResultadoDeArquivamento {
   const etapa = etapas.find((e) => e.id === etapaId);
   if (!etapa) {
     return { ok: false, erro: "Essa etapa não faz parte deste funil. Recarregue a página e tente de novo." };
@@ -333,6 +348,8 @@ export function validarArquivamento(
         erro:
           `A etapa «${etapa.name}» tem ${negocios} ${negocios === 1 ? "negócio" : "negócios"}. ` +
           `Escolha para qual etapa eles vão antes de arquivá-la.`,
+        // A ÚNICA recusa que a tela troca por uma pergunta em vez de mostrar.
+        precisaDestino: true,
       };
     }
     const destino = restantes.find((e) => e.id === destinoId);

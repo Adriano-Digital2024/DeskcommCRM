@@ -28,9 +28,11 @@ vi.mock("sonner", () => ({
 import { apiClient } from "@/lib/api/client";
 import {
   StagesSection,
+  contagemDeNegocios,
   destinosPossiveis,
   papelDaEtapa,
   patchDePapel,
+  ROTULO,
   vizinhoAoMover,
 } from "./_stages";
 
@@ -129,6 +131,35 @@ describe("destinosPossiveis — para onde os negócios podem ir", () => {
   it("funil sem etapa comum sobrando não oferece destino nenhum", () => {
     expect(destinosPossiveis([ETAPAS[0]!, ETAPAS[2]!, ETAPAS[3]!], "e1")).toEqual([]);
   });
+
+  /**
+   * ⚠️ AS DUAS METADES SEPARADAS, de propósito. Os testes acima morrem se
+   * `!is_won && !is_lost` sair inteiro — e sobrevivem a quem remover só um dos
+   * dois. São defeitos diferentes: mandar negócios para a etapa de GANHO os
+   * marca vendidos com data de fechamento (`fn_crm_lead_close_on_stage`); para a
+   * de PERDA, `fn_validate_lost_reason_required` levanta `22023` e o texto do
+   * Postgres chega à tela.
+   */
+  it("a etapa de PERDA sozinha já é excluída", () => {
+    const semGanho = [ETAPAS[0]!, ETAPAS[1]!, ETAPAS[3]!];
+    expect(destinosPossiveis(semGanho, "e1").map((e) => e.id)).toEqual(["e2"]);
+  });
+
+  it("a etapa de GANHO sozinha já é excluída", () => {
+    const semPerda = [ETAPAS[0]!, ETAPAS[1]!, ETAPAS[2]!];
+    expect(destinosPossiveis(semPerda, "e1").map((e) => e.id)).toEqual(["e2"]);
+  });
+});
+
+describe("contagemDeNegocios — a tela recompõe a frase, então pluraliza", () => {
+  it("um negócio não vira «1 negócios»", () => {
+    expect(contagemDeNegocios(1)).toBe("1 negócio");
+  });
+
+  it("zero e muitos ficam no plural", () => {
+    expect(contagemDeNegocios(0)).toBe("0 negócios");
+    expect(contagemDeNegocios(38)).toBe("38 negócios");
+  });
 });
 
 describe("vizinhoAoMover — a coluna da esquerda depois do passo", () => {
@@ -153,13 +184,26 @@ describe("StagesSection — a linha se explica sozinha", () => {
    * entende o que é a etapa de fechamento?") vira um chute. O rótulo do seletor
    * foi escrito para ser lido SOB este cabeçalho.
    */
-  it("cada controle da linha tem um rótulo visível", async () => {
+  it("cada controle tem rótulo NOS DOIS layouts — cabeçalho no desktop, na linha no celular", async () => {
     montar();
     await screen.findByTestId("nome-e1");
-    expect(screen.getByText("Nome da coluna (clique para renomear)")).toBeInTheDocument();
-    expect(screen.getByText("Ordem")).toBeInTheDocument();
-    expect(screen.getByText("O que acontece nesta coluna")).toBeInTheDocument();
-    // E o seletor mostra o rótulo que só faz sentido debaixo dele.
+
+    // Desktop: o cabeçalho de colunas.
+    const cabecalho = within(screen.getByTestId("etapas-cabecalho"));
+    for (const texto of [ROTULO.nome, ROTULO.ordem, ROTULO.papel]) {
+      expect(cabecalho.getByText(texto)).toBeInTheDocument();
+    }
+
+    // ⭐ Celular: a linha EMPILHA e o cabeçalho não alinha com nada — os mesmos
+    // rótulos precisam viajar dentro da linha. Sem isto, o defeito que o
+    // cabeçalho consertou fica intacto num viewport inteiro, e `aria-label` não
+    // cobre: é invisível para quem enxerga.
+    const linha = within(screen.getByTestId("etapa-e1"));
+    expect(linha.getByText(ROTULO.nome)).toBeInTheDocument();
+    expect(linha.getByText(ROTULO.ordem)).toBeInTheDocument();
+    expect(linha.getByText(ROTULO.papel)).toBeInTheDocument();
+
+    // E o seletor mostra o rótulo que só faz sentido debaixo deles.
     expect(screen.getByTestId("papel-e3")).toHaveTextContent("Aqui o cliente fecha");
     expect(screen.getByTestId("papel-e1")).toHaveTextContent("Nada especial");
   });
@@ -316,6 +360,28 @@ describe("StagesSection — a marcação de fechamento", () => {
     await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2));
   });
 
+  /**
+   * ⭐ O LINK É SOBRE O ERRO, NÃO SOBRE A LINHA. Condicionado a "esta linha tem
+   * passo", um nome duplicado produzia o non sequitur "Já existe uma etapa
+   * chamada «Cancelado». Ir para o mapeamento do assistente."
+   */
+  it("recusa de NOME não oferece o mapeamento do assistente", async () => {
+    const user = userEvent.setup();
+    vi.mocked(apiClient.get).mockResolvedValue({ data: estado({ won: "e3" }) });
+    vi.mocked(apiClient.patch).mockRejectedValue(
+      new ApiError(422, "unprocessable_entity", undefined, "r", "Já existe uma etapa chamada «Cancelado» neste funil. Escolha outro nome."),
+    );
+    montar();
+    const campo = await screen.findByTestId("nome-e3");
+    await user.clear(campo);
+    await user.type(campo, "Cancelado");
+    await user.tab();
+
+    const aviso = await screen.findByTestId("etapa-erro-e3");
+    expect(aviso).toHaveTextContent("Escolha outro nome");
+    expect(within(aviso).queryByRole("link")).toBeNull();
+  });
+
   it("etapa que representa um passo do assistente oferece o caminho para desfazer o vínculo", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: estado({ won: "e3" }) });
     montar();
@@ -355,7 +421,7 @@ describe("StagesSection — arquivar", () => {
       new ApiError(
         422,
         "unprocessable_entity",
-        { negocios: 38 },
+        { negocios: 38, precisa_destino: true },
         "r",
         "A etapa «Carrinho abandonado» tem 38 negócios. Escolha para qual etapa eles vão antes de arquivá-la.",
       ),
@@ -393,7 +459,7 @@ describe("StagesSection — arquivar", () => {
     const soDesfecho: EtapaDoFunil[] = [ETAPAS[0]!, ETAPAS[2]!, ETAPAS[3]!];
     vi.mocked(apiClient.get).mockResolvedValue({ data: estado({}, soDesfecho) });
     vi.mocked(apiClient.delete).mockRejectedValue(
-      new ApiError(422, "unprocessable_entity", { negocios: 4 }, "r", "…tem 4 negócios…"),
+      new ApiError(422, "unprocessable_entity", { negocios: 4, precisa_destino: true }, "r", "…tem 4 negócios…"),
     );
     montar();
     await screen.findByTestId("nome-e1");
@@ -425,7 +491,7 @@ describe("StagesSection — arquivar", () => {
       new ApiError(
         422,
         "unprocessable_entity",
-        { negocios: 12 },
+        { negocios: 12, precisa_destino: false },
         "r",
         "«Pago» é a etapa de ganho deste funil. Marque OUTRA etapa como de ganho antes de arquivar esta — senão os negócios continuariam indo parar numa coluna fora do quadro.",
       ),
@@ -441,6 +507,76 @@ describe("StagesSection — arquivar", () => {
     );
     expect(screen.queryByTestId("destino-e3")).not.toBeInTheDocument();
     expect(screen.queryByTestId("arquivar-pergunta-e3")).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ A SEGUNDA IRREVERSIBILIDADE. `validarArquivamento` recusa arquivar a etapa
+   * de ganho/perda mas NÃO olha `agent_stage_hint`, e o DELETE não limpa o hint:
+   * `resolveDestinoDoAgente` procura o alvo com `!is_archived`, então arquivar
+   * desliga o passo do assistente em silêncio. A tela avisava sobre a coluna não
+   * voltar e não dizia nada sobre isto.
+   */
+  it("⭐ avisa que arquivar desliga o passo do assistente — citando o passo", async () => {
+    const user = userEvent.setup();
+    vi.mocked(apiClient.get).mockResolvedValue({ data: estado({ negotiating: "e2" }) });
+    montar();
+    await screen.findByTestId("nome-e1");
+
+    await user.click(screen.getByTestId("arquivar-e2"));
+    const aviso = await screen.findByTestId("arquivar-perde-passo-e2");
+    expect(aviso).toHaveTextContent("assistente usa para «Em negociação»");
+    expect(aviso).toHaveTextContent("para de mover o card nesse passo");
+    expect(within(aviso).getByRole("link")).toHaveAttribute("href", `#mapeamento-${PIPE}`);
+  });
+
+  it("etapa sem vínculo com o assistente não ganha aviso que não se aplica", async () => {
+    const user = userEvent.setup();
+    montar();
+    await screen.findByTestId("nome-e1");
+    await user.click(screen.getByTestId("arquivar-e1"));
+    await screen.findByTestId("arquivar-painel-e1");
+    expect(screen.queryByTestId("arquivar-perde-passo-e1")).not.toBeInTheDocument();
+  });
+
+  it("com UM negócio a frase não vira «1 negócios estão»", async () => {
+    const user = userEvent.setup();
+    vi.mocked(apiClient.delete).mockRejectedValue(
+      new ApiError(422, "unprocessable_entity", { negocios: 1, precisa_destino: true }, "r", "…tem 1 negócio…"),
+    );
+    montar();
+    await screen.findByTestId("nome-e1");
+
+    await user.click(screen.getByTestId("arquivar-e1"));
+    await user.click(screen.getByTestId("arquivar-confirmar-e1"));
+    const pergunta = await screen.findByTestId("arquivar-pergunta-e1");
+    expect(pergunta).toHaveTextContent("1 negócio está nesta etapa. Para onde ele vai?");
+    expect(pergunta).not.toHaveTextContent("1 negócios");
+  });
+
+  /**
+   * ⭐ A tela reage ao que o SERVIDOR disse, não ao que ela deduz. Uma recusa
+   * NOVA sobre etapa comum com negócios (aqui: um 409 de concorrência) tem de
+   * chegar ao usuário inteira — a versão anterior a trocava por "para onde eles
+   * vão?" e o motivo real só aparecia um passo depois.
+   */
+  it("recusa que NÃO pede destino chega inteira, mesmo com negócios na etapa", async () => {
+    const user = userEvent.setup();
+    vi.mocked(apiClient.delete).mockRejectedValue(
+      new ApiError(
+        409,
+        "state_conflict",
+        { negocios: 7, precisa_destino: false },
+        "r",
+        "«Carrinho abandonado» mudou de papel neste funil enquanto você editava.",
+      ),
+    );
+    montar();
+    await screen.findByTestId("nome-e1");
+
+    await user.click(screen.getByTestId("arquivar-e1"));
+    await user.click(screen.getByTestId("arquivar-confirmar-e1"));
+    expect(await screen.findByTestId("arquivar-erro-e1")).toHaveTextContent("mudou de papel");
+    expect(screen.queryByTestId("arquivar-pergunta-e1")).not.toBeInTheDocument();
   });
 
   it("erro 500 não vaza texto do Postgres para o dono da clínica", async () => {

@@ -408,7 +408,7 @@ describe("DELETE /api/v1/pipelines/[id]/stages/[stageId]", () => {
 
     expect(res.status).toBe(422);
     const body = (await res.json()) as {
-      error: { message: string; details?: { negocios?: number } };
+      error: { message: string; details?: { negocios?: number; precisa_destino?: boolean } };
     };
     // 2, não 3: o negócio de «Cancelado» não está nesta etapa.
     expect(body.error.message).toContain("2 negócios");
@@ -416,6 +416,10 @@ describe("DELETE /api/v1/pipelines/[id]/stages/[stageId]", () => {
     // ⭐ E o MESMO 2 chega em `details`, como número. É o que a tela usa para
     // perguntar "para onde vão os 2 negócios?" sem extrair dígito de frase.
     expect(body.error.details?.negocios).toBe(2);
+    // ⭐ E a rota diz QUAL regra recusou. É isso que a tela troca por uma
+    // pergunta; sem o campo ela re-derivaria o motivo e engoliria qualquer
+    // recusa nova sobre uma etapa comum com negócios.
+    expect(body.error.details?.precisa_destino).toBe(true);
     expect(db.escritas).toEqual([]);
   });
 

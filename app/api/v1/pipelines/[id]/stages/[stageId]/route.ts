@@ -255,7 +255,12 @@ export async function DELETE(req: NextRequest, ctx: RouteCtx): Promise<Response>
   if (!veredito.ok) {
     return fail("unprocessable_entity", veredito.erro, 422, {
       requestId,
-      details: { negocios },
+      // `precisa_destino` diz QUAL regra recusou. Sem ele a tela teria de
+      // re-derivar o motivo ("tem negócio e não é de ganho/perda") e engoliria
+      // qualquer recusa nova sobre uma etapa comum com negócios, trocando-a por
+      // "para onde eles vão?" — o usuário gastaria um passo antes de ver o
+      // motivo real.
+      details: { negocios, precisa_destino: veredito.precisaDestino === true },
     });
   }
 
