@@ -179,4 +179,7 @@ export type AuditAction =
   | "conversation.note_added"
   | "conversation.note_deleted"
   | "ai.case_replied"
-  | "pipeline.agent_mapping_updated";
+  | "pipeline.agent_mapping_updated"
+  | "pipeline.stage_created"
+  | "pipeline.stage_updated"
+  | "pipeline.stage_archived";
