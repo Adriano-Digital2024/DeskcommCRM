@@ -23,7 +23,16 @@ vi.mock("ai", () => ({
 
 vi.mock("@/lib/ai/gateway", async () => {
   const real = await vi.importActual<typeof import("@/lib/ai/gateway")>("@/lib/ai/gateway");
-  return { ...real, gatewayConfig: () => gatewayConfigMock() };
+  return {
+    ...real,
+    gatewayConfig: () => gatewayConfigMock(),
+    // Mockado porque a resposta REAL depende de haver chave no ambiente, e este
+    // teste mede qual OBJETO DE MODELO chega em `embed()` — não a configuração.
+    // Sem isto o arquivo só passa em máquina com `.env.local` preenchido: no CI
+    // `embedText` aborta em `embed_unavailable` antes de chegar no que se mede,
+    // e o teste vira refém de credencial que ele não usa.
+    isEmbeddingProviderConfigured: () => true,
+  };
 });
 
 let gatewayConfigMock: () => { apiKey: string; baseURL?: string } | null;
