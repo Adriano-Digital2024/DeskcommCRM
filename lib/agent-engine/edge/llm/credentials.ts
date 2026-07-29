@@ -19,6 +19,9 @@ import type { CacheTtl } from './stable-prefix';
 export interface LlmEdgeConfig {
   /** chave de plataforma (fallback quando a org não tem BYOK). Opcional no boot. */
   anthropicApiKey?: string;
+  openaiApiKey?: string;
+  openrouterApiKey?: string;
+  agentrouterApiKey?: string;
   /**
    * TTL do prefixo estável de cache (knob LLM_CACHE_TTL). Opcional para quem
    * monta a config na mão (testes) — o seam aplica a doutrina '1h' quando ausente.
@@ -28,6 +31,9 @@ export interface LlmEdgeConfig {
 
 export function llmEdgeConfigFromEnv(env: {
   ANTHROPIC_API_KEY?: string;
+  OPENAI_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
+  AGENTROUTER_API_KEY?: string;
   LLM_CACHE_TTL?: string;
 }): LlmEdgeConfig {
   const ttl = env.LLM_CACHE_TTL ?? '1h';
@@ -36,6 +42,8 @@ export function llmEdgeConfigFromEnv(env: {
   }
   return {
     ...(env.ANTHROPIC_API_KEY ? { anthropicApiKey: env.ANTHROPIC_API_KEY } : {}),
+    ...(env.OPENROUTER_API_KEY ? { openrouterApiKey: env.OPENROUTER_API_KEY } : {}),
+    ...(env.AGENTROUTER_API_KEY ? { agentrouterApiKey: env.AGENTROUTER_API_KEY } : {}),
     cacheTtl: ttl,
   };
 }
@@ -151,6 +159,10 @@ export async function resolveOrgLlmConfig(
     });
   } else if (provider === 'anthropic' && cfg.anthropicApiKey) {
     apiKey = cfg.anthropicApiKey;
+  } else if (provider === 'openrouter' && cfg.openrouterApiKey) {
+    apiKey = cfg.openrouterApiKey;
+  } else if (provider === 'agentrouter' && cfg.agentrouterApiKey) {
+    apiKey = cfg.agentrouterApiKey;
   } else {
     throw new LlmNotConfiguredError();
   }

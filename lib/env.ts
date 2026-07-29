@@ -80,7 +80,11 @@ const schema = z.object({
   VERCEL_AI_GATEWAY_URL: z.string().optional().default(""),
   ANTHROPIC_API_KEY: z.string().optional().default(""),
   OPENAI_API_KEY: z.string().optional().default(""),
-
+  OPENROUTER_API_KEY: z.string().optional().default(""),
+  OPENROUTER_BASE_URL: z.string().optional().default("https://openrouter.ai/api/v1"),
+  AGENTROUTER_API_KEY: z.string().optional().default(""),
+  AGENTROUTER_BASE_URL: z.string().optional().default("https://agentrouter.org/v1"),
+  
   // Fusão (Fase 4): DONO ÚNICO dos eventos ai_agent.dispatch_requested.
   // 'engine' (default) = o worker agent-engine é o único consumidor (o cron
   // agent-dispatcher vira no-op mecânico); 'native' = o dispatcher EPIC-13
@@ -173,9 +177,13 @@ export const env = parsed.data;
 
 // Soft warning for env-gated AI keys (worker degrades gracefully but operators
 // should know when the bot is silent for config reasons).
-if (!env.AI_GATEWAY_API_KEY && !env.ANTHROPIC_API_KEY) {
+if (
+  !env.AI_GATEWAY_API_KEY &&
+  !env.ANTHROPIC_API_KEY &&
+  !env.OPENROUTER_API_KEY &&
+  !env.AGENTROUTER_API_KEY) {
   console.warn(
-    "[env] No AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY set — ai-response-worker will skip with reason='ai_gateway_key_missing'.",
+    "[env] No AI_GATEWAY_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY or AGENTROUTER_API_KEY set — ai-response-worker will skip with reason='ai_gateway_key_missing'.",
   );
 }
 if (!env.OPENAI_API_KEY) {

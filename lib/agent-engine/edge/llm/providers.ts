@@ -23,6 +23,8 @@ export type ProviderRegistry = Record<string, (apiKey: string, modelId: string) 
 const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com';
 const OPENAI_ENDPOINT = 'https://api.openai.com';
 const GOOGLE_ENDPOINT = 'https://generativelanguage.googleapis.com';
+const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1';
+const AGENTROUTER_ENDPOINT = 'https://agentrouter.org/v1';
 
 /**
  * Providers reais do lançamento. Sonnet (Anthropic) é o default RECOMENDADO —
@@ -51,6 +53,10 @@ export function createDefaultRegistry(opts?: { allowedHosts?: string[] }): Provi
       createOpenAI({ apiKey, fetch: contain(OPENAI_ENDPOINT) })(modelId),
     google: (apiKey, modelId) =>
       createGoogleGenerativeAI({ apiKey, fetch: contain(GOOGLE_ENDPOINT) })(modelId),
+    openrouter: (apiKey, modelId) =>
+      createOpenAI({ apiKey, fetch: contain(OPENROUTER_ENDPOINT) })(modelId),
+    agentrouter: (apiKey, modelId) =>
+      createOpenAI({ apiKey, fetch: contain(AGENTROUTER_ENDPOINT) })(modelId),
   };
 }
 
