@@ -69,6 +69,11 @@ const schema = z.object({
   WAHA_API_KEY: required("WAHA_API_KEY"),
   WAHA_WEBHOOK_BASE_URL: required("WAHA_WEBHOOK_BASE_URL"),
 
+  // Meta Cloud API — opcionais (degradam graciosamente se ausentes)
+  META_APP_ID: z.string().optional().default(""),
+  META_APP_SECRET: z.string().optional().default(""),
+  META_WEBHOOK_VERIFY_TOKEN: z.string().optional().default(""),
+
   // Upstash Redis
   UPSTASH_REDIS_REST_URL: required("UPSTASH_REDIS_REST_URL"),
   UPSTASH_REDIS_REST_TOKEN: required("UPSTASH_REDIS_REST_TOKEN"),

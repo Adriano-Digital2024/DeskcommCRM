@@ -48,6 +48,8 @@ export async function signInWithPassword(
     password: parsed.data.password,
   });
 
+console.log("SUPABASE LOGIN ERROR:", error);
+
   if (error || !data.user) {
     await audit({
       action: "auth.login_failed",

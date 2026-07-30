@@ -8376,3 +8376,128 @@ create policy tenant_isolation_knowledge_searches_all on knowledge_searches
 -- o Supabase concede por default privilege não tem razão de existir aqui — esta
 -- tabela nunca é lida sem sessão. Idempotente: revogar o que não está lá é no-op.
 revoke all on public.knowledge_searches from anon;
+
+-- ---- Meta Cloud API provider (migration 0087) ----
+-- Idempotente: toda operação usa add column if not exists / create if not exists.
+
+alter table public.channel_sessions add column if not exists provider text not null default 'waha';
+
+alter table public.webhook_events_log drop constraint if exists webhook_events_log_provider_check;
+alter table public.webhook_events_log add constraint webhook_events_log_provider_check
+  check (provider = any (array['waha'::text, 'nuvemshop'::text, 'generic'::text, 'meta_cloud'::text]));
+alter table public.channel_sessions add column if not exists meta_phone_number_id text;
+alter table public.channel_sessions add column if not exists meta_waba_id text;
+alter table public.channel_sessions add column if not exists meta_access_token_encrypted bytea;
+
+alter table public.channel_sessions alter column waha_session_name drop not null;
+alter table public.channel_sessions alter column webhook_secret_encrypted drop not null;
+
+alter table public.channel_sessions drop constraint if exists channel_sessions_engine_check;
+alter table public.channel_sessions add constraint channel_sessions_engine_check
+  check (engine is null or engine = any (array['NOWEB'::text, 'WEBJS'::text, 'META_CLOUD'::text]));
+
+alter table public.channel_sessions add constraint channel_sessions_provider_check
+  check (provider = any (array['waha'::text, 'meta_cloud'::text]));
+
+alter table public.channel_sessions drop constraint if exists channel_sessions_status_check;
+alter table public.channel_sessions add constraint channel_sessions_status_check
+  check (status = any (array['STARTING'::text, 'SCAN_QR_CODE'::text, 'WORKING'::text, 'STOPPED'::text, 'FAILED'::text, 'DISCONNECTED'::text]));
+
+create index if not exists idx_channel_sessions_provider
+  on public.channel_sessions (organization_id, provider);
+
+create or replace function public.fn_channel_session_by_meta_phone(
+  p_phone_number_id text
+)
+returns table (
+  id uuid,
+  organization_id uuid,
+  provider text,
+  status text,
+  meta_waba_id text,
+  meta_phone_number_id text
+)
+language sql
+stable
+security invoker
+set search_path = 'public'
+as $$
+  select
+    s.id,
+    s.organization_id,
+    s.provider,
+    s.status,
+    s.meta_waba_id,
+    s.meta_phone_number_id
+  from public.channel_sessions s
+  where s.meta_phone_number_id = p_phone_number_id
+    and s.provider = 'meta_cloud'
+  limit 1;
+$$;
+
+create or replace view public.vw_channel_sessions as
+select
+  s.id,
+  s.organization_id,
+  s.provider,
+  s.engine,
+  s.status,
+  s.status_reason,
+  s.phone_number,
+  s.display_name,
+  s.daily_message_limit,
+  s.is_warmup_complete,
+  s.last_health_check_at,
+  s.last_status_change_at,
+  s.consecutive_health_fails,
+  s.created_at,
+  s.updated_at,
+  s.created_by,
+  case when s.provider = 'waha' then s.waha_session_name else null end as waha_session_name,
+  case when s.provider = 'waha' then s.webhook_path_token else null end as webhook_path_token,
+  case when s.provider = 'meta_cloud' then s.meta_phone_number_id else null end as meta_phone_number_id,
+  case when s.provider = 'meta_cloud' then s.meta_waba_id else null end as meta_waba_id
+from public.channel_sessions s;
+
+grant select on public.vw_channel_sessions to authenticated, anon, service_role;
+
+-- Precisa dropar a constraint (que criou um índice com o mesmo nome)
+-- antes de criar o índice condicional que permite múltiplos NULLs.
+alter table public.channel_sessions
+  drop constraint if exists channel_sessions_waha_session_name_unique;
+create unique index if not exists channel_sessions_waha_session_name_unique
+  on public.channel_sessions (waha_session_name)
+  where waha_session_name is not null;
+
+create or replace function public.fn_encrypt_meta_token(
+  p_plaintext text,
+  p_encryption_key text
+)
+returns bytea
+language plpgsql
+security definer
+as $$
+begin
+  return extensions.pgp_sym_encrypt(p_plaintext, p_encryption_key);
+end;
+$$;
+
+revoke execute on function public.fn_encrypt_meta_token(text, text) from anon, authenticated;
+
+create or replace function public.fn_decrypt_meta_token(
+  p_ciphertext bytea,
+  p_encryption_key text
+)
+returns text
+language plpgsql
+security definer
+as $$
+begin
+  return extensions.pgp_sym_decrypt(p_ciphertext, p_encryption_key);
+exception
+  when others then
+    return null;
+end;
+$$;
+
+revoke execute on function public.fn_decrypt_meta_token(bytea, text) from anon, authenticated;

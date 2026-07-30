@@ -11,6 +11,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ApiError } from "@/lib/api/types";
 import type { Actor, HandlerCtx } from "@/lib/api/handlers/types";
 import { audit } from "@/lib/audit";
+import { env } from "@/lib/env";
+import { MetaCloudClient } from "@/lib/meta/client";
 import type { ListMessagesQuery, SendMessageInput } from "@/lib/schemas";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Message } from "@/lib/types/messaging";
@@ -113,6 +115,17 @@ export async function listMessagesHandler(
 // send
 // ---------------------------------------------------------------------------
 
+interface SendMessageConvJoined {
+  id: string;
+  organization_id: string;
+  contact_id: string;
+  channel_session_id: string;
+  is_group: boolean;
+  group_chat_id: string | null;
+  contacts: { phone_number: string | null; wa_identity: string | null; is_blocked: boolean } | null;
+  channel_sessions: { waha_session_name: string | null; status: string; provider: string; meta_phone_number_id: string | null; meta_waba_id: string | null } | null;
+}
+
 function previewFrom(input: {
   body?: string;
   media_url?: string;
@@ -132,7 +145,7 @@ export async function sendMessageHandler(
   const { data: conv, error: convErr } = await supabase
     .from("conversations")
     .select(
-      "id, organization_id, contact_id, channel_session_id, is_group, group_chat_id, contacts:contact_id(phone_number, wa_identity, is_blocked), channel_sessions:channel_session_id(waha_session_name, status)",
+      "id, organization_id, contact_id, channel_session_id, is_group, group_chat_id, contacts:contact_id(phone_number, wa_identity, is_blocked), channel_sessions:channel_session_id(waha_session_name, status, provider, meta_phone_number_id, meta_waba_id)",
     )
     .eq("id", input.conversation_id)
     .maybeSingle();
@@ -144,17 +157,7 @@ export async function sendMessageHandler(
     throw new ApiError(404, "not_found", undefined, ctx.requestId, "Conversa não encontrada.");
   }
 
-  type Joined = {
-    id: string;
-    organization_id: string;
-    contact_id: string;
-    channel_session_id: string;
-    is_group: boolean;
-    group_chat_id: string | null;
-    contacts: { phone_number: string | null; wa_identity: string | null; is_blocked: boolean } | null;
-    channel_sessions: { waha_session_name: string; status: string } | null;
-  };
-  const c = conv as unknown as Joined;
+  const c = conv as unknown as SendMessageConvJoined;
 
   if (c.contacts?.is_blocked) {
     throw new ApiError(
@@ -216,106 +219,21 @@ export async function sendMessageHandler(
   }
   let message = created as unknown as Message;
 
-  const waha = getWahaClient();
-  const chatId = resolveWahaChatId({
-    isGroup: c.is_group,
-    groupChatId: c.group_chat_id,
-    phoneNumber: c.contacts?.phone_number,
-    waIdentity: c.contacts?.wa_identity,
-  });
+  const provider = c.channel_sessions?.provider ?? "waha";
 
-  if (!waha) {
-    const { data: updated } = await supabase
-      .from("messages")
-      .update({
-        metadata: { ...(message.metadata ?? {}), queued_reason: "waha_not_configured" },
-      })
-      .eq("id", message.id)
-      .select(MSG_COLS)
-      .maybeSingle();
-    if (updated) message = updated as unknown as Message;
-  } else if (!chatId) {
-    const { data: updated } = await supabase
-      .from("messages")
-      .update({
-        status: "failed",
-        error_code: "missing_phone_number",
-        error_message: "Contato sem telefone para envio WhatsApp.",
-      })
-      .eq("id", message.id)
-      .select(MSG_COLS)
-      .maybeSingle();
-    if (updated) message = updated as unknown as Message;
-  } else if (!c.channel_sessions || c.channel_sessions.status !== "WORKING") {
-    const { data: updated } = await supabase
-      .from("messages")
-      .update({
-        metadata: {
-          ...(message.metadata ?? {}),
-          queued_reason: "channel_session_not_working",
-        },
-      })
-      .eq("id", message.id)
-      .select(MSG_COLS)
-      .maybeSingle();
-    if (updated) message = updated as unknown as Message;
+  if (provider === "meta_cloud") {
+    await sendViaMeta(supabase, c, message, input, ctx.requestId);
   } else {
-    try {
-      let wahaRes: unknown;
-      if (input.media_storage_path) {
-        // Storage-first: signed URL curta só pro WAHA baixar (nunca base64).
-        const admin = createAdminClient();
-        const { data: signed, error: signErr } = await admin.storage
-          .from("whatsapp-media")
-          .createSignedUrl(input.media_storage_path, 600);
-        if (signErr || !signed?.signedUrl) {
-          throw new Error(`storage_sign_failed: ${signErr?.message ?? "no_url"}`);
-        }
-        const filename = input.media_storage_path.split("/").pop() ?? undefined;
-        wahaRes = await waha.sendMedia(
-          c.channel_sessions.waha_session_name,
-          chatId,
-          wahaSendPlanFor(input.type, {
-            url: signed.signedUrl,
-            mime: input.media_mime ?? "application/octet-stream",
-            filename,
-            caption: input.body ?? null,
-          }),
-        );
-      } else {
-        wahaRes = await waha.sendMessage(
-          c.channel_sessions.waha_session_name,
-          chatId,
-          input.body ?? "",
-        );
-      }
-      // Fase 4A-3: o shape do id varia por engine (string | {_serialized} |
-      // NOWEB {id:{id}} | {key:{id}}) — parser compartilhado cobre todos; sem
-      // external_id o ack do webhook duplica a linha em vez de atualizar.
-      const externalId = parseWahaMessageId(wahaRes);
-      const { data: updated } = await supabase
-        .from("messages")
-        .update({ status: "sent", external_id: externalId, ack: 0 })
-        .eq("id", message.id)
-        .select(MSG_COLS)
-        .maybeSingle();
-      if (updated) message = updated as unknown as Message;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "waha_unknown";
-      const code = msg.startsWith("storage_sign_failed") ? "storage_sign_failed" : "waha_error";
-      const { data: updated } = await supabase
-        .from("messages")
-        .update({
-          status: "failed",
-          error_code: code,
-          error_message: msg,
-        })
-        .eq("id", message.id)
-        .select(MSG_COLS)
-        .maybeSingle();
-      if (updated) message = updated as unknown as Message;
-    }
+    await sendViaWaha(supabase, c, message, input);
   }
+
+  // Atualiza `message` com o estado pós-envio
+  const { data: refreshed } = await supabase
+    .from("messages")
+    .select(MSG_COLS)
+    .eq("id", message.id)
+    .maybeSingle();
+  if (refreshed) message = refreshed as unknown as Message;
 
   await supabase
     .from("conversations")
@@ -356,4 +274,201 @@ export async function sendMessageHandler(
     });
 
   return message;
+}
+
+async function sendViaMeta(
+  supabase: SB,
+  c: SendMessageConvJoined,
+  message: Message,
+  input: SendMessageInput,
+  _requestId: string,
+): Promise<void> {
+  if (!c.channel_sessions?.meta_phone_number_id) {
+    await supabase
+      .from("messages")
+      .update({
+        status: "failed",
+        error_code: "meta_not_configured",
+        error_message: "Meta Cloud API não configurado para esta sessão.",
+      })
+      .eq("id", message.id);
+    return;
+  }
+
+  if (c.channel_sessions.status !== "WORKING") {
+    await supabase
+      .from("messages")
+      .update({
+        metadata: { ...(message.metadata ?? {}), queued_reason: "channel_session_not_working" },
+      })
+      .eq("id", message.id);
+    return;
+  }
+
+  const phoneNumber = c.contacts?.phone_number;
+  if (!phoneNumber) {
+    await supabase
+      .from("messages")
+      .update({
+        status: "failed",
+        error_code: "missing_phone_number",
+        error_message: "Contato sem telefone para envio WhatsApp.",
+      })
+      .eq("id", message.id);
+    return;
+  }
+
+  const to = phoneNumber.replace(/\D/g, "");
+
+  const admin = createAdminClient();
+  const { data: session } = await admin
+    .from("channel_sessions")
+    .select("meta_access_token_encrypted")
+    .eq("id", c.channel_session_id)
+    .maybeSingle();
+
+  const encryptedToken = session?.meta_access_token_encrypted;
+  if (!encryptedToken) {
+    await supabase
+      .from("messages")
+      .update({
+        status: "failed",
+        error_code: "meta_token_missing",
+        error_message: "Token de acesso Meta não encontrado. Reconecte a integração.",
+      })
+      .eq("id", message.id);
+    return;
+  }
+
+  const { data: token } = await admin.rpc("fn_decrypt_meta_token", {
+    p_ciphertext: encryptedToken,
+    p_encryption_key: env.WAHA_BYO_ENCRYPTION_KEY,
+  });
+
+  if (!token) {
+    await supabase
+      .from("messages")
+      .update({
+        status: "failed",
+        error_code: "meta_token_decrypt_failed",
+        error_message: "Token de acesso Meta inválido ou corrompido.",
+      })
+      .eq("id", message.id);
+    return;
+  }
+
+  const client = new MetaCloudClient(c.channel_sessions.meta_phone_number_id, token as string);
+
+  try {
+    let metaRes: { message_id: string };
+    if (input.media_storage_path) {
+      const signedRes = await admin.storage
+        .from("whatsapp-media")
+        .createSignedUrl(input.media_storage_path, 600);
+      if (!signedRes.data?.signedUrl) {
+        throw new Error("storage_sign_failed");
+      }
+      const uploadRes = await client.uploadMedia(
+        signedRes.data.signedUrl,
+        input.media_mime ?? "application/octet-stream",
+      );
+      metaRes = await client.sendMedia(to, uploadRes.id, input.type, input.body ?? undefined);
+    } else {
+      metaRes = await client.sendText(to, input.body ?? "");
+    }
+
+    await supabase
+      .from("messages")
+      .update({ status: "sent", external_id: metaRes.message_id, ack: 1 })
+      .eq("id", message.id);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "meta_unknown";
+    const code = msg.startsWith("storage_sign_failed") ? "storage_sign_failed" : "meta_error";
+    await supabase
+      .from("messages")
+      .update({ status: "failed", error_code: code, error_message: msg.slice(0, 300) })
+      .eq("id", message.id);
+  }
+}
+
+async function sendViaWaha(
+  supabase: SB,
+  c: SendMessageConvJoined,
+  message: Message,
+  input: SendMessageInput,
+): Promise<void> {
+  const waha = getWahaClient();
+  const chatId = resolveWahaChatId({
+    isGroup: c.is_group,
+    groupChatId: c.group_chat_id,
+    phoneNumber: c.contacts?.phone_number,
+    waIdentity: c.contacts?.wa_identity,
+  });
+
+  if (!waha) {
+    await supabase
+      .from("messages")
+      .update({
+        metadata: { ...(message.metadata ?? {}), queued_reason: "waha_not_configured" },
+      })
+      .eq("id", message.id);
+  } else if (!chatId) {
+    await supabase
+      .from("messages")
+      .update({
+        status: "failed",
+        error_code: "missing_phone_number",
+        error_message: "Contato sem telefone para envio WhatsApp.",
+      })
+      .eq("id", message.id);
+  } else if (!c.channel_sessions || c.channel_sessions.status !== "WORKING") {
+    await supabase
+      .from("messages")
+      .update({
+        metadata: { ...(message.metadata ?? {}), queued_reason: "channel_session_not_working" },
+      })
+      .eq("id", message.id);
+  } else {
+    try {
+      let wahaRes: unknown;
+      if (input.media_storage_path) {
+        const admin = createAdminClient();
+        const { data: signed, error: signErr } = await admin.storage
+          .from("whatsapp-media")
+          .createSignedUrl(input.media_storage_path, 600);
+        if (signErr || !signed?.signedUrl) {
+          throw new Error(`storage_sign_failed: ${signErr?.message ?? "no_url"}`);
+        }
+        const filename = input.media_storage_path.split("/").pop() ?? undefined;
+        wahaRes = await waha.sendMedia(
+          c.channel_sessions.waha_session_name!,
+          chatId,
+          wahaSendPlanFor(input.type, {
+            url: signed.signedUrl,
+            mime: input.media_mime ?? "application/octet-stream",
+            filename,
+            caption: input.body ?? null,
+          }),
+        );
+      } else {
+        wahaRes = await waha.sendMessage(
+          c.channel_sessions.waha_session_name!,
+          chatId,
+          input.body ?? "",
+        );
+      }
+      const externalId = parseWahaMessageId(wahaRes);
+      await supabase
+        .from("messages")
+        .update({ status: "sent", external_id: externalId, ack: 0 })
+        .eq("id", message.id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "waha_unknown";
+      const code = msg.startsWith("storage_sign_failed") ? "storage_sign_failed" : "waha_error";
+      await supabase
+        .from("messages")
+        .update({ status: "failed", error_code: code, error_message: msg.slice(0, 300) })
+        .eq("id", message.id);
+    }
+  }
 }

@@ -1,19 +1,13 @@
-/**
- * GET /api/v1/channel-sessions/[id] — health check AO VIVO de um canal.
- *
- * Consulta o status real no WAHA, grava `last_health_check_at` (+ sincroniza
- * `status`) no DB e devolve o estado atual. É a fonte de verdade quando o
- * usuário abre a Central de Conexões ou está aguardando o QR ser escaneado.
- *
- * Qualquer membro da org pode consultar. organization_id vem da sessão.
- */
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 
 import { ok, fail } from "@/lib/api/wrappers";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { env } from "@/lib/env";
+import { MetaCloudClient } from "@/lib/meta/client";
 import { isChannelStatus } from "@/lib/schemas/channels";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getWahaClient } from "@/lib/waha/client";
 
 export const dynamic = "force-dynamic";
@@ -33,55 +27,135 @@ export async function GET(
   const supabase = await createClient();
   const { data: session } = await supabase
     .from("channel_sessions")
-    .select("id, waha_session_name, display_name, phone_number, status")
+    .select("id, provider, waha_session_name, display_name, phone_number, status, meta_phone_number_id, meta_waba_id")
     .eq("organization_id", activeOrg.orgId)
     .eq("id", id)
     .maybeSingle();
   if (!session) return fail("not_found", "Canal não encontrado.", 404, { requestId });
 
-  const waha = getWahaClient();
-  if (!waha) {
-    // Sem WAHA ativo: devolve o que está no DB, sinalizando que não deu p/ checar ao vivo.
-    return ok({ ...session, waha_configured: false }, { requestId });
+  if (session.provider === "meta_cloud") {
+    return checkMetaSession(await supabase, session, requestId);
   }
 
-  let liveStatus = session.status as string;
+  return checkWahaSession(await supabase, session, requestId);
+}
+
+async function checkMetaSession(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  session: {
+    id: string; provider: string; waha_session_name?: string; display_name?: string | null;
+    phone_number?: string | null; status: string; meta_phone_number_id?: string | null; meta_waba_id?: string | null;
+  },
+  requestId: string,
+): Promise<Response> {
+  const admin = createAdminClient();
+  const { data: full } = await admin
+    .from("channel_sessions")
+    .select("meta_access_token_encrypted")
+    .eq("id", session.id)
+    .maybeSingle();
+
+  let liveStatus = session.status;
+  let phoneNumber = session.phone_number as string | null;
+  let metaValid = false;
+
+  if (full?.meta_access_token_encrypted && session.meta_phone_number_id) {
+    const { data: token } = await admin.rpc("fn_decrypt_meta_token", {
+      p_ciphertext: full.meta_access_token_encrypted,
+      p_encryption_key: env.WAHA_BYO_ENCRYPTION_KEY,
+    }) as { data: string | null };
+
+    if (token) {
+      const client = new MetaCloudClient(session.meta_phone_number_id, token as string);
+      try {
+        metaValid = await client.verifyToken();
+        if (metaValid) {
+          liveStatus = "WORKING";
+          const phoneInfo = await fetch(
+            `https://graph.facebook.com/v22.0/${session.meta_phone_number_id}?fields=display_phone_number`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          ).then((r) => r.json() as Promise<Record<string, unknown>>).catch(() => ({} as Record<string, unknown>));
+          const displayPhone = phoneInfo.display_phone_number as string | undefined;
+          if (displayPhone) phoneNumber = displayPhone;
+        } else {
+          liveStatus = "FAILED";
+        }
+      } catch {
+        liveStatus = "FAILED";
+      }
+    } else {
+      liveStatus = "FAILED";
+    }
+  }
+
+  const patch: Record<string, unknown> = { last_health_check_at: new Date().toISOString() };
+  if (liveStatus !== session.status && isChannelStatus(liveStatus)) {
+    patch.status = liveStatus;
+    patch.last_status_change_at = new Date().toISOString();
+  }
+  if (phoneNumber && phoneNumber !== session.phone_number) patch.phone_number = phoneNumber;
+  await supabase.from("channel_sessions").update(patch).eq("id", session.id);
+
+  return ok({
+    id: session.id,
+    provider: session.provider,
+    display_name: session.display_name,
+    phone_number: phoneNumber,
+    status: liveStatus,
+    meta_phone_number_id: session.meta_phone_number_id,
+    meta_waba_id: session.meta_waba_id,
+    meta_configured: metaValid,
+    last_health_check_at: patch.last_health_check_at,
+  }, { requestId });
+}
+
+async function checkWahaSession(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  session: {
+    id: string; provider: string; waha_session_name?: string; display_name?: string | null;
+    phone_number?: string | null; status: string; meta_phone_number_id?: string | null; meta_waba_id?: string | null;
+  },
+  requestId: string,
+): Promise<Response> {
+  const waha = getWahaClient();
+  if (!waha) {
+    return ok({
+      ...session,
+      waha_configured: false,
+    }, { requestId });
+  }
+
+  let liveStatus = session.status;
   let phoneNumber = session.phone_number as string | null;
   try {
-    const remote = (await waha.getSessionQr(session.waha_session_name)) as {
+    const remote = await waha.getSessionQr(session.waha_session_name!) as {
       status?: string;
       me?: { id?: string; pushName?: string };
     };
     if (remote.status) liveStatus = remote.status;
-    // WAHA expõe o número (JID `<phone>@c.us`) quando a sessão está WORKING.
     const jid = remote.me?.id;
     if (jid && !phoneNumber) phoneNumber = jid.replace(/@.*/, "");
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown";
-    // 404 no WAHA = sessão não iniciada lá → considera STOPPED.
     if (msg.includes("404")) liveStatus = "STOPPED";
-    // outros erros: mantém o status do DB (não sobrescreve com ruído transitório).
   }
 
-  // Sincroniza o DB: sempre carimba o health check; atualiza status/telefone só se válido.
   const patch: Record<string, unknown> = { last_health_check_at: new Date().toISOString() };
   if (isChannelStatus(liveStatus) && liveStatus !== session.status) {
     patch.status = liveStatus;
     patch.last_status_change_at = new Date().toISOString();
   }
   if (phoneNumber && phoneNumber !== session.phone_number) patch.phone_number = phoneNumber;
-  await supabase.from("channel_sessions").update(patch).eq("organization_id", activeOrg.orgId).eq("id", id);
+  await supabase.from("channel_sessions").update(patch).eq("id", session.id);
 
-  return ok(
-    {
-      id: session.id,
-      waha_session_name: session.waha_session_name,
-      display_name: session.display_name,
-      phone_number: phoneNumber,
-      status: liveStatus,
-      last_health_check_at: patch.last_health_check_at,
-      waha_configured: true,
-    },
-    { requestId },
-  );
+  return ok({
+    id: session.id,
+    provider: session.provider,
+    waha_session_name: session.waha_session_name,
+    display_name: session.display_name,
+    phone_number: phoneNumber,
+    status: liveStatus,
+    last_health_check_at: patch.last_health_check_at,
+    waha_configured: true,
+  }, { requestId });
 }

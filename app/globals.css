@@ -25,17 +25,23 @@
   --color-border-strong: #d2cdbf;
 
   /* Accent — Sage (11 stops) */
-  --color-accent-50:  #f3f6f1;
-  --color-accent-100: #e4ebe0;
-  --color-accent-200: #c8d6c1;
-  --color-accent-300: #a4ba9a;
-  --color-accent-400: #82a077;
-  --color-accent-500: #67885d;
-  --color-accent-600: #506d48;
-  --color-accent-700: #41573b;
-  --color-accent-800: #374731;
-  --color-accent-900: #2f3c2b;
-  --color-accent-950: #171f15;
+  --color-accent-50:  #fcfcfc;
+  --color-accent-100: #f0f0f0;
+  --color-accent-200: #e0e0e0;
+  --color-accent-300: #bdbdbd;
+  --color-accent-400: #757575;
+  --color-accent-500: #212121;
+  --color-accent-600: #1a1a1a;
+  --color-accent-700: #141414;
+  --color-accent-800: #0d0d0d;
+  --color-accent-900: #070707;
+  --color-accent-950: #030303;
+ 
+  /* Gold - #FFD700 */
+  --color-gold: #FFD700;
+  --color-gold-fg: #212121;
+  --color-gold-soft: rgba(255, 215, 0, 0.12);
+  --color-gold-hover: #e6c200;
   --color-accent: var(--color-accent-600);
   --color-accent-fg: #ffffff;
   --color-accent-soft: var(--color-accent-100);
@@ -160,17 +166,23 @@
   --color-border-strong: #444239;
 
   /* Accent stays same hex stops; default shifts up for dark contrast */
-  --color-accent-50:  #f3f6f1;
-  --color-accent-100: #e4ebe0;
-  --color-accent-200: #c8d6c1;
-  --color-accent-300: #a4ba9a;
-  --color-accent-400: #82a077;
-  --color-accent-500: #67885d;
-  --color-accent-600: #506d48;
-  --color-accent-700: #41573b;
-  --color-accent-800: #374731;
-  --color-accent-900: #2f3c2b;
-  --color-accent-950: #171f15;
+  --color-accent-50:  #fcfcfc;
+  --color-accent-100: #f0f0f0;
+  --color-accent-200: #e0e0e0;
+  --color-accent-300: #bdbdbd;
+  --color-accent-400: #757575;
+  --color-accent-500: #212121;
+  --color-accent-600: #1a1a1a;
+  --color-accent-700: #141414;
+  --color-accent-800: #0d0d0d;
+  --color-accent-900: #070707;
+  --color-accent-950: #030303;
+ 
+  /* Gold - #FFD700 */
+  --color-gold: #FFD700;
+  --color-gold-fg: #212121;
+  --color-gold-soft: rgba(255, 215, 0, 0.12);
+  --color-gold-hover: #e6c200;
   --color-accent: var(--color-accent-400);
   --color-accent-fg: #161510;
   --color-accent-soft: rgba(130, 160, 119, 0.16);
@@ -263,6 +275,12 @@
   ::selection {
     background-color: var(--color-accent-200);
     color: var(--color-accent-950);
+ 
+  /* Gold - #FFD700 */
+  --color-gold: #FFD700;
+  --color-gold-fg: #212121;
+  --color-gold-soft: rgba(255, 215, 0, 0.12);
+  --color-gold-hover: #e6c200;
   }
   [data-theme="dark"] ::selection {
     background-color: var(--color-accent-700);

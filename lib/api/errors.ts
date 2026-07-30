@@ -54,6 +54,7 @@ export const ApiErrorCodes = {
   upstream_unavailable: "upstream_unavailable",
   unavailable: "unavailable", // 503: dependência de config ausente (ex.: pool do engine sem SUPABASE_DB_URL)
   waha_error: "waha_error",
+  meta_error: "meta_error",
   ai_provider_error: "ai_provider_error",
   nuvemshop_error: "nuvemshop_error",
 } as const;

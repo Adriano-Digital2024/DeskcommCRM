@@ -35,7 +35,7 @@ import { withFields, type Logger } from '../obs/logger';
 import { getLeadContext, type LeadContext, type LeadContextResult } from '../edge/crm/get-lead-context';
 import { citationsFromHits, searchKnowledge } from './search-knowledge';
 import type { CrmEdgeConfig } from '../edge/crm/mcp-client';
-import { WahaChannelAdapter } from '../edge/channel/waha-adapter';
+import { ChannelAdapterRouter } from '../edge/channel/channel-router';
 // applySendOutcome é disposição de FILA (cancel/reschedule + cache de opt-out), não
 // egress de canal — o envio em si vai pelo adapter (ChannelAdapter). Ver F2-25.
 import { applySendOutcome } from '../edge/crm/send-message';
@@ -854,7 +854,7 @@ export async function runAgentTurn(
   // CRM apontam o agente publicado, não um id genérico).
   const turnCrmCfg =
     agentConfig !== null ? { ...deps.crmCfg, agentActorId: agentConfig.agentId } : deps.crmCfg;
-  const channel = (deps.channel ?? ((p: pg.Pool) => new WahaChannelAdapter(p, turnCrmCfg)))(pool);
+  const channel = (deps.channel ?? ((p: pg.Pool) => new ChannelAdapterRouter(p, turnCrmCfg)))(pool);
   const clock = deps.clock ?? ((): Date => new Date());
   // STOP lido no turno (fonte: CRM via get_lead_context) — combinado com o cache
   // durável leads.is_opted_out no gate 1 da cadeia (F2-13).
