@@ -225,13 +225,16 @@ export async function handleMetaInbound(
 ): Promise<void> {
   const orgId = session.organization_id;
 
-  const waIdentity = `phone:${msg.from}`;
+  // Meta envia wa_id sem "+"; a check constraint contacts_phone_e164_format exige E.164 (+5511999999999)
+  const phone = msg.from.startsWith("+") ? msg.from : `+${msg.from}`;
 
   const { data: contact, error: contactErr } = await admin.rpc("fn_upsert_wa_contact", {
-    p_organization_id: orgId,
-    p_wa_identity: waIdentity,
-    p_name: msg.profileName,
-    p_phone_number: msg.from,
+    p_org: orgId,
+    p_kind: "phone",
+    p_phone: phone,
+    p_lid: null,
+    p_chat_id: null,
+    p_notify: msg.profileName,
   });
 
   if (contactErr || !contact) {
@@ -241,11 +244,9 @@ export async function handleMetaInbound(
   const contactId = typeof contact === "object" ? (contact as { id: string }).id : String(contact);
 
   const { data: conversation } = await admin.rpc("fn_upsert_wa_conversation", {
-    p_organization_id: orgId,
-    p_contact_id: contactId,
-    p_channel_session_id: session.id,
-    p_is_group: false,
-    p_group_chat_id: null,
+    p_org: orgId,
+    p_contact: contactId,
+    p_session: session.id,
   });
 
   const conversationId = conversation
