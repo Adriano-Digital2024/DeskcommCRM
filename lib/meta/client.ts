@@ -224,8 +224,8 @@ export function metaFriendlyError(msg: string): string {
   if (/fetch failed|ECONNREFUSED|ENOTFOUND|network|timeout|EAI_AGAIN/i.test(msg)) {
     return "Não foi possível conectar à API do WhatsApp (Meta Cloud). Verifique sua conexão.";
   }
-  if (/meta_error_100|access_token|expired|invalid/i.test(msg)) {
-    return "Token de acesso Meta inválido ou expirado. Reconfigure a integração.";
+  if (/meta_error_(100|190)|access_token|expired|invalid|Authentication required/i.test(msg)) {
+    return "Token de acesso Meta inválido ou expirado. Gere um novo token no Meta Developer Portal e atualize a integração.";
   }
   return `Falha na comunicação com a Meta Cloud API: ${msg}`;
 }

@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/api/client";
 
 export interface ChannelSession {
   id: string;
+  provider: string;
   waha_session_name: string;
   display_name: string | null;
   phone_number: string | null;
@@ -15,6 +16,8 @@ export interface ChannelSession {
   daily_message_limit: number;
   is_warmup_complete: boolean | null;
   created_at: string;
+  meta_phone_number_id: string | null;
+  meta_waba_id: string | null;
 }
 
 export type ConnectionHealth = "connected" | "connecting" | "down" | "none";
