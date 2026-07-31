@@ -5,7 +5,12 @@
  * call wires every consumer. Keep it lightweight — no DB calls at import time.
  */
 
-import { aiResponseHandler } from "@/workers/ai-response-worker.handler";
+// NOTA: o ai-response-worker (Fase 0, legacy) foi DESREGISTRADO em 2026-08-02.
+// Ele respondia a `message.received` enquanto o runtime canônico (daemon
+// agent-worker, consumindo `ai_agent.dispatch_requested` → inbound_turn)
+// responde o MESMO inbound → DUPLA resposta + duplo custo de LLM. O daemon
+// cobre todos os fluxos do Fase 0 (agente publicado, router, fallback default).
+// Os arquivos workers/ai-response-worker*.ts ficam como referência/QA.
 import { aiSentimentHandler } from "@/workers/ai-sentiment-worker.handler";
 import { aiHandoffFromSentimentHandler } from "@/workers/ai-handoff-from-sentiment.handler";
 import { ragIndexerHandler } from "@/workers/rag-indexer.handler";
@@ -21,7 +26,6 @@ let _registered = false;
 
 export function ensureHandlersRegistered(): void {
   if (_registered) return;
-  registerHandler(aiResponseHandler);
   registerHandler(aiSentimentHandler);
   registerHandler(aiHandoffFromSentimentHandler);
   registerHandler(ragIndexerHandler);
