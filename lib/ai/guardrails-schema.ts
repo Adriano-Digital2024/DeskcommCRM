@@ -7,11 +7,37 @@ import { z } from "zod";
 // ---------------------------------------------------------------------------
 // Models permitidos (Vercel AI Gateway)
 // ---------------------------------------------------------------------------
+// Vocabulário do editor legado (rag_bot — AgentEditor, aba "Modelo") e das
+// rotas PATCH/CREATE de ai_agents.model. Espelha o catálogo global ai_models
+// (migration 0089) no formato `provider/model_id`: os model_ids do OpenRouter
+// já vêm com prefixo do vendor (anthropic/claude-sonnet-4.6), então aqui o
+// prefixo é dobrado — mesma convenção gateway-style das linhas existentes.
+// O runtime NÃO lê esta coluna (é 100% version-driven); é vocabulário do editor.
 
 export const AGENT_MODELS = [
+  // anthropic (catálogo original)
   "anthropic/claude-sonnet-4-6",
   "anthropic/claude-haiku-4-5",
   "anthropic/claude-opus-4-7",
+  // openai / google (catálogo original)
+  "openai/gpt-5",
+  "openai/gpt-5-mini",
+  "openai/gpt-4o",
+  "google/gemini-2.5-pro",
+  "google/gemini-2.5-flash",
+  // openrouter (migration 0089 — slugs reais do gateway)
+  "openrouter/anthropic/claude-sonnet-4.6",
+  "openrouter/anthropic/claude-opus-4.7",
+  "openrouter/anthropic/claude-haiku-4.5",
+  "openrouter/openai/gpt-5",
+  "openrouter/openai/gpt-5-mini",
+  "openrouter/google/gemini-2.5-pro",
+  "openrouter/google/gemini-2.5-flash",
+  "openrouter/deepseek/deepseek-chat",
+  "openrouter/z-ai/glm-5.2",
+  // agentrouter (migration 0089)
+  "agentrouter/gpt-5.5",
+  "agentrouter/glm-5.2",
 ] as const;
 
 export const agentModelSchema = z.enum(AGENT_MODELS);

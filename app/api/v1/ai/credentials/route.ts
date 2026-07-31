@@ -27,7 +27,7 @@ const SAFE_COLUMNS =
   "id, organization_id, provider, label, api_key_last4, validated_at, validation_error, models_available, is_active, created_by, created_at, updated_at";
 
 const createSchema = z.object({
-  provider: z.enum(["anthropic", "openai", "google"]),
+  provider: z.enum(["anthropic", "openai", "google", "openrouter", "agentrouter"]),
   label: z.string().trim().min(1).max(80),
   api_key: z.string().trim().min(8).max(2048),
 });

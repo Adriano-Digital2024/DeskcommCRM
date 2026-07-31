@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export type Provider = "anthropic" | "openai" | "google";
+export type Provider = "anthropic" | "openai" | "google" | "openrouter" | "agentrouter";
 
 export interface ModelOption {
   provider: Provider;

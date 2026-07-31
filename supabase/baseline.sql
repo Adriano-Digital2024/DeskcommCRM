@@ -8501,3 +8501,63 @@ end;
 $$;
 
 revoke execute on function public.fn_decrypt_meta_token(bytea, text) from anon, authenticated;
+
+-- ---- providers LLM openrouter/agentrouter (migration 0088) ----
+-- Idempotente: drop-if-exists + add (apenas AFROUXA o vocabulário — re-aplicar
+-- é seguro no install.sh e no update.sh de clones).
+
+alter table public.ai_provider_credentials
+  drop constraint if exists ai_provider_credentials_provider_check;
+alter table public.ai_provider_credentials
+  add constraint ai_provider_credentials_provider_check
+  check (provider = any (array['anthropic'::text, 'openai'::text, 'google'::text, 'openrouter'::text, 'agentrouter'::text]));
+
+alter table public.ai_agent_versions
+  drop constraint if exists ai_agent_versions_provider_check;
+alter table public.ai_agent_versions
+  add constraint ai_agent_versions_provider_check
+  check (provider = any (array['anthropic'::text, 'openai'::text, 'google'::text, 'openrouter'::text, 'agentrouter'::text]));
+
+alter table public.ai_models
+  drop constraint if exists ai_models_provider_check;
+alter table public.ai_models
+  add constraint ai_models_provider_check
+  check (provider = any (array['anthropic'::text, 'openai'::text, 'google'::text, 'openrouter'::text, 'agentrouter'::text]));
+
+-- ---- ai_models: catálogo OpenRouter/AgentRouter (migration 0089) ----
+-- Sem isto o seletor "Modelo" do agente fica VAZIO pra openrouter/agentrouter
+-- (GET /api/v1/ai/providers/:p/models lê só esta tabela) e, mesmo que houvesse
+-- linha, computeCost() devolveria 0 sem ai_pricing. Idempotente (on conflict
+-- do nothing + NOT EXISTS): no-op em clone que já tem, auto-curativo no
+-- update.sh. Slugs OpenRouter = reais do gateway (ponto nos Claude).
+
+insert into public.ai_models (provider, model_id, display_name, description, context_window, input_price_per_million_cents, output_price_per_million_cents, supports_tools, is_default_for_provider)
+values
+  ('openrouter', 'anthropic/claude-sonnet-4.6', 'Claude Sonnet 4.6', 'Default recomendado via OpenRouter — equilíbrio custo/qualidade', 1000000, 300, 1500, true, true),
+  ('openrouter', 'anthropic/claude-opus-4.7',   'Claude Opus 4.7',   'Flagship via OpenRouter — raciocínio complexo',                   1000000, 500, 2500, true, false),
+  ('openrouter', 'anthropic/claude-haiku-4.5',  'Claude Haiku 4.5',  'Cheap/fast via OpenRouter — atendimentos curtos e classificação',  200000, 100, 500,  true, false),
+  ('openrouter', 'openai/gpt-5',                'GPT-5',             'Flagship OpenAI via OpenRouter',                                  400000, 125, 1000, true, false),
+  ('openrouter', 'openai/gpt-5-mini',           'GPT-5 Mini',        'Cheap/fast OpenAI via OpenRouter',                                400000, 25,  200,  true, false),
+  ('openrouter', 'google/gemini-2.5-pro',       'Gemini 2.5 Pro',    'Flagship Google via OpenRouter',                                 1000000, 125, 1000, true, false),
+  ('openrouter', 'google/gemini-2.5-flash',     'Gemini 2.5 Flash',  'Cheap/fast Google via OpenRouter',                               1000000, 30,  250,  true, false),
+  ('openrouter', 'deepseek/deepseek-chat',      'DeepSeek Chat',     'Custo competitivo — triagem e respostas simples',                  163840, 26,  103,  true, false),
+  ('openrouter', 'z-ai/glm-5.2',                'GLM-5.2 (Z.ai)',    'Custo competitivo — bom equilíbrio geral',                       1000000, 119, 374,  true, false),
+  ('agentrouter', 'gpt-5.5', 'GPT-5.5', 'Flagship via AgentRouter', 1050000, 500, 3000, true, true),
+  ('agentrouter', 'glm-5.2', 'GLM-5.2', 'Zhipu GLM via AgentRouter', 1000000, 119, 374, true, false)
+on conflict (provider, model_id) do nothing;
+
+insert into public.ai_pricing (model, prompt_cents_per_million_tokens, completion_cents_per_million_tokens, notes)
+select
+  m.model_id,
+  m.input_price_per_million_cents,
+  m.output_price_per_million_cents,
+  'backfill 0089 a partir de ai_models (openrouter/agentrouter)'
+from public.ai_models m
+where m.provider in ('openrouter', 'agentrouter')
+  and m.deprecated_at is null
+  and m.input_price_per_million_cents is not null
+  and m.output_price_per_million_cents is not null
+  and not exists (
+    select 1 from public.ai_pricing p
+    where p.model = m.model_id and p.superseded_at is null
+  );

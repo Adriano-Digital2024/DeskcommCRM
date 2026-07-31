@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const PROVIDERS = new Set(["anthropic", "openai", "google"]);
+const PROVIDERS = new Set(["anthropic", "openai", "google", "openrouter", "agentrouter"]);
 
 const MODEL_COLUMNS =
   "id, provider, model_id, display_name, description, context_window, input_price_per_million_cents, output_price_per_million_cents, supports_tools, is_default_for_provider, deprecated_at, released_at";

@@ -10,7 +10,7 @@
 import { z } from "zod";
 import { VALID_TOOL_IDS } from "@/lib/mcp/tools/catalog";
 
-export const PROVIDERS = ["anthropic", "openai", "google"] as const;
+export const PROVIDERS = ["anthropic", "openai", "google", "openrouter", "agentrouter"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
 const UUID = z.string().uuid();

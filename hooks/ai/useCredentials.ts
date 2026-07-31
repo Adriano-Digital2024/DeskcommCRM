@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 
-export type Provider = "anthropic" | "openai" | "google";
+export type Provider = "anthropic" | "openai" | "google" | "openrouter" | "agentrouter";
 
 export interface CredentialRow {
   id: string;

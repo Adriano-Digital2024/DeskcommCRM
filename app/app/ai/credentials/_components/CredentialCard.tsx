@@ -122,9 +122,21 @@ export function CredentialCard({ credential, canWrite, usageCount }: Props) {
       </div>
 
       {credential.validation_error && (
-        <p className="line-clamp-2 text-xs text-destructive" title={credential.validation_error}>
-          {credential.validation_error}
-        </p>
+        <div className="space-y-1">
+          <p
+            className="line-clamp-2 text-xs text-destructive"
+            title={credential.validation_error}
+          >
+            {credential.validation_error}
+          </p>
+          {credential.provider === "agentrouter" &&
+            credential.validation_error === "auth_failed_401" && (
+              <p className="text-xs text-muted-foreground">
+                Chave rejeitada pelo AgentRouter. Confira em agentrouter.org/console/token se a
+                chave está ativa e com saldo.
+              </p>
+            )}
+        </div>
       )}
 
       <dl className="grid grid-cols-2 gap-2 text-xs">
