@@ -2,6 +2,9 @@ import { randomUUID } from "node:crypto";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { audit } from "@/lib/audit";
+import { logger } from "@/lib/logger";
+
 import type { MetaWebhookPayload, MetaCloudClient } from "./client";
 
 export interface MetaSession {
@@ -238,16 +241,21 @@ export async function handleMetaInbound(
   });
 
   if (contactErr || !contact) {
+    logger.error("meta.ingest fn_upsert_wa_contact failed", { error: contactErr?.message, requestId });
     return;
   }
 
   const contactId = typeof contact === "object" ? (contact as { id: string }).id : String(contact);
 
-  const { data: conversation } = await admin.rpc("fn_upsert_wa_conversation", {
+  const { data: conversation, error: convErr } = await admin.rpc("fn_upsert_wa_conversation", {
     p_org: orgId,
     p_contact: contactId,
     p_session: session.id,
   });
+
+  if (convErr) {
+    logger.error("meta.ingest fn_upsert_wa_conversation failed", { error: convErr.message, requestId });
+  }
 
   const conversationId = conversation
     ? (typeof conversation === "object" ? (conversation as { id: string }).id : String(conversation))
@@ -268,19 +276,22 @@ export async function handleMetaInbound(
     status: "received",
     body: msg.body ?? null,
     ack: 1,
+    sent_via: "external_device",
     sent_at: new Date(Number(msg.timestamp) * 1000).toISOString(),
     metadata: { provider: "meta_cloud", request_id: requestId },
   });
 
   if (msgErr && msgErr.code !== "23505") {
+    logger.error("meta.ingest message insert failed", { error: msgErr.message, requestId });
     return;
   }
 
-  await admin.from("conversations").update({
-    last_message_at: new Date().toISOString(),
-    last_message_preview: msg.body ?? `[${messageType}]`,
-    unread_count_for_assignee: 0,
-  }).eq("id", conversationId);
+  await admin.rpc("fn_mark_conversation_message" as never, {
+    p_conv: conversationId,
+    p_direction: "inbound",
+    p_preview: msg.body ?? `[${messageType}]`,
+    p_at: new Date().toISOString(),
+  } as never);
 
   if (msg.body && /\b(STOP|PARAR|SAIR|UNSUBSCRIBE)\b/i.test(msg.body)) {
     await admin.from("contacts").update({
@@ -290,6 +301,16 @@ export async function handleMetaInbound(
     }).eq("id", contactId);
   }
 
+  void audit({
+    action: "message.received",
+    actorUserId: null,
+    organizationId: orgId,
+    resourceType: "message",
+    resourceId: msg.messageId,
+    requestId,
+    metadata: { provider: "meta_cloud", conversation_id: conversationId, channel_session_id: session.id },
+  });
+
   await admin.rpc("emit_event", {
     p_event_type: "ai_agent.dispatch_requested",
     p_entity_kind: "conversation",
@@ -298,7 +319,7 @@ export async function handleMetaInbound(
     p_metadata: { request_id: requestId, channel_session_id: session.id },
     p_organization_id: orgId,
   }).then(({ error }) => {
-    if (error) console.error("[meta.ingest] emit_event failed", error.message);
+    if (error) logger.error("meta.ingest emit_event failed", { error: error.message, requestId });
   });
 }
 
