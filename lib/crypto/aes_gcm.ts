@@ -19,23 +19,30 @@ const TAG_LENGTH_BYTES = 16;
 
 let cachedKey: Buffer | null = null;
 
+/**
+ * Aceita a chave em dois formatos (ambos representam exatamente 32 bytes):
+ *   - base64: `openssl rand -base64 32`  (44 chars)
+ *   - hex:    `openssl rand -hex 32`     (64 chars hex)
+ * Formato inválido (ex.: base64 que decodifica ≠32 bytes) lança erro com a
+ * instrução correta de geração.
+ */
 function getKey(): Buffer {
   if (cachedKey) return cachedKey;
   const raw = env.AI_CRED_AES_KEY;
   if (!raw) {
     throw new Error(
-      "AI_CRED_AES_KEY não configurada. Defina em .env.local (32 bytes base64).",
+      "AI_CRED_AES_KEY não configurada. Defina em .env.local (32 bytes em base64 ou hex).",
     );
   }
-  let buf: Buffer;
-  try {
+  let buf: Buffer | null = null;
+  if (/^[0-9a-fA-F]{64}$/.test(raw)) {
+    buf = Buffer.from(raw, "hex");
+  } else if (/^[A-Za-z0-9+/]+={0,2}$/.test(raw)) {
     buf = Buffer.from(raw, "base64");
-  } catch {
-    throw new Error("AI_CRED_AES_KEY inválida: base64 malformado.");
   }
-  if (buf.length !== KEY_LENGTH_BYTES) {
+  if (!buf || buf.length !== KEY_LENGTH_BYTES) {
     throw new Error(
-      `AI_CRED_AES_KEY deve ter exatamente 32 bytes (lido: ${buf.length}). Gere com: openssl rand -base64 32`,
+      `AI_CRED_AES_KEY deve representar exatamente 32 bytes (lido: ${buf?.length ?? "?"}). Gere com: openssl rand -base64 32 (ou -hex 32)`,
     );
   }
   cachedKey = buf;
