@@ -256,9 +256,14 @@ export async function createContactHandler(
   };
 
   if (input.cpf) {
-    insertRow.cpf_hash = hashCpf(input.cpf);
     const enc = await encryptCpfSql(supabase, input.cpf);
-    if (enc) insertRow.cpf_encrypted = enc;
+    if (enc) {
+      insertRow.cpf_hash = hashCpf(input.cpf);
+      insertRow.cpf_encrypted = enc;
+    } else {
+      // encrypt_cpf RPC indisponível — pula cpf_hash/cpf_encrypted ambos
+      // para não violar contacts_cpf_consistency
+    }
   }
 
   const { data: created, error: insErr } = await supabase
@@ -350,9 +355,13 @@ export async function patchContactHandler(
   if (input.source_metadata !== undefined) patch.source_metadata = input.source_metadata;
   if (input.consent !== undefined) patch.consent = input.consent;
   if (input.cpf !== undefined) {
-    patch.cpf_hash = hashCpf(input.cpf);
     const enc = await encryptCpfSql(supabase, input.cpf);
-    if (enc) patch.cpf_encrypted = enc;
+    if (enc) {
+      patch.cpf_hash = hashCpf(input.cpf);
+      patch.cpf_encrypted = enc;
+    } else {
+      // encrypt_cpf RPC indisponível — não atualiza cpf_hash/cpf_encrypted
+    }
   }
 
   if (Object.keys(patch).length === 0) {
