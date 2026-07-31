@@ -30,6 +30,7 @@ const STATUS_LABELS: Record<LgpdRequestStatus, string> = {
   processing: "Processando",
   completed: "Concluído",
   failed: "Falhou",
+  expired: "Expirado",
   pending_review: "Revisão pendente",
 };
 
@@ -41,6 +42,7 @@ const STATUS_VARIANT: Record<
   processing: "default",
   completed: "outline",
   failed: "destructive",
+  expired: "outline",
   pending_review: "secondary",
 };
 

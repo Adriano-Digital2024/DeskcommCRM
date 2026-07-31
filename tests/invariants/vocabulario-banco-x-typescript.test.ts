@@ -102,6 +102,21 @@ const PARES: Array<{
     arquivo: "lib/agent-engine/db/repository.ts",
     simbolo: "InboxKind",
   },
+  {
+    tabela: "lgpd_requests",
+    coluna: "status",
+    // lib/lgpd/types.ts → LgpdRequestStatus.
+    //
+    // Este par nasceu do MESMO defeito que o InboxKind, uma camada de alcance
+    // maior: os workers de redação/export já gravavam 'pending_review' (L-03 no
+    // local footprint, no_delivery_email) enquanto o CHECK não o listava — 23514
+    // engolido, request preso em 'processing' para sempre, invisível na fila de
+    // revisão. Ao adicionar o par, o extrator expôs a segunda metade da
+    // divergência: o banco também aceita 'expired', ausente do tipo TS e das
+    // telas. Ambos corrigidos na mesma leva (migration 0090 + types + UI).
+    arquivo: "lib/lgpd/types.ts",
+    simbolo: "LgpdRequestStatus",
+  },
 ];
 
 /** Tira um nível de parênteses externos, se ele envolver a expressão inteira. */

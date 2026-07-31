@@ -184,7 +184,7 @@ export async function processLgpdRedact(event: EventRow): Promise<HandlerResult>
 
       if (!contactId) {
         // L-03: no local footprint — request stays as record but nothing to anonymise.
-        await admin
+        const { error: upErr } = await admin
           .from("lgpd_requests")
           .update({
             status: "pending_review",
@@ -194,19 +194,28 @@ export async function processLgpdRedact(event: EventRow): Promise<HandlerResult>
           .eq("organization_id", orgId)
           .eq("id", requestId);
 
+        if (upErr) {
+          logger.error("[lgpd-redact-worker] status pending_review update failed", {
+            request_id: shortId(requestId),
+            error_hash: sha256(upErr.message),
+          });
+        }
+
         await audit({
           action: "lgpd.redact_no_local_footprint",
           organizationId: orgId,
           resourceType: "lgpd_request",
           resourceId: requestId,
-          metadata: { external_customer_id_present: Boolean(req.external_customer_id) },
+          metadata: { external_customer_id_present: Boolean(req.external_customer_id), status_update_failed: Boolean(upErr) },
           bypassedRls: true,
         });
 
         return {
           consumer_key: "lgpd-redact-worker.v1",
-          status: "ok",
-          detail: "pending_review_no_local_footprint",
+          status: upErr ? "error" : "ok",
+          detail: upErr
+            ? `status_update_failed:${sha256(upErr.message)}`
+            : "pending_review_no_local_footprint",
         };
       }
 
@@ -391,7 +400,7 @@ export async function processLgpdRedact(event: EventRow): Promise<HandlerResult>
       const failedCount = progress.failed_contacts.length;
       const finalStatus = failedCount > 0 ? "pending_review" : "completed";
 
-      await admin
+      const { error: finalUpErr } = await admin
         .from("lgpd_requests")
         .update({
           status: finalStatus,
@@ -409,6 +418,14 @@ export async function processLgpdRedact(event: EventRow): Promise<HandlerResult>
         })
         .eq("organization_id", orgId)
         .eq("id", requestId);
+
+      if (finalUpErr) {
+        logger.error("[lgpd-redact-worker] final status update failed", {
+          request_id: shortId(requestId),
+          status: finalStatus,
+          error_hash: sha256(finalUpErr.message),
+        });
+      }
 
       await admin.rpc("emit_event" as never, {
         p_event_type: "lgpd.redact_applied",
@@ -450,8 +467,12 @@ export async function processLgpdRedact(event: EventRow): Promise<HandlerResult>
 
       return {
         consumer_key: "lgpd-redact-worker.v1",
-        status: failedCount > 0 ? "error" : "ok",
-        detail: failedCount > 0 ? "partial_failure" : "tenant_completed",
+        status: failedCount > 0 || finalUpErr ? "error" : "ok",
+        detail: finalUpErr
+          ? `status_update_failed:${sha256(finalUpErr.message)}`
+          : failedCount > 0
+            ? "partial_failure"
+            : "tenant_completed",
       };
     }
 

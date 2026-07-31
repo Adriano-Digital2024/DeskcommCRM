@@ -2,7 +2,7 @@
 import { Warning } from "@/lib/ui/icons";
 import type { LgpdRequest } from "@/hooks/useLgpdRequests";
 
-const TERMINAL_STATUSES = new Set(["completed", "failed"]);
+const TERMINAL_STATUSES = new Set(["completed", "failed", "expired"]);
 
 interface SlaBannerProps {
   requests: LgpdRequest[];

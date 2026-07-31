@@ -27,6 +27,7 @@ export type LgpdRequestStatus =
   | "processing"
   | "completed"
   | "failed"
+  | "expired"
   | "pending_review";
 
 export interface LgpdRequest {

@@ -43,6 +43,7 @@ const STATUS_LABELS: Record<LgpdRequestStatus, string> = {
   processing: "Processando",
   completed: "Concluído",
   failed: "Falhou",
+  expired: "Expirado",
   pending_review: "Revisão pendente",
 };
 
@@ -54,6 +55,7 @@ const STATUS_VARIANT: Record<
   processing: "secondary",
   completed: "default",
   failed: "destructive",
+  expired: "outline",
   pending_review: "outline",
 };
 
@@ -155,6 +157,7 @@ export function RequestsTable() {
             <SelectItem value="processing">Processando</SelectItem>
             <SelectItem value="completed">Concluído</SelectItem>
             <SelectItem value="failed">Falhou</SelectItem>
+            <SelectItem value="expired">Expirado</SelectItem>
             <SelectItem value="pending_review">Revisão pendente</SelectItem>
           </SelectContent>
         </Select>

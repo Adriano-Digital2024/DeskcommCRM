@@ -8561,3 +8561,15 @@ where m.provider in ('openrouter', 'agentrouter')
     select 1 from public.ai_pricing p
     where p.model = m.model_id and p.superseded_at is null
   );
+
+-- ---- lgpd_requests.status aceita 'pending_review' (migration 0090) ----
+-- Os workers de redação/export marcam requests como 'pending_review' (L-03 no
+-- local footprint, no_delivery_email, email_not_configured). O CHECK original
+-- não listava o valor → UPDATE 23514 engolido → request preso em 'processing'.
+-- Só afrouxa valores permitidos; `if exists` mantém o update.sh de clones seguro.
+
+alter table if exists public.lgpd_requests
+  drop constraint if exists lgpd_requests_status_check;
+alter table if exists public.lgpd_requests
+  add constraint lgpd_requests_status_check
+  check (status = any (array['received'::text, 'processing'::text, 'completed'::text, 'failed'::text, 'expired'::text, 'pending_review'::text]));

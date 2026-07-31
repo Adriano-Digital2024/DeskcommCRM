@@ -203,7 +203,7 @@ export async function processLgpdExport(event: EventRow): Promise<HandlerResult>
 
     if (!deliveryEmail) {
       // Mark as pending_review — operator must contact manually.
-      await admin
+      const { error: upErr } = await admin
         .from("lgpd_requests")
         .update({
           status: "pending_review",
@@ -218,6 +218,12 @@ export async function processLgpdExport(event: EventRow): Promise<HandlerResult>
         })
         .eq("organization_id", orgId)
         .eq("id", requestId);
+      if (upErr) {
+        logger.error("[lgpd-export-worker] status pending_review update failed", {
+          request_id: shortId(requestId),
+          error_hash: sha256(upErr.message),
+        });
+      }
       await audit({
         action: "lgpd.export_generated",
         organizationId: orgId,
@@ -228,13 +234,16 @@ export async function processLgpdExport(event: EventRow): Promise<HandlerResult>
           signed_pades: signResult.signed_pades,
           warning: signResult.warning ?? null,
           delivery: "pending_review_no_email",
+          status_update_failed: Boolean(upErr),
         },
         bypassedRls: true,
       });
       return {
         consumer_key: "lgpd-export-worker.v1",
-        status: "ok",
-        detail: "pending_review_no_email",
+        status: upErr ? "error" : "ok",
+        detail: upErr
+          ? `status_update_failed:${sha256(upErr.message)}`
+          : "pending_review_no_email",
       };
     }
 
@@ -253,7 +262,7 @@ export async function processLgpdExport(event: EventRow): Promise<HandlerResult>
     } catch (err) {
       if (err instanceof EmailNotConfigured) {
         // Operator gap — mark pending_review (no retry helps).
-        await admin
+        const { error: upErr } = await admin
           .from("lgpd_requests")
           .update({
             status: "pending_review",
@@ -269,6 +278,12 @@ export async function processLgpdExport(event: EventRow): Promise<HandlerResult>
           })
           .eq("organization_id", orgId)
           .eq("id", requestId);
+        if (upErr) {
+          logger.error("[lgpd-export-worker] status pending_review update failed", {
+            request_id: shortId(requestId),
+            error_hash: sha256(upErr.message),
+          });
+        }
         await audit({
           action: "lgpd.export_generated",
           organizationId: orgId,
@@ -279,13 +294,16 @@ export async function processLgpdExport(event: EventRow): Promise<HandlerResult>
             signed_pades: signResult.signed_pades,
             warning: "email_not_configured",
             delivered_to_hash: deliveredHash,
+            status_update_failed: Boolean(upErr),
           },
           bypassedRls: true,
         });
         return {
           consumer_key: "lgpd-export-worker.v1",
-          status: "ok",
-          detail: "email_not_configured",
+          status: upErr ? "error" : "ok",
+          detail: upErr
+            ? `status_update_failed:${sha256(upErr.message)}`
+            : "email_not_configured",
         };
       }
       // Generic Resend failure — set status back so cron retries.
