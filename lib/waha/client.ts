@@ -92,6 +92,25 @@ export class WahaClient {
     return res.json();
   }
 
+  /**
+   * Delete (logout + remove) a session from WAHA permanently.
+   * WAHA Plus: DELETE /api/sessions/{name}
+   * 404 is treated as success (already gone).
+   */
+  async deleteSession(name: string): Promise<void> {
+    const res = await fetch(
+      `${this.baseUrl}/api/sessions/${encodeURIComponent(name)}`,
+      {
+        method: "DELETE",
+        headers: { "X-Api-Key": this.apiKey },
+      },
+    );
+    if (!res.ok && res.status !== 404) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`waha_delete_${res.status}: ${body.slice(0, 200)}`);
+    }
+  }
+
   async sendMedia(
     session: string,
     chatId: string,

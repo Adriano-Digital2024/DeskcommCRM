@@ -29,6 +29,7 @@ import {
   Phone,
   Plus,
   ShieldCheck,
+  Trash,
   Warning,
 } from "@/lib/ui/icons";
 import { Input } from "@/components/ui/input";
@@ -78,6 +79,8 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
   } | null>(null);
   const [antiBanId, setAntiBanId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<ChannelSession | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const pacingItems = usePacingKnobs().data?.items ?? [];
 
   const invalidate = useCallback(
@@ -166,6 +169,22 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
     },
     [invalidate],
   );
+
+  const handleRemove = useCallback(async () => {
+    const c = deleteConfirm;
+    if (!c) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/api/v1/channel-sessions/${c.id}`);
+      invalidate();
+      toast.success(`${channelLabel(c)} removido.`);
+      setDeleteConfirm(null);
+    } catch (err) {
+      toast.error(errMsg(err, "Não foi possível remover o canal."));
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteConfirm, invalidate]);
 
   const handleConnected = useCallback(() => {
     toast.success("WhatsApp conectado!");
@@ -267,7 +286,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                     <span className="ml-2 text-error-fg">— {c.status_reason}</span>
                   )}
                 </p>
-                <div className="mt-auto flex gap-2">
+                <div className="mt-auto flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -296,6 +315,18 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                     <Button variant="outline" size="sm" onClick={() => setAntiBanId(c.id)}>
                       <ShieldCheck size={14} aria-hidden />
                       Proteção de envio
+                    </Button>
+                  )}
+                  {(c.status === "FAILED" || c.status === "STOPPED" || c.status === "DISCONNECTED") && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-error-fg hover:text-error-fg"
+                      disabled={busyId === c.id}
+                      onClick={() => setDeleteConfirm(c)}
+                    >
+                      <Trash size={14} aria-hidden />
+                      Remover
                     </Button>
                   )}
                 </div>
@@ -349,6 +380,46 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
         canWrite
         onClose={() => setAntiBanId(null)}
       />
+
+      {deleteConfirm && (
+        <Dialog open onOpenChange={() => !deleting && setDeleteConfirm(null)}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Remover número</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja remover <strong>{channelLabel(deleteConfirm)}</strong>?
+                {deleteConfirm.provider === "waha"
+                  ? " O dispositivo será desconectado e a sessão removida do WhatsApp."
+                  : " O token de acesso será removido e o número será desconectado do Meta Cloud."}
+                Esta ação não pode ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={deleting}
+                onClick={() => setDeleteConfirm(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleting}
+                onClick={() => void handleRemove()}
+              >
+                {deleting ? (
+                  <CircleNotch size={14} className="animate-spin" aria-hidden />
+                ) : (
+                  <Trash size={14} aria-hidden />
+                )}
+                Remover
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {qr && (
         <QrDialog

@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 
+import { audit } from "@/lib/audit";
 import { ok, fail } from "@/lib/api/wrappers";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { requireRole } from "@/lib/auth/require-role";
 import { env } from "@/lib/env";
 import { MetaCloudClient } from "@/lib/meta/client";
 import { isChannelStatus } from "@/lib/schemas/channels";
@@ -158,4 +160,67 @@ async function checkWahaSession(
     last_health_check_at: patch.last_health_check_at,
     waha_configured: true,
   }, { requestId });
+}
+
+// ---------------------------------------------------------------------------
+// DELETE — remove channel session
+// ---------------------------------------------------------------------------
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<Response> {
+  const requestId = randomUUID();
+  const { id } = await params;
+
+  const authz = await requireRole("admin", {
+    requestId,
+    resource: "channel_sessions",
+    allowPlatformAdmin: true,
+  });
+  if (!authz.ok) return authz.response;
+  const { user, org: activeOrg } = authz;
+
+  const supabase = await createClient();
+  const { data: session } = await supabase
+    .from("channel_sessions")
+    .select("id, provider, waha_session_name, display_name, phone_number, status")
+    .eq("organization_id", activeOrg.orgId)
+    .eq("id", id)
+    .maybeSingle();
+  if (!session) return fail("not_found", "Canal não encontrado.", 404, { requestId });
+
+  if (session.provider === "waha" && session.waha_session_name) {
+    const waha = getWahaClient();
+    if (waha) {
+      try {
+        await waha.stopSession(session.waha_session_name);
+        await waha.deleteSession(session.waha_session_name);
+      } catch {
+        // WAHA unreachable — delete row anyway
+      }
+    }
+  }
+
+  const { error: delErr } = await supabase
+    .from("channel_sessions")
+    .delete()
+    .eq("organization_id", activeOrg.orgId)
+    .eq("id", id);
+
+  if (delErr) {
+    return fail("internal_error", delErr.message, 500, { requestId });
+  }
+
+  void audit({
+    action: "channel.removed",
+    actorUserId: user.id,
+    organizationId: activeOrg.orgId,
+    resourceType: "channel_session",
+    resourceId: id,
+    requestId,
+    metadata: { provider: session.provider, display_name: session.display_name, phone_number: session.phone_number },
+  });
+
+  return ok({ id, deleted: true }, { requestId });
 }
