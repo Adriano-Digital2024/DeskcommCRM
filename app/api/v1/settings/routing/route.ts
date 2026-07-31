@@ -18,6 +18,7 @@ import { ApiError } from "@/lib/api/types";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
 import { routingConfigSchema, validateRequest } from "@/lib/schemas";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -66,15 +67,26 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   const supabase = await createClient();
   const { data: orgRow, error: readErr } = await supabase
     .from("organizations")
-    .select("settings")
+    .select("settings, status")
     .eq("id", activeOrg.orgId)
     .maybeSingle();
   if (readErr) return fail("internal_error", readErr.message, 500, { requestId });
 
+  if (orgRow?.status === "suspended") {
+    return fail("forbidden", "Organização suspensa — escrita bloqueada.", 403, {
+      requestId,
+    });
+  }
+
   const currentSettings = (orgRow?.settings as Record<string, unknown> | null) ?? {};
   const nextSettings = { ...currentSettings, routing: input };
 
-  const { error: updErr } = await supabase
+  // organizations só tem policy de escrita para platform-admin; tenant (manager+)
+  // grava via admin client com filtro de org vindo do JWT (fonte confiável) —
+  // mesmo padrão do finishOnboarding. RLS continua blindando todos os outros
+  // caminhos de escrita na tabela.
+  const admin = createAdminClient();
+  const { error: updErr } = await admin
     .from("organizations")
     .update({ settings: nextSettings })
     .eq("id", activeOrg.orgId);

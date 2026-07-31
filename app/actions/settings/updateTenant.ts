@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { audit } from "@/lib/audit";
 import { tenantSchema, type TenantInput } from "@/lib/schemas/settings";
@@ -36,10 +37,13 @@ export async function updateTenant(input: TenantInput): Promise<UpdateTenantResu
   // Read current settings jsonb to merge `lost_reasons_extra` non-destructively.
   const { data: orgRow, error: readErr } = await supabase
     .from("organizations")
-    .select("settings")
+    .select("settings, status")
     .eq("id", activeOrg.orgId)
     .maybeSingle();
   if (readErr) return { ok: false, error: readErr.message };
+  if (orgRow?.status === "suspended") {
+    return { ok: false, error: "forbidden_tenant" };
+  }
 
   const currentSettings = (orgRow?.settings as Record<string, unknown> | null) ?? {};
   const nextSettings = {
@@ -47,7 +51,11 @@ export async function updateTenant(input: TenantInput): Promise<UpdateTenantResu
     lost_reasons_extra: parsed.data.lost_reasons_extra,
   };
 
-  const { error } = await supabase
+  // organizations só tem policy de escrita para platform-admin; o tenant admin
+  // grava via admin client com filtro de org vindo do JWT (fonte confiável) —
+  // mesmo padrão do finishOnboarding. RLS continua blindando os demais caminhos.
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("organizations")
     .update({
       display_name: parsed.data.display_name,
